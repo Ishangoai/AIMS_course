@@ -1,3 +1,6 @@
+from utils.utility_functions import add_synthetic_cycles, get_spark, multiply_by_two, resample
+
+
 def test_multiply_by_two():
     actual_output = multiply_by_two(4)
     expected_output = 8
