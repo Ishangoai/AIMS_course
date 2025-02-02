@@ -1,4 +1,4 @@
-from utils.utility_functions import add_synthetic_cycles, get_spark, multiply_by_two, resample
+from utils.utility_functions import multiply_by_two
 
 
 def test_multiply_by_two():
