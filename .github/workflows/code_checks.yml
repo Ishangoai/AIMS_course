@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  run-checks:
+  run-code-checks:
 
     runs-on: ubuntu-latest
 
