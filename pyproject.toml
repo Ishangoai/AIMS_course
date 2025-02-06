@@ -1,14 +1,14 @@
 [project]
-name = "AIMS_MLOps"
+name = "GenAI_Linkedin_PostWriter"
 version = "0.1.0"
 license = {file = "LICENSE"}
-description = "MLOps Course for AIMS SA"
+description = "GenAI Linkedin post writer"
 readme = "README.md"
 requires-python = ">=3.13"
 
 authors =  [
     {name = "Oliver Angelil"},
-    {name = "Cyrille Feudjio"}
+    {name = "Vincent Frimpong"}
 ]
 
 dependencies = [
