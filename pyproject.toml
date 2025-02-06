@@ -40,7 +40,7 @@ addopts = "-vv -cov"
 
 [tool.mypy]
 python_version = "3.13"
-exclude = ["sandbox", "datascience"]
+exclude = []
 check_untyped_defs = false
 explicit_package_bases = true
 color_output = true
@@ -50,5 +50,5 @@ module = []
 ignore_missing_imports = true
 
 [tool.isort]
-skip = ["sandbox", "datascience"]
+skip = []
 line_length = 98
