@@ -12,16 +12,15 @@ authors =  [
 ]
 
 dependencies = [
-    "numpy==2.2.2",
+    "numpy>=2.2.2",
     "pyright>=1.1.393",
     "ruff>=0.9.5",
-    "scikit-learn==1.6.1",
+    "scipy>=1.15.1",
 ]
 
 [project.optional-dependencies]
 test = [
-    "ruff==0.9.5",
-    "mypy==1.6.1",
+    "ruff>=0.9.5",
     "pytest==7.4.3",
     "pytest-cov==4.1.0",
 ]
@@ -52,3 +51,6 @@ colorOutput = true
 line-length = 98
 select = ["E", "F", "W", "C90"]
 ignore = ["E501"]
+
+[tool.uv]
+package = true
