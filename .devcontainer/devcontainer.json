@@ -13,9 +13,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": [
-		"uv venv myenv && source myenv/bin/activate"
-	],
+	"postCreateCommand": "uv venv myenv && source myenv/bin/activate",
 
 	// Configure tool-specific properties.
 	"customizations": {
