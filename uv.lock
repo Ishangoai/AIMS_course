@@ -71,8 +71,8 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.2.2" },
     { name = "pyright", specifier = ">=1.1.393" },
     { name = "pytest", specifier = ">=7.4.3" },
-    { name = "pytest", marker = "extra == 'test'", specifier = "==7.4.3" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = "==4.1.0" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=7.4.3" },
+    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.1.0" },
     { name = "ruff", specifier = ">=0.9.5" },
     { name = "ruff", marker = "extra == 'test'", specifier = ">=0.9.5" },
 ]
