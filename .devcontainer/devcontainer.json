@@ -17,7 +17,10 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "pip3 install --user -r requirements.txt",
+	"postCreateCommand": [
+		"uv venv myenv && source myenv/bin/activate",
+		"uv pip install -e ."
+	],
 
 	// Configure tool-specific properties.
 	"customizations": {
