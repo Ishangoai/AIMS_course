@@ -1,4 +1,4 @@
-#!/bin/bash
+!/bin/bash
 
 uv venv myenv
 source myenv/bin/activate
