@@ -30,14 +30,14 @@ test = [
 ]
 
 [project.scripts]
-genai = "genai.source:add_one"
+genai = "genai.source:main"
 
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-where = ["."]
+#[tool.setuptools.packages.find]
+#where = ["."]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
