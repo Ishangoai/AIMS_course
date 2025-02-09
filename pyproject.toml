@@ -30,7 +30,7 @@ test = [
 ]
 
 [project.scripts]
-genai = "genai:main"
+genai = "genai.source:add_one"
 
 [build-system]
 requires = ["setuptools"]
