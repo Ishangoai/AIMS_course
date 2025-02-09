@@ -1,5 +1,5 @@
 [project]
-name = "GenAI-Linkedin-PostWriter"
+name = "genai"
 version = "0.1.0"
 license = {file = "LICENSE"}
 description = "GenAI LinkedIn Post Writer"
@@ -16,7 +16,11 @@ dependencies = [
     "pyright>=1.1.393",
     "pytest>=7.4.3",
     "ruff>=0.9.5",
+    "scipy>=1.15.1",
 ]
+
+[project.urls]
+Homepage = "https://ishango.ai/"
 
 [project.optional-dependencies]
 test = [
@@ -25,15 +29,15 @@ test = [
     "pytest-cov>=4.1.0",
 ]
 
-[tool.setuptools]
-include-package-data = true
-
-[tool.setuptools.packages.find]
-where = ["."]
+[project.scripts]
+genai = "genai:main"
 
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
