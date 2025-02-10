@@ -23,7 +23,7 @@ dependencies = [
 Homepage = "https://ishango.ai/"
 
 [project.scripts]
-genai = "ml.model:main"
+ml = "ml.model:main"
 
 [build-system]
 requires = ["setuptools"]
