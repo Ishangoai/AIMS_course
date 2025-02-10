@@ -53,10 +53,3 @@ preview = true
 # not yet sure what this does
 [tool.uv]
 package = true
-[[tool.mypy.overrides]]
-module = []
-ignore_missing_imports = true
-
-[tool.isort]
-skip = []
-line_length = 98
