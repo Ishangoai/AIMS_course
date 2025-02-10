@@ -4,31 +4,26 @@ version = "0.1.0"
 license = {file = "LICENSE"}
 description = "MLOps Course for AIMS SA"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 
 authors =  [
-    {name = "Oliver Angelil"},
-    {name = "Cyrille Feudjio"}
+    {name = "Oliver Angelil", email = "oliver@ishango.ai"},
+    {name = "Cyrille Feudjio", email = "cyrille@ishango.ai"}
 ]
 
 dependencies = [
-    "numpy==2.2.2"
+    "numpy>=2.2.2",
+    "pyright>=1.1.393",
+    "pytest>=8.3.4",
+    "ruff>=0.9.5",
+    "scipy>=1.15.1",
 ]
 
-[project.optional-dependencies]
-test = [
-    "flake8==6.1.0",
-    "mypy==1.6.1",
-    "pytest==7.4.3",
-    "pytest-cov==4.1.0",
-    "isort==5.12.0",
-]
+[project.urls]
+Homepage = "https://ishango.ai/"
 
-[tool.setuptools]
-include-package-data = true
-
-[tool.setuptools.packages.find]
-where = ["."]
+[project.scripts]
+genai = "genai.source:main"
 
 [build-system]
 requires = ["setuptools"]
@@ -36,15 +31,28 @@ build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-vv -cov"
+addopts = "-vv"
 
-[tool.mypy]
-python_version = "3.13"
+[tool.pyright]
 exclude = []
-check_untyped_defs = false
-explicit_package_bases = true
-color_output = true
+typeCheckingMode = "basic"
+reportUntypedFunctionDecorator = false
+reportMissingTypeStubs = false
+colorOutput = true
 
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90"]
+preview = true
+
+#this is a replacement for black. not sure whether to use it.
+#[tool.ruff.format]
+
+# not yet sure what this does
+[tool.uv]
+package = true
 [[tool.mypy.overrides]]
 module = []
 ignore_missing_imports = true
