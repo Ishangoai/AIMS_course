@@ -15,36 +15,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
+    - name: checkout repository
       uses: actions/checkout@v4
-    
-    - name: Set up Python 3.13
+      
+    - name: install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "0.5.29"
+
+    - name: install python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.13"
+        python-version-file: "pyproject.toml"
         
-    - name: Install package
-      run: |
-        pip install '.[test]'
-        pip list
-        
-    - name: Run flake8 code checks
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: run ruff code checks
+      run: uvx ruff@0.9.5 check
 
-    - name: Run mypy type-hinting checks
-      run : |
-        mypy .
+    - name: run pyright type-hinting checks
+      run: uvx pyright@1.1.393
 
     - name: Run pytest
-      run : |
-        pytest
+      run: uvx pytest@8.3.4
 
-    - name: Run isort
-      run : |
-        isort --diff --check .
-
-        
+    - name: list python packages
+      run: uv pip list
