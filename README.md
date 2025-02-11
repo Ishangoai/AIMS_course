@@ -10,5 +10,7 @@ Other tips:
 - type `pytest` to run unit tests
 - type `ruff check` to run PEP8 checks
 - type `pyright` to run type-hinting checks
+- type `ml` run run the module (see the `[project.scripts]` section in `pyproject.toml`)
 
 All these checks are also run in GitHub Actions (CI pipelines) when a new PR is raised to merge into `development`
+
