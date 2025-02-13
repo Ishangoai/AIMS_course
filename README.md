@@ -1,4 +1,4 @@
-# AIMS Course
+# AIMS SA Course
 
 ### Instructions for development:
 - create new feature branch from `development` following this convention: "feature-branch-{your name}"
