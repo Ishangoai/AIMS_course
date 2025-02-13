@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# uv venv myenv
-# source myenv/bin/activate
+uv venv
+source .venv/bin/activate
 
-uv pip install -e .
+uv sync
