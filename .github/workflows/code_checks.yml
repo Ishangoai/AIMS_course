@@ -42,6 +42,3 @@ jobs:
 
     - name: Run pytest
       run: uv run pytest
-
-    - name: list python packages
-      run: uv pip list
