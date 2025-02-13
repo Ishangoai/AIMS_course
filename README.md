@@ -1,9 +1,9 @@
-# AIMS_course
+# AIMS Course
 
 ### Instructions for development:
 - create new feature branch from `development` following this convention: "feature-branch-{your name}"
 - open the branch in CodeSpaces, selecting the weakest compute specs
-- in the CodeSpace bash terminal, type `source myenv/bin/activate` to activate your personal Python environment
+- in the CodeSpace bash terminal, type `source .venv/bin/activate` to activate your personal Python environment
 
 Other tips:
 - type `uv pip list` to see installed Python packages
