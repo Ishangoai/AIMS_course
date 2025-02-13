@@ -36,8 +36,6 @@ addopts = "-vv"
 [tool.pyright]
 exclude = []
 typeCheckingMode = "standard"
-reportUntypedFunctionDecorator = false
-reportMissingTypeStubs = false
 colorOutput = true
 
 [tool.ruff]
