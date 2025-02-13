@@ -48,6 +48,6 @@ preview = true
 #this is a replacement for black. not sure whether to use it.
 #[tool.ruff.format]
 
-# not yet sure what this does
+# required for a src and test layout
 [tool.uv]
 package = true
