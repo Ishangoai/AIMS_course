@@ -30,7 +30,10 @@ jobs:
         
     - name: install python packages
       run: uv pip sync pyproject.toml --system
-      
+
+    - name: list python packages
+      run: uv pip list
+
     - name: run ruff code checks
       run: ruff check
   
