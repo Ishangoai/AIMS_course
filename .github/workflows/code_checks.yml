@@ -28,14 +28,20 @@ jobs:
       with:
         python-version-file: "pyproject.toml"
         
-    - name: run ruff code checks
-      run: uvx ruff@0.9.5 check
+    - name: install python packages
+      run: uv pip install . --system
 
+    - name: list python packages
+      run: uv pip list
+
+    - name: run ruff code checks
+      run: ruff check
+  
     - name: run pyright type-hinting checks
-      run: uvx pyright@1.1.393
+      run: pyright
 
     - name: Run pytest
-      run: uvx pytest@8.3.4
+      run: pytest
 
     - name: list python packages
       run: uv pip list
