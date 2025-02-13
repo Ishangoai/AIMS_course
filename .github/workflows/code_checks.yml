@@ -29,7 +29,7 @@ jobs:
         python-version-file: "pyproject.toml"
         
     - name: install python packages
-      run: uv sync --system
+      run: uv sync
 
     - name: list python packages
       run: uv pip list
