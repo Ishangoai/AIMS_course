@@ -29,19 +29,16 @@ jobs:
         python-version-file: "pyproject.toml"
         
     - name: install python packages
-      run: uv pip install . --system
+      run: uv sync
 
     - name: list python packages
       run: uv pip list
 
     - name: run ruff code checks
-      run: ruff check
+      run: uv run ruff check
   
     - name: run pyright type-hinting checks
-      run: pyright
+      run: uv run pyright
 
     - name: Run pytest
-      run: pytest
-
-    - name: list python packages
-      run: uv pip list
+      run: uv run pytest
