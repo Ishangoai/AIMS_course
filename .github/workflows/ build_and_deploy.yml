@@ -47,7 +47,7 @@
 # --role="roles/iam.serviceAccountTokenCreator" \
 # --project=linkedin-genai
 
-name: 'Build and Deploy to GAR'
+name: 'Build and Deploy to Google Artifact Registry (GAR)'
 
 on:
   push:
