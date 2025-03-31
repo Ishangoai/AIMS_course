@@ -5,12 +5,6 @@ variable "gemini_api_key" {
   sensitive   = true
 }
 
-variable "slack_api_token" {
-  description = "API token for Slack"
-  type        = string
-  sensitive   = true
-}
-
 variable "billing_account" {
   description = "Billing account ID"
   type        = string
