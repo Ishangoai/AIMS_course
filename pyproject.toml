@@ -1,5 +1,5 @@
 [project]
-name = "AIMS SA Course"
+name = "AIMS_SA_Course"
 version = "0.1.0"
 license = {file = "LICENSE"}
 description = "AIMS SA Course on building end-to-end ML applications"
