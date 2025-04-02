@@ -1,0 +1,57 @@
+name: OpenTofu Provision
+
+on:
+  pull_request:
+    branches:
+      - development
+    paths:
+      - "opentofu/**.tf"
+      - "opentofu/**.tfvars"
+  push:
+    branches:
+      - development
+    paths:
+      - "opentofu/**.tf"
+      - "opentofu/**.tfvars"
+
+jobs:
+  opentofu:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'push' && 'production' || '' }}
+
+    permissions:
+      actions: read # Required to identify workflow run.
+      checks: write # Required to add status summary.
+      contents: read # Required to checkout repository.
+      id-token: write # Required to authenticate via OIDC.
+      pull-requests: write # Required to add comment and label.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: latest
+          tofu_wrapper: false
+
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github
+          service_account: tf-provision@${{ secrets.GCP_PROJECT_NAME }}.iam.gserviceaccount.com
+
+      - name: Provision OpenTofu
+        uses: op5dev/tf-via-pr@v13
+        with:
+          working-directory: opentofu
+          command: ${{ github.event_name == 'push' && 'apply' || 'plan' }} # apply
+          arg-lock: ${{ github.event_name == 'push' }} # true
+          arg-lock-timeout: 5m
+          arg-var: billing_account=${{ secrets.BILLING_ACCOUNT }},org_id=${{ secrets.ORG_ID }},gemini_api_key=${{ secrets.GEMINI_API_KEY }},gcp_project_name=${{ secrets.GCP_PROJECT_NAME }},project_number=${{ secrets.PROJECT_NUMBER }}
+          arg-backend-config: bucket=${{ secrets.GCP_PROJECT_NAME }}-state-bucket
+          format: true
+          validate: true
+          tool: tofu

@@ -169,3 +169,35 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# OpenTofu state files (in opentofu folder)
+opentofu/*.tfstate
+opentofu/*.tfstate.*
+
+# OpenTofu backup files
+opentofu/*.backup
+
+# OpenTofu plan files
+opentofu/*.out
+
+# OpenTofu variables files with sensitive data
+opentofu/*.tfvars
+opentofu/secrets.tfvars
+
+# OpenTofu crash logs
+opentofu/crash.log
+
+# OpenTofu dependency lock file (optional, commit if you want consistency)
+ opentofu/.terraform.lock.hcl
+
+# OpenTofu provider and module cache
+opentofu/.terraform/
+opentofu/.terraform.tfstate*
+
+# Local environment files
+opentofu/.env
+
+# macOS-specific files (if applicable)
+opentofu/.DS_Store
+
+tofu-key.json
