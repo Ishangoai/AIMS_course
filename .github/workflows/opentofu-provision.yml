@@ -50,7 +50,7 @@ jobs:
           command: ${{ github.event_name == 'push' && 'apply' || 'plan' }} # apply
           arg-lock: ${{ github.event_name == 'push' }} # true
           arg-lock-timeout: 5m
-          arg-var: billing_account=${{ secrets.BILLING_ACCOUNT }},org_id=${{ secrets.ORG_ID }},gemini_api_key=${{ secrets.GEMINI_API_KEY }},gcp_project_name=${{ secrets.GCP_PROJECT_NAME }},project_number=${{ secrets.PROJECT_NUMBER }}
+          arg-var: billing_account=${{ secrets.BILLING_ACCOUNT }},org_id=${{ secrets.ORG_ID }},gemini_api_key=${{ secrets.GEMINI_API_KEY }},gcp_project_name=${{ secrets.GCP_PROJECT_NAME }},project_number=${{ secrets.PROJECT_NUMBER }},github_user=${{ github.actor }}
           arg-backend-config: bucket=${{ secrets.GCP_PROJECT_NAME }}-state-bucket
           format: true
           validate: true

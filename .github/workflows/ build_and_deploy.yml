@@ -57,8 +57,7 @@ on:
 env:
   PROJECT_ID: '${{ secrets.GCP_PROJECT_NAME }}'
   GAR_LOCATION: 'europe-west2'
-  CLOUD_RUN_SERVICE: '${{ secrets.GCP_PROJECT_NAME }}-service-{{ github.user }}'
-  SERVICE_DIRECTORY_NAMESPACE: 'deployed-services'
+  CLOUD_RUN_SERVICE: '${{ secrets.GCP_PROJECT_NAME }}-service'
   CLOUD_RUN_REGION: 'europe-west2'
   REPOSITORY: '${{ secrets.GCP_PROJECT_NAME }}-gcr'
   IMAGE: '${{ secrets.GCP_PROJECT_NAME }}-image'
@@ -141,16 +140,3 @@ jobs:
             --set-env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
             --set-env-vars SLACK_API_TOKEN=${{ secrets.SLACK_API_TOKEN }} \
             --project ${{ env.PROJECT_ID }}
-
-      - name: Service Directory service create or update
-        run: |-
-          SERVICE_URL=$(gcloud run services describe ${{ env.CLOUD_RUN_SERVICE }} \
-            --region ${{ env.CLOUD_RUN_REGION }} \
-            --platform managed \
-            --format "value(status.url)")
-          
-          gcloud service-directory services create ${{ env.CLOUD_RUN_SERVICE }} \
-            --namespace ${{ env.SERVICE_DIRECTORY_NAMESPACE }} \
-            --project ${{ secrets.GCP_PROJECT_NAME }} \
-            --location ${{ env.CLOUD_RUN_REGION }} \
-            --annotations google.cloud.run.uri=${SERVICE_URL} \
