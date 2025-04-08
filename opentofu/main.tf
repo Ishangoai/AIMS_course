@@ -84,7 +84,7 @@ resource "google_service_directory_namespace" "service_directory_namespace" {
 # Define the Service Directory service
 resource "google_service_directory_service" "cloud_run_service" {
   provider   = google-beta
-  service_id = "${var.gcp_project_name}-service-${var.github_user}" 
+  service_id = "${var.gcp_project_name}-service-${var.github_user}"
   namespace  = google_service_directory_namespace.service_directory_namespace.id
   project    = var.gcp_project_name
 
