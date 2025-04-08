@@ -89,7 +89,7 @@ resource "google_service_directory_service" "cloud_run_service" {
   project    = var.gcp_project_name
 
   metadata = {
-    google.cloud.run.uri = google_cloud_run_v2_service.cloud_run_service.uri
+    gcr_uri = google_cloud_run_v2_service.cloud_run_service.uri
     region               = "europe-west2"
   }
 }
