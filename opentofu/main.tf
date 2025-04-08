@@ -90,6 +90,6 @@ resource "google_service_directory_service" "cloud_run_service" {
 
   metadata = {
     gcr_uri = google_cloud_run_v2_service.cloud_run_service.uri
-    region               = "europe-west2"
+    region  = "europe-west2"
   }
 }
