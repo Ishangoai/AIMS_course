@@ -23,3 +23,8 @@ variable "gcp_project_name" {
 variable "project_number" {
   type = string
 }
+
+variable "github_user" {
+  description = "GitHub username for the service ID"
+  type        = string
+}

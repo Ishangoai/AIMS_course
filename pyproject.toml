@@ -12,11 +12,13 @@ authors =  [
 ]
 
 dependencies = [
+    "fastapi>=0.115.12",
     "numpy==2.2.2",
     "pyright==1.1.394",
     "pytest==8.3.4",
     "ruff==0.9.5",
     "scipy==1.15.1",
+    "uvicorn>=0.34.0",
 ]
 
 [project.urls]
