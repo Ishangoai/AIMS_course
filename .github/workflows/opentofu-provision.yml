@@ -22,7 +22,7 @@ jobs:
     permissions:
       actions: read # Required to identify workflow run.
       checks: write # Required to add status summary.
-      contents: read # Required to checkout repository.
+      contents: write # Required to checkout repository.
       id-token: write # Required to authenticate via OIDC.
       pull-requests: write # Required to add comment and label.
 
