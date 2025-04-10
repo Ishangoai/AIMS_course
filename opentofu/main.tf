@@ -7,7 +7,7 @@ resource "google_artifact_registry_repository" "artifact_registry_repository" {
   repository_id          = "${var.gcp_project_name}-gcr"
 }
 
-# grant Docker Action access to push to the GAR 
+# Grant Docker Action access to push to the GAR 
 resource "google_artifact_registry_repository_iam_member" "workload_identity_binding" {
   project    = google_artifact_registry_repository.artifact_registry_repository.project
   location   = google_artifact_registry_repository.artifact_registry_repository.location
