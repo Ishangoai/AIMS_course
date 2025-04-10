@@ -7,7 +7,7 @@ resource "google_artifact_registry_repository" "artifact_registry_repository" {
   repository_id          = "${var.gcp_project_name}-gcr"
 }
 
-# grant Docker Action access to push to the GAR 
+# Grant Docker Action access to push to the GAR 
 resource "google_artifact_registry_repository_iam_member" "workload_identity_binding" {
   project    = google_artifact_registry_repository.artifact_registry_repository.project
   location   = google_artifact_registry_repository.artifact_registry_repository.location
@@ -73,19 +73,19 @@ resource "google_cloud_run_v2_service" "cloud_run_service" {
   }
 }
 
-# Define the Service Directory namespace
-resource "google_service_directory_namespace" "service_directory_namespace" {
+# Reference the existing Service Directory namespace using a data source
+data "google_service_directory_namespace" "service_directory_namespace" {
   provider     = google-beta
   namespace_id = "deployed-services"
   location     = "europe-west2"
   project      = var.gcp_project_name
 }
 
-# Define the Service Directory service
+# Define the Service Directory service using the existing namespace
 resource "google_service_directory_service" "cloud_run_service" {
   provider   = google-beta
   service_id = "${var.gcp_project_name}-service-${var.github_user}"
-  namespace  = google_service_directory_namespace.service_directory_namespace.id
+  namespace  = data.google_service_directory_namespace.service_directory_namespace.id
 
   metadata = {
     gcr_uri = google_cloud_run_v2_service.cloud_run_service.uri
