@@ -6,14 +6,15 @@ import operator
 logger = logging.getLogger(__name__)
 
 
-def safe_eval(s):
-    def checkmath(x, *args):
-        if x not in [x for x in dir(math) if "__" not in x]:
-            msg = f"Unknown func {x}()"
-            raise SyntaxError(msg)
-        fun = getattr(math, x)
-        return fun(*args)
+def checkmath(x, *args):
+    if x not in [x for x in dir(math) if "__" not in x]:
+        msg = f"Unknown func {x}()"
+        raise SyntaxError(msg)
+    fun = getattr(math, x)
+    return fun(*args)
 
+
+def safe_eval(s):
     bin_ops = {
         ast.Add: operator.add,
         ast.Sub: operator.sub,

@@ -31,6 +31,7 @@ def root():
 def hello():
     return {"message": f"Hello from {current_user}!"}
 
+
 @app.put(
     "/user",
     summary="Update the username",
@@ -43,6 +44,7 @@ def update_user(request: UpdateUserRequest):
         raise HTTPException(status_code=400, detail="Username cannot be empty")
     current_user = request.username
     return {"message": f"Username updated to {current_user}"}
+
 
 @app.post(
     "/evaluate",
