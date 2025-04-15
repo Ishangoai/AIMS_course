@@ -57,10 +57,10 @@ on:
 env:
   PROJECT_ID: '${{ secrets.GCP_PROJECT_NAME }}'
   GAR_LOCATION: 'europe-west2'
-  CLOUD_RUN_SERVICE: '${{ secrets.GCP_PROJECT_NAME }}-service'
+  CLOUD_RUN_SERVICE: '${{ secrets.GCP_PROJECT_NAME }}-service-${GITHUB_REF}'
   CLOUD_RUN_REGION: 'europe-west2'
   REPOSITORY: '${{ secrets.GCP_PROJECT_NAME }}-gcr'
-  IMAGE: '${{ secrets.GCP_PROJECT_NAME }}-image'
+  IMAGE: '${{ secrets.GCP_PROJECT_NAME }}-image-${GITHUB_REF}'
   WORKLOAD_IDENTITY_PROVIDER: 'projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github'
 
 jobs:
