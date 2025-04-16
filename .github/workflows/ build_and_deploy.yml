@@ -57,17 +57,13 @@ on:
 env:
   PROJECT_ID: '${{ secrets.GCP_PROJECT_NAME }}'
   GAR_LOCATION: 'europe-west2'
-  GITHUB_USER: ${{ github.event.pull_request.user.login || github.actor }}
-  CLOUD_RUN_SERVICE: "${{ secrets.GCP_PROJECT_NAME }}-service-${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}"
   CLOUD_RUN_REGION: 'europe-west2'
   REPOSITORY: '${{ secrets.GCP_PROJECT_NAME }}-gcr'
-  IMAGE: "${{ secrets.GCP_PROJECT_NAME }}-image-${{ github.event.pull_request.user.login || github.actor }}"
   WORKLOAD_IDENTITY_PROVIDER: 'projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github'
 
 jobs:
   setup-build-publish-deploy:
     name: 'Setup, Build, Publish, and Deploy'
-    if: github.event.pull_request.merged == true || github.event_name == 'push'
     runs-on: 'ubuntu-latest'
     environment: 'production'
 
@@ -78,6 +74,30 @@ jobs:
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332' # actions/checkout@v4
+
+      # Fetch the merged PR's author username using GitHub API
+      - name: 'Get PR Author'
+        id: get_pr_author
+        run: |
+          # Query the GitHub API to find the PR associated with the commit SHA
+          PR_RESPONSE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?state=closed&sort=updated&direction=desc")
+          
+          # Extract the PR author's username for the PR that matches the commit SHA
+          PR_AUTHOR=$(echo "$PR_RESPONSE" | jq -r --arg sha "${{ github.sha }}" \
+            '.[] | select(.merge_commit_sha == $sha) | .user.login')
+          
+          # Fallback to github.actor if no PR author is found
+          if [ -z "$PR_AUTHOR" ]; then
+            PR_AUTHOR="${{ github.actor }}"
+          fi
+          
+          echo "PR_AUTHOR=$PR_AUTHOR" >> $GITHUB_ENV
+          echo "CLOUD_RUN_SERVICE=${{ secrets.GCP_PROJECT_NAME }}-service-$PR_AUTHOR" >> $GITHUB_ENV
+          echo "IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image-$PR_AUTHOR" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Configure Workload Identity Federation and generate an access token.
       #
@@ -111,24 +131,19 @@ jobs:
       - name: 'Build Docker container'
         run: |-
           DOCKER_TAG="${GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${GITHUB_SHA}"
-
-          if [[ "${GITHUB_USER}" != ${{ github.actor }} ]]; then
+          if [ "${{ env.PR_AUTHOR }}" == "${{ github.actor }}" ]; then
+            DEPLOYMENT_TARGET="ROOT"
+          else
+            DEPLOYMENT_TARGET="STUDENT"
+          fi
           docker build \
-            --build-arg DEPLOYMENT_TARGET=STUDENT \
-            --build-arg GITHUB_USER="${GITHUB_USER}" \
+            --build-arg DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET \
+            --build-arg GITHUB_USER="${{ env.PR_AUTHOR }}" \
             --tag "${DOCKER_TAG}" \
             --build-arg GITHUB_SHA="${GITHUB_SHA}" \
             --build-arg GITHUB_REF="${GITHUB_REF}" \
             .
-          else
-            docker build \
-              --build-arg DEPLOYMENT_TARGET=ROOT \
-              --tag "${DOCKER_TAG}" \
-              --build-arg GITHUB_SHA="${GITHUB_SHA}" \
-              --build-arg GITHUB_REF="${GITHUB_REF}" \
-              .
-          fi
-
+      
       - name: 'Debug Docker Login'
         run: |
           cat ~/.docker/config.json
