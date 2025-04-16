@@ -53,8 +53,7 @@ on:
   push:
     branches:
       - 'development'
-      - 'student-submissions'
-  pull_request:
+  pull_request_target:
     branches:
       - 'student-submissions'
 
