@@ -178,4 +178,4 @@ jobs:
             --namespace deployed-services \
             --location ${{ env.CLOUD_RUN_REGION }} \
             --project ${{ env.PROJECT_ID }} \
-            --update-labels google.cloud.run.uri=${SERVICE_URL},region=${{ env.CLOUD_RUN_REGION }}
+            --annotations=gcr_uri=${SERVICE_URL}
