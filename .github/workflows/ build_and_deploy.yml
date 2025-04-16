@@ -54,14 +54,18 @@ on:
     branches:
       - 'development'
       - 'student-submissions'
+  pull_request:
+    branches:
+      - 'student-submissions'
 
 env:
   PROJECT_ID: '${{ secrets.GCP_PROJECT_NAME }}'
   GAR_LOCATION: 'europe-west2'
-  CLOUD_RUN_SERVICE: '${{ secrets.GCP_PROJECT_NAME }}-service-${{ github.actor }}'
+  GITHUB_USER: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}
+  CLOUD_RUN_SERVICE: "${{ secrets.GCP_PROJECT_NAME }}-service-${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}"
   CLOUD_RUN_REGION: 'europe-west2'
   REPOSITORY: '${{ secrets.GCP_PROJECT_NAME }}-gcr'
-  IMAGE: '${{ secrets.GCP_PROJECT_NAME }}-image-${{ github.actor }}'
+  IMAGE: "${{ secrets.GCP_PROJECT_NAME }}-image-${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}"
   WORKLOAD_IDENTITY_PROVIDER: 'projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github'
 
 jobs:
@@ -114,7 +118,7 @@ jobs:
           if [[ "${GITHUB_REF}" == *"student-submissions"* ]]; then
           docker build \
             --build-arg DEPLOYMENT_TARGET=STUDENT \
-            --build-arg GITHUB_USER="${GITHUB_ACTOR}" \
+            --build-arg GITHUB_USER="${GITHUB_USER}" \
             --tag "${DOCKER_TAG}" \
             --build-arg GITHUB_SHA="${GITHUB_SHA}" \
             --build-arg GITHUB_REF="${GITHUB_REF}" \
@@ -151,7 +155,7 @@ jobs:
             --allow-unauthenticated \
             --set-env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
             --set-env-vars SLACK_API_TOKEN=${{ secrets.SLACK_API_TOKEN }} \
-            --set-env-vars GITHUB_USER=${{ github.actor }} \
+            --set-env-vars GITHUB_USER=${{ env.GITHUB_USER }} \
             --project ${{ env.PROJECT_ID }}
 
       - name: 'Register Service in Google Service Directory'
