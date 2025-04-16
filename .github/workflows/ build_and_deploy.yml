@@ -53,14 +53,15 @@ on:
   push:
     branches:
       - 'development'
+      - 'student-submissions'
 
 env:
   PROJECT_ID: '${{ secrets.GCP_PROJECT_NAME }}'
   GAR_LOCATION: 'europe-west2'
-  CLOUD_RUN_SERVICE: '${{ secrets.GCP_PROJECT_NAME }}-service-${GITHUB_REF}'
+  CLOUD_RUN_SERVICE: '${{ secrets.GCP_PROJECT_NAME }}-service-${{ github.actor }}'
   CLOUD_RUN_REGION: 'europe-west2'
   REPOSITORY: '${{ secrets.GCP_PROJECT_NAME }}-gcr'
-  IMAGE: '${{ secrets.GCP_PROJECT_NAME }}-image-${GITHUB_REF}'
+  IMAGE: '${{ secrets.GCP_PROJECT_NAME }}-image-${{ github.actor }}'
   WORKLOAD_IDENTITY_PROVIDER: 'projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github'
 
 jobs:
@@ -110,11 +111,22 @@ jobs:
         run: |-
           DOCKER_TAG="${GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${GITHUB_SHA}"
 
+          if [[ "${GITHUB_REF}" == *"student-submissions"* ]]; then
           docker build \
+            --build-arg DEPLOYMENT_TARGET=STUDENT \
+            --build-arg GITHUB_USER="${GITHUB_ACTOR}" \
             --tag "${DOCKER_TAG}" \
             --build-arg GITHUB_SHA="${GITHUB_SHA}" \
             --build-arg GITHUB_REF="${GITHUB_REF}" \
             .
+          else
+            docker build \
+              --build-arg DEPLOYMENT_TARGET=ROOT \
+              --tag "${DOCKER_TAG}" \
+              --build-arg GITHUB_SHA="${GITHUB_SHA}" \
+              --build-arg GITHUB_REF="${GITHUB_REF}" \
+              .
+          fi
 
       - name: 'Debug Docker Login'
         run: |
@@ -141,3 +153,29 @@ jobs:
             --set-env-vars SLACK_API_TOKEN=${{ secrets.SLACK_API_TOKEN }} \
             --set-env-vars GITHUB_USER=${{ github.actor }} \
             --project ${{ env.PROJECT_ID }}
+
+      - name: 'Register Service in Google Service Directory'
+        run: |
+          # Get the Cloud Run service URL
+          SERVICE_URL=$(gcloud run services describe ${{ env.CLOUD_RUN_SERVICE }} \
+            --region ${{ env.CLOUD_RUN_REGION }} \
+            --platform managed \
+            --format "value(status.url)")
+
+          # Create or update the Service Directory namespace
+          gcloud service-directory namespaces create deployed-services \
+            --location ${{ env.CLOUD_RUN_REGION }} \
+            --project ${{ env.PROJECT_ID }} || echo "Namespace already exists"
+
+          # Create or update the Service Directory service
+          gcloud service-directory services create ${{ env.CLOUD_RUN_SERVICE }} \
+            --namespace deployed-services \
+            --location ${{ env.CLOUD_RUN_REGION }} \
+            --project ${{ env.PROJECT_ID }} || echo "Service already exists"
+
+          # Add metadata to the Service Directory service
+          gcloud service-directory services update ${{ env.CLOUD_RUN_SERVICE }} \
+            --namespace deployed-services \
+            --location ${{ env.CLOUD_RUN_REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --update-labels google.cloud.run.uri=${SERVICE_URL},region=${{ env.CLOUD_RUN_REGION }}

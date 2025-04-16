@@ -22,6 +22,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Expose the port your application uses
 EXPOSE 8080
 
-# Define the command to run when the container starts
-CMD ["uv", "run", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8080"] # Example using uvicorn
+# Declare a build argument; default to "ROOT"
+ARG DEPLOYMENT_TARGET=ROOT
+ENV DEPLOYMENT_TARGET=${DEPLOYMENT_TARGET}
 
+# Copy an entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Use the entrypoint script to select the API
+ENTRYPOINT ["/entrypoint.sh"]
