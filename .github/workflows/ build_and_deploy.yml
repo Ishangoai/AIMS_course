@@ -53,7 +53,10 @@ on:
   push:
     branches:
       - 'development'
+  pull_request:
+    branches:
       - 'student-submissions'
+    types: [closed]
 
 env:
   PROJECT_ID: '${{ secrets.GCP_PROJECT_NAME }}'
@@ -68,6 +71,7 @@ env:
 jobs:
   setup-build-publish-deploy:
     name: 'Setup, Build, Publish, and Deploy'
+    if: github.event.pull_request.merged == true || github.event_name == 'push'
     runs-on: 'ubuntu-latest'
     environment: 'production'
 
