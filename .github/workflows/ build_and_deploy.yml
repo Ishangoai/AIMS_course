@@ -53,19 +53,15 @@ on:
   push:
     branches:
       - 'development'
-  pull_request:
-    branches:
-      - 'student-submissions'
-    types: [closed]
 
 env:
   PROJECT_ID: '${{ secrets.GCP_PROJECT_NAME }}'
   GAR_LOCATION: 'europe-west2'
-  GITHUB_USER: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}
+  GITHUB_USER: ${{ github.event.pull_request.user.login || github.actor }}
   CLOUD_RUN_SERVICE: "${{ secrets.GCP_PROJECT_NAME }}-service-${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}"
   CLOUD_RUN_REGION: 'europe-west2'
   REPOSITORY: '${{ secrets.GCP_PROJECT_NAME }}-gcr'
-  IMAGE: "${{ secrets.GCP_PROJECT_NAME }}-image-${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}"
+  IMAGE: "${{ secrets.GCP_PROJECT_NAME }}-image-${{ github.event.pull_request.user.login || github.actor }}"
   WORKLOAD_IDENTITY_PROVIDER: 'projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github'
 
 jobs:
@@ -116,7 +112,7 @@ jobs:
         run: |-
           DOCKER_TAG="${GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${GITHUB_SHA}"
 
-          if [[ "${GITHUB_REF}" == *"student-submissions"* ]]; then
+          if [[ "${GITHUB_USER}" != ${{ github.actor }} ]]; then
           docker build \
             --build-arg DEPLOYMENT_TARGET=STUDENT \
             --build-arg GITHUB_USER="${GITHUB_USER}" \
