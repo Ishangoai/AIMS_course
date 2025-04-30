@@ -13,6 +13,7 @@ authors =  [
 
 dependencies = [
     "fastapi>=0.115.12",
+    "gradio>=5.27.1",
     "numpy==2.2.2",
     "pyright==1.1.394",
     "pytest==8.3.4",
