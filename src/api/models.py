@@ -5,5 +5,6 @@ class EvaluateRequest(BaseModel):
     expression: str
 
 
-class UpdateUserRequest(BaseModel):
+class UserRequest(BaseModel):
     username: str
+    name: str | None = None

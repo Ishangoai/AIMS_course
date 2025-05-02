@@ -45,4 +45,4 @@ with gr.Blocks() as app:
 
     evaluate_button.click(fn=evaluate_expression, inputs=expression_input, outputs=evaluate_output)
 
-app.launch()
+# app.launch()
