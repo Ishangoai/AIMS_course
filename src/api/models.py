@@ -7,3 +7,8 @@ class EvaluateRequest(BaseModel):
 
 class UpdateUserRequest(BaseModel):
     username: str
+
+
+class UserRequest(BaseModel):
+    username: str
+    name: str | None = None
