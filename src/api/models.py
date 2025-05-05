@@ -6,7 +6,8 @@ class EvaluateRequest(BaseModel):
 
 
 class UpdateUserRequest(BaseModel):
-    username: str
+    username: str | None = None
+    name: str
 
 
 class UserRequest(BaseModel):

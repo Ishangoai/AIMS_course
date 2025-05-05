@@ -2,11 +2,10 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 
-from api.models import UserRequest
+from api.models import UserRequest, UpdateUserRequest
 from api.safe_eval import safe_eval
 import gradio as gr
-# from gradio.routes import App as GradioApp
-# from gradioapp.app import demo
+from gradioapp.app import app as demo
 
 app = FastAPI(
     title="AIMS Course API",
@@ -36,20 +35,6 @@ def root():
 @app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
 def hello():
     return {"message": f"Hello from {current_user}!"}
-
-
-# @app.put(
-#     "/user",
-#     summary="Update the username",
-#     description="Updates the username that is used in the /hello endpoint.",
-#     response_description="A confirmation message.",
-# )
-# def update_user(request: UserRequest):
-#     global current_user
-#     if not request.username:
-#         raise HTTPException(status_code=400, detail="Username cannot be empty")
-#     current_user = request.username
-#     return {"message": f"Username updated to {current_user}"}
 
 
 @app.get(
@@ -82,7 +67,7 @@ def register_user(request: UserRequest):
     if not username:
         raise HTTPException(status_code=400, detail="Username is required")
 
-    users[username] = request.model_dump()
+    users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} registered successfully"}
 
 
@@ -103,7 +88,7 @@ def get_user_details(username: str):
     # Here you would typically fetch the user from a database
     if username not in users:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"username": username, "details": users[username]}
+    return {"username": username, "name": users[username]}
 
 
 @app.delete(
@@ -123,17 +108,15 @@ def delete_user(username: str):
 
 
 @app.put("/register/{username}", summary="Update user details", description="Updates the details of a specific user.")
-def update_user_details(username: str, request: UserRequest):
+def update_user_details(username: str, request: UpdateUserRequest):
     """
     Update the details of a specific user.
     """
     # Here you would typically update the user in a database
     if username not in users:
         raise HTTPException(status_code=404, detail="User not found")
-    del users[username]
-    users[request.username] = request.model_dump()
+    users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
 
 
-demo = gr.Interface(fn=lambda x: "hello " + x, inputs="text", outputs="text")
 gr.mount_gradio_app(app, demo, path="/gradio")
