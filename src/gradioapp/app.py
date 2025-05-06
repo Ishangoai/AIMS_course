@@ -1,7 +1,7 @@
 import gradio as gr
 import requests
 
-API_URL = "http://0.0.0.0:8000"  # Adjust the URL if your FastAPI app runs on a different host/port
+API_URL = "http://0.0.0.0:8080"
 
 
 def greet_user():
