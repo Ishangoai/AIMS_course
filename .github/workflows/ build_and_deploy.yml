@@ -170,28 +170,28 @@ jobs:
             --set-env-vars GITHUB_USER=${{ env.PR_AUTHOR }} \
             --project ${{ env.PROJECT_ID }}
 
-      - name: 'Register Service in Google Service Directory'
-        run: |
-          # Get the Cloud Run service URL
-          SERVICE_URL=$(gcloud run services describe ${{ env.CLOUD_RUN_SERVICE }} \
-            --region ${{ env.CLOUD_RUN_REGION }} \
-            --platform managed \
-            --format "value(status.url)")
+      # - name: 'Register Service in Google Service Directory'
+      #   run: |
+      #     # Get the Cloud Run service URL
+      #     SERVICE_URL=$(gcloud run services describe ${{ env.CLOUD_RUN_SERVICE }} \
+      #       --region ${{ env.CLOUD_RUN_REGION }} \
+      #       --platform managed \
+      #       --format "value(status.url)")
 
-          # Create or update the Service Directory namespace
-          gcloud service-directory namespaces create deployed-services \
-            --location ${{ env.CLOUD_RUN_REGION }} \
-            --project ${{ env.PROJECT_ID }} || echo "Namespace already exists"
+      #     # Create or update the Service Directory namespace
+      #     gcloud service-directory namespaces create deployed-services \
+      #       --location ${{ env.CLOUD_RUN_REGION }} \
+      #       --project ${{ env.PROJECT_ID }} || echo "Namespace already exists"
 
-          # Create or update the Service Directory service
-          gcloud service-directory services create ${{ env.CLOUD_RUN_SERVICE }} \
-            --namespace deployed-services \
-            --location ${{ env.CLOUD_RUN_REGION }} \
-            --project ${{ env.PROJECT_ID }} || echo "Service already exists"
+      #     # Create or update the Service Directory service
+      #     gcloud service-directory services create ${{ env.CLOUD_RUN_SERVICE }} \
+      #       --namespace deployed-services \
+      #       --location ${{ env.CLOUD_RUN_REGION }} \
+      #       --project ${{ env.PROJECT_ID }} || echo "Service already exists"
 
-          # Add metadata to the Service Directory service
-          gcloud service-directory services update ${{ env.CLOUD_RUN_SERVICE }} \
-            --namespace deployed-services \
-            --location ${{ env.CLOUD_RUN_REGION }} \
-            --project ${{ env.PROJECT_ID }} \
-            --annotations=gcr_uri=${SERVICE_URL}
+      #     # Add metadata to the Service Directory service
+      #     gcloud service-directory services update ${{ env.CLOUD_RUN_SERVICE }} \
+      #       --namespace deployed-services \
+      #       --location ${{ env.CLOUD_RUN_REGION }} \
+      #       --project ${{ env.PROJECT_ID }} \
+      #       --annotations=gcr_uri=${SERVICE_URL}
