@@ -8,8 +8,10 @@ if [ "$DEPLOYMENT_TARGET" = "STUDENT" ]; then
         exit 1
     fi
     echo "Starting student API for $GITHUB_USER..."
-    exec uv run uvicorn "src.students.${GITHUB_USER}.api.main:app" --host 0.0.0.0 --port 8080
+    cd src/students/$GITHUB_USER
 else
     echo "Starting root API..."
-    exec uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8080
+    cd src/students/example
 fi
+
+exec uv run uvicorn "api.main:app" --host 0.0.0.0 --port 8080
