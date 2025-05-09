@@ -26,8 +26,5 @@ EXPOSE 8080
 ARG DEPLOYMENT_TARGET=ROOT
 ENV DEPLOYMENT_TARGET=${DEPLOYMENT_TARGET}
 
-# make the entrypoint script executable
-RUN chmod +x /app/entrypoint.sh
-
 # Use the entrypoint script to select the API
 ENTRYPOINT ["/app/entrypoint.sh"]
