@@ -20,9 +20,5 @@ RUN uv sync --frozen
 # Expose the port your application uses
 EXPOSE 8080
 
-# Declare a build argument; default to "ROOT"
-ARG DEPLOYMENT_TARGET=ROOT
-ENV DEPLOYMENT_TARGET=${DEPLOYMENT_TARGET}
-
 # Use the entrypoint script to select the API
 ENTRYPOINT ["/app/entrypoint.sh"]
