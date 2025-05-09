@@ -15,9 +15,7 @@ COPY . .
 
 # this command will install the project itself (e.g., in editable mode if configured that way in pyproject.toml), 
 # making it importable or executable within the container environment.
-# It still uses the build cache (--mount=type=cache) for efficiency.
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen
+RUN uv sync --frozen
 
 # Expose the port your application uses
 EXPOSE 8080
