@@ -2,8 +2,8 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 
-from api.models import EvaluateRequest, UpdateUserRequest
-from api.safe_eval import safe_eval
+from .models import EvaluateRequest, UpdateUserRequest
+from .safe_eval import safe_eval
 
 app = FastAPI(
     title="AIMS Course API",
