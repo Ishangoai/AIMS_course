@@ -40,10 +40,6 @@ addopts = "-vv"
 exclude = []
 typeCheckingMode = "standard"
 colorOutput = true
-executionEnvironments= [
-    { root= "src/students/", reportMissingImports= "warning"},
-    { root= "."}
-]
 
 [tool.ruff]
 line-length = 120
