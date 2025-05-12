@@ -20,7 +20,7 @@ app = FastAPI(
     },
 )
 
-# Global variable to store the username
+# Global variable to store the usernames
 current_user = os.environ.get("GITHUB_USER", "default")
 users = {}
 
