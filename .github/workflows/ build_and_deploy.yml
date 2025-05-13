@@ -94,8 +94,6 @@ jobs:
           fi
           
           echo "PR_AUTHOR=$PR_AUTHOR" >> $GITHUB_ENV
-          echo "CLOUD_RUN_SERVICE=${{ secrets.GCP_PROJECT_NAME }}-service-$PR_AUTHOR" >> $GITHUB_ENV
-          echo "IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image-$PR_AUTHOR" >> $GITHUB_ENV
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -133,8 +131,12 @@ jobs:
           DOCKER_TAG="${GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${GITHUB_SHA}"
           if [ "${{ env.PR_AUTHOR }}" == "${{ github.actor }}" ]; then
             DEPLOYMENT_TARGET="ROOT"
+            echo "CLOUD_RUN_SERVICE=${{ secrets.GCP_PROJECT_NAME }}-service" >> $GITHUB_ENV
+            echo "IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image" >> $GITHUB_ENV
           else
             DEPLOYMENT_TARGET="STUDENT"
+            echo "CLOUD_RUN_SERVICE=${{ secrets.GCP_PROJECT_NAME }}-service-$PR_AUTHOR" >> $GITHUB_ENV
+            echo "IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image-$PR_AUTHOR" >> $GITHUB_ENV
           fi
           docker build \
             --build-arg DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET \
