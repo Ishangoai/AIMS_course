@@ -128,7 +128,6 @@ jobs:
       # Build the Docker image
       - name: 'Build Docker container'
         run: |-
-          DOCKER_TAG="${GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${GITHUB_SHA}"
           if [ "${{ env.PR_AUTHOR }}" == "${{ github.actor }}" ]; then
             DEPLOYMENT_TARGET="ROOT"
             echo "CLOUD_RUN_SERVICE=${{ secrets.GCP_PROJECT_NAME }}-service" >> $GITHUB_ENV
@@ -138,6 +137,7 @@ jobs:
             echo "CLOUD_RUN_SERVICE=${{ secrets.GCP_PROJECT_NAME }}-service-$PR_AUTHOR" >> $GITHUB_ENV
             echo "IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image-$PR_AUTHOR" >> $GITHUB_ENV
           fi
+          DOCKER_TAG="${GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${GITHUB_SHA}"
           docker build \
             --build-arg DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET \
             --build-arg GITHUB_USER="${{ env.PR_AUTHOR }}" \
