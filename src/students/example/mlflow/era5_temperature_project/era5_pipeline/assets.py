@@ -1,12 +1,12 @@
+import os
 import cdsapi
+from dagster_mlflow import end_mlflow_on_run_finished
 import xarray as xr
 import pandas as pd
-import polars as pl
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
-from dagster import asset, Definitions, AssetExecutionContext
-from dagster_mlflow.resources import MlFlow
+from dagster import asset, Definitions, AssetExecutionContext, define_asset_job
 
 from .resources import mlflow_resource # Import the configured resource
 
@@ -35,7 +35,7 @@ def fetch_era5_data(context: AssetExecutionContext) -> str:
     Fetches ERA5 temperature data and logs parameters to MLflow.
     Returns the path to the downloaded NetCDF file.
     """
-    mlflow: MlFlow = context.resources.mlflow_tracking
+    mlflow = context.resources.mlflow_tracking
 
     # Log parameters to MLflow
     # MLflow prefers flat dictionaries for parameters
@@ -77,7 +77,7 @@ def fetch_era5_data(context: AssetExecutionContext) -> str:
     group_name="2_processing"
 )
 def process_temperature_dataframe(context: AssetExecutionContext, raw_era5_temperature_data: str) -> pd.DataFrame:
-    mlflow: MlFlow = context.resources.mlflow_tracking
+    mlflow = context.resources.mlflow_tracking
     context.log.info(f"Processing file: {raw_era5_temperature_data}")
     ds = xr.open_dataset(raw_era5_temperature_data)
 
@@ -107,105 +107,107 @@ def process_temperature_dataframe(context: AssetExecutionContext, raw_era5_tempe
 
 
 @asset(
-    name="cleaned_temperature_data_polars",
-    description="Cleans the temperature data using Polars. Converts Kelvin to Celsius.",
+    name="cleaned_temperature_data_pandas",
+    description="Cleans the temperature data using pandas. Converts Kelvin to Celsius.",
     deps=[process_temperature_dataframe],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="2_processing"
 )
-def clean_temperature_data_polars(context: AssetExecutionContext,
-                                  processed_temperature_dataframe: pd.DataFrame) -> pl.DataFrame:
-    mlflow: MlFlow = context.resources.mlflow_tracking
-    context.log.info("Starting data cleaning with Polars.")
+def clean_temperature_data_pandas(context: AssetExecutionContext,
+                                  processed_temperature_dataframe: pd.DataFrame) -> pd.DataFrame:
+    mlflow = context.resources.mlflow_tracking
+    context.log.info("Starting data cleaning with pandas.")
 
-    # Convert pandas DataFrame to Polars DataFrame
-    polars_df = pl.from_pandas(processed_temperature_dataframe)
+    df = processed_temperature_dataframe.copy()
 
-    # Simple Cleaning Steps:
     # 1. Convert temperature from Kelvin to Celsius
-    polars_df = polars_df.with_columns(
-        (pl.col("t2m") - 273.15).alias("t2m_celsius")
-    )
+    df["t2m_celsius"] = df["t2m"] - 273.15
 
-    # 2. Ensure 'time' column is datetime type (Polars often infers this well from pandas)
-    # If not, explicit conversion might be needed:
-    # polars_df = polars_df.with_columns(pl.col("time").str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S"))
+    # 2. Ensure 'time' column is datetime type
+    if not pd.api.types.is_datetime64_any_dtype(df["time"]):
+        df["time"] = pd.to_datetime(df["time"])
 
-    # 3. Sort by time (important for time series)
-    polars_df = polars_df.sort("time")
+    # 3. Sort by time
+    df = df.sort_values("time")
 
-    # 4. Handle missing values (if any) - for ERA5 2m temp, this is less common
-    # Example: forward fill, or drop rows with nulls in 't2m_celsius'
-    initial_rows = len(polars_df)
-    polars_df = polars_df.drop_nulls(subset=["t2m_celsius"])
-    rows_after_dropna = len(polars_df)
+    # 4. Handle missing values (drop rows with nulls in 't2m_celsius')
+    initial_rows = len(df)
+    df = df.dropna(subset=["t2m_celsius"])
+    rows_after_dropna = len(df)
     if initial_rows > rows_after_dropna:
         context.log.info(f"Dropped {initial_rows - rows_after_dropna} rows with null t2m_celsius.")
 
-    cleaned_rows = len(polars_df)
-    mean_temp_celsius = polars_df["t2m_celsius"].mean()
+    cleaned_rows = len(df)
+    mean_temp_celsius = df["t2m_celsius"].mean()
 
     mlflow.log_metric("cleaned_num_rows", cleaned_rows)
-    if mean_temp_celsius is not None:  # mean() can return None if all values are null
+    if pd.notnull(mean_temp_celsius):
         mlflow.log_metric("cleaned_mean_temperature_c", mean_temp_celsius)
         context.log.info(f"Data cleaned. Rows: {cleaned_rows}, Mean Temp (C): {mean_temp_celsius:.2f}")
     else:
         context.log.warning("Mean temperature could not be calculated (all nulls or empty dataframe).")
-        mlflow.log_metric("cleaned_mean_temperature_c", float('nan'))  # Log NaN if no data
+        mlflow.log_metric("cleaned_mean_temperature_c", float('nan'))
 
     # Log a sample of the cleaned data to MLflow as a CSV artifact
-    sample_df_pd = polars_df.head(5).to_pandas()
     sample_csv_path = "cleaned_sample.csv"
-    sample_df_pd.to_csv(sample_csv_path, index=False)
+    df.head(5).to_csv(sample_csv_path, index=False)
     mlflow.log_artifact(sample_csv_path, artifact_path="processed_data_samples")
     context.log.info(f"Logged a sample of cleaned data to MLflow as {sample_csv_path}.")
+    try:
+        # Option 1: If you want to create the dataset from the in-memory pandas DataFrame sample
+        # cleaned_sample_dataset = from_pandas(
+        #     df=sample_df_for_artifact,
+        #     source=f"file://{os.path.abspath(sample_csv_path)}", # Original source file
+        #     name="cleaned_temperature_sample"
+        # )
+        # mlflow.log_input(dataset=cleaned_sample_dataset, context="cleaned_data_sample")
 
-    return polars_df
+        # Option 2: Create the dataset from the CSV file you just wrote (simpler if you just want to mark the file)
+        dataset_source_uri = f"file://{os.path.abspath(sample_csv_path)}"
+        cleaned_csv_as_input = mlflow.data.from_files(path=dataset_source_uri, name="cleaned_temperature_sample_csv")
+        mlflow.log_input(dataset=cleaned_csv_as_input, context="cleaned_data_sample")
+
+        context.log.info(f"Logged {sample_csv_path} as an MLflow Dataset input.")
+    except Exception as e:
+        context.log.warning(f"Could not log {sample_csv_path} as an MLflow Dataset: {e}")
+
+
+    return df
 
 
 @asset(
-    name="trained_temperature_model_data",  # Output includes model and test data
+    name="trained_temperature_model_data",
     description="Trains a simple linear regression model to predict temperature.",
-    deps=[clean_temperature_data_polars],
+    deps=[clean_temperature_data_pandas],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="3_modeling"
 )
-def train_simple_model(context: AssetExecutionContext, cleaned_temperature_data_polars: pl.DataFrame) -> dict:
-    mlflow: MlFlow = context.resources.mlflow_tracking
+def train_simple_model(context: AssetExecutionContext, cleaned_temperature_data_pandas: pd.DataFrame) -> dict:
+    mlflow = context.resources.mlflow_tracking
     context.log.info("Starting model training.")
-    context.log.info(cleaned_temperature_data_polars.height)
+    context.log.info(len(cleaned_temperature_data_pandas))
 
-    if cleaned_temperature_data_polars.height < 10:  # Need enough data to lag and split
+    if len(cleaned_temperature_data_pandas) < 10:
         context.log.warning("Not enough data points to train a meaningful model. Skipping training.")
-        # This will cause downstream evaluation to fail if it strictly expects a model.
-        # Consider how to handle this. For now, we raise an error or return a specific signal.
         raise ValueError("Not enough data points after cleaning to proceed with model training.")
 
     # Feature Engineering: Create a lagged temperature feature
-    lag_period = 1  # Predict next based on current (adjust as needed)
-    df_with_lag = cleaned_temperature_data_polars.with_columns(
-        pl.col("t2m_celsius").shift(lag_period).alias(f"t2m_celsius_lag{lag_period}")
-    ).drop_nulls()  # Drop rows where lag feature is null
+    lag_period = 1
+    df_with_lag = cleaned_temperature_data_pandas.copy()
+    df_with_lag[f"t2m_celsius_lag{lag_period}"] = df_with_lag["t2m_celsius"].shift(lag_period)
+    df_with_lag = df_with_lag.dropna()
 
-    if df_with_lag.height < 5:  # Need at least a few points for train/test
+    if len(df_with_lag) < 5:
         raise ValueError(f"Not enough data points after creating lag{lag_period} feature.")
 
-    # Define features (X) and target (y)
-    # We predict the current temperature based on the lagged temperature
-    X_pl = df_with_lag.select([f"t2m_celsius_lag{lag_period}"])
-    y_pl = df_with_lag.select("t2m_celsius")
+    X = df_with_lag[[f"t2m_celsius_lag{lag_period}"]].values
+    y = df_with_lag["t2m_celsius"].values
 
-    # Convert to pandas/numpy for scikit-learn (as of now, sklearn direct Polars support is limited)
-    X = X_pl.to_pandas().values
-    y = y_pl.to_pandas().values.ravel()  # .ravel() to make it a 1D array
-
-    # Simple time-based split (e.g., last 20% for testing)
-    # For more robust time series, use scikit-learn's TimeSeriesSplit or manual slicing
     test_size_ratio = 0.2
     if len(X) * test_size_ratio < 1:
-        split_idx = len(X) - 1  # At least one sample for testing if possible
+        split_idx = len(X) - 1
     else:
         split_idx = int(len(X) * (1 - test_size_ratio))
 
@@ -215,12 +217,10 @@ def train_simple_model(context: AssetExecutionContext, cleaned_temperature_data_
     if len(X_train) == 0 or len(X_test) == 0:
         raise ValueError("Training or testing set is empty after split. Adjust data or split.")
 
-    # Train a Linear Regression model
     model = LinearRegression()
     model.fit(X_train, y_train)
     context.log.info("Linear Regression model trained.")
 
-    # Log training parameters to MLflow
     train_params = {
         "model_type": "LinearRegression",
         "feature_used": f"t2m_celsius_lag{lag_period}",
@@ -243,7 +243,7 @@ def train_simple_model(context: AssetExecutionContext, cleaned_temperature_data_
     group_name="3_modeling"
 )
 def evaluate_model(context: AssetExecutionContext, trained_temperature_model_data: dict):
-    mlflow: MlFlow = context.resources.mlflow_tracking
+    mlflow = context.resources.mlflow_tracking
     context.log.info("Starting model evaluation.")
 
     model = trained_temperature_model_data["model"]
@@ -289,16 +289,35 @@ def evaluate_model(context: AssetExecutionContext, trained_temperature_model_dat
     return eval_metrics
 
 
+era5_full_pipeline_job = define_asset_job(
+    name="era5_temperature_pipeline_job", # This is your custom job name
+    selection=[  # You can select specific assets or use "*" for all assets in the current Definitions
+        fetch_era5_data,
+        process_temperature_dataframe,
+        clean_temperature_data_pandas,
+        train_simple_model,
+        evaluate_model,
+    ],
+    # You can also provide tags directly to the job definition.
+    # These tags will be applied to all runs of this job by default,
+    # unless overridden at launch time.
+    # tags={"owner": "data_team", "project": "era5_analysis"}
+    # hooks={end_mlflow_on_run_finished},
+    # let key mlflow is mlflow_tracking
+
+)
+
 # Define all assets and resources for Dagster to discover
 defs = Definitions(
     assets=[
         fetch_era5_data,
         process_temperature_dataframe,
-        clean_temperature_data_polars,
+        clean_temperature_data_pandas,
         train_simple_model,
         evaluate_model,
     ],
     resources={
         "mlflow_tracking": mlflow_resource,
     },
+    jobs=[era5_full_pipeline_job],
 )
