@@ -12,14 +12,23 @@ authors =  [
 ]
 
 dependencies = [
+    "cdsapi>=0.7.6",
+    "dagster>=1.10.14",
+    "dagster-mlflow>=0.26.14",
+    "dagster-webserver>=1.10.14",
     "fastapi[standard]>=0.115.12",
     "gradio>=5.27.1",
+    "mlflow>=2.22.0",
+    "netcdf4>=1.7.2",
     "numpy==2.2.2",
+    "pandas>=2.2.3",
+    "polars>=1.29.0",
     "pyright==1.1.394",
     "pytest==8.3.4",
     "ruff==0.9.5",
     "scipy==1.15.1",
     "uvicorn>=0.34.0",
+    "xarray>=2025.4.0",
 ]
 
 [project.urls]
@@ -58,3 +67,6 @@ preview = true
 # required for a src and test layout
 [tool.uv]
 package = true
+
+[tool.dagster]
+module_name = "src.students.example.mlflow.era5_temperature_project.era5_pipeline.assets"
