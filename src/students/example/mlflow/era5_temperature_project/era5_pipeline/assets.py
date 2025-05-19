@@ -1,14 +1,13 @@
 import os
 import cdsapi
-from dagster_mlflow import end_mlflow_on_run_finished
 import xarray as xr
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
-from dagster import asset, Definitions, AssetExecutionContext, define_asset_job, ScheduleDefinition
+from dagster import asset, Definitions, AssetExecutionContext, define_asset_job, ScheduleDefinition, failure_hook
 
-from .resources import mlflow_resource # Import the configured resource
+from .resources import mlflow_resource
 
 # Configuration for the ERA5 data request
 ERA5_REQUEST_PARAMS = {
@@ -16,17 +15,18 @@ ERA5_REQUEST_PARAMS = {
     'variable': '2m_temperature',
     'year': '2023',
     'month': '01',
-    'day': ['01', '02', '03', '04', '05'], # Fetch for 5 days
+    'day': ['01', '02', '03', '04', '05'],  # Fetch for 5 days
     'time': ['00:00', '06:00', '12:00', '18:00'],
     'area': [50, -5, 45, 5],  # North, West, South, East (example: a small region in Europe)
     'format': 'netcdf',
 }
 OUTPUT_FILENAME = "era5_temperature_data.nc"
 
+
 @asset(
     name="raw_era5_temperature_data",
     description="Fetches raw ERA5 2m temperature data from the CDS.",
-    required_resource_keys={"mlflow_tracking"}, # Specify the MLflow resource
+    required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="era5_ingestion"
 )
@@ -42,13 +42,13 @@ def fetch_era5_data(context: AssetExecutionContext) -> str:
     flat_params = {}
     for key, value in ERA5_REQUEST_PARAMS.items():
         if isinstance(value, list):
-            flat_params[f"{key}"] = ",".join(map(str, value)) # Convert lists to comma-separated strings
+            flat_params[f"{key}"] = ",".join(map(str, value))  # Convert lists to comma-separated strings
         else:
             flat_params[key] = str(value)
     mlflow.log_params(flat_params)
     context.log.info(f"Logged parameters to MLflow: {flat_params}")
 
-    c = cdsapi.Client() # Assumes .cdsapirc is configured
+    c = cdsapi.Client()  # Assumes .cdsapirc is configured
     try:
         context.log.info(f"Requesting data with parameters: {ERA5_REQUEST_PARAMS}")
         c.retrieve(
@@ -82,9 +82,9 @@ def process_temperature_dataframe(context: AssetExecutionContext, raw_era5_tempe
     ds = xr.open_dataset(raw_era5_temperature_data)
 
     # Convert to pandas DataFrame
-    df = ds['t2m'].to_dataframe().reset_index()  # t2m is 2m temperature
+    df: pd.DataFrame = ds['t2m'].to_dataframe().reset_index()  # t2m is 2m temperature
     context.log.info(df)
-    df = df[['valid_time', 'latitude', 'longitude', 't2m']]  # Select and order columns
+    df = pd.DataFrame(df[['valid_time', 'latitude', 'longitude', 't2m']])  # Select and order columns
     df = df.rename(columns={'valid_time': 'time'})
 
     # For simplicity, if multiple lat/lon, average them or pick one. Here, we average if multiple.
@@ -92,7 +92,7 @@ def process_temperature_dataframe(context: AssetExecutionContext, raw_era5_tempe
     # For a very simple time series model, we need a single value per timestamp.
     if 'latitude' in df.columns and 'longitude' in df.columns:
         df_agg = df.groupby('time')['t2m'].mean().reset_index()
-        context.log.info(f"Aggregated multiple lat/lon points by averaging 't2m' per timestamp.")
+        context.log.info("Aggregated multiple lat/lon points by averaging 't2m' per timestamp.")
     else:
         df_agg = df
 
@@ -142,7 +142,7 @@ def clean_temperature_data_pandas(context: AssetExecutionContext,
     mean_temp_celsius = df["t2m_celsius"].mean()
 
     mlflow.log_metric("cleaned_num_rows", cleaned_rows)
-    if pd.notnull(mean_temp_celsius):
+    if bool(pd.notnull(mean_temp_celsius)):
         mlflow.log_metric("cleaned_mean_temperature_c", mean_temp_celsius)
         context.log.info(f"Data cleaned. Rows: {cleaned_rows}, Mean Temp (C): {mean_temp_celsius:.2f}")
     else:
@@ -171,7 +171,6 @@ def clean_temperature_data_pandas(context: AssetExecutionContext,
         context.log.info(f"Logged {sample_csv_path} as an MLflow Dataset input.")
     except Exception as e:
         context.log.warning(f"Could not log {sample_csv_path} as an MLflow Dataset: {e}")
-
 
     return df
 
@@ -289,6 +288,16 @@ def evaluate_model(context: AssetExecutionContext, trained_temperature_model_dat
     return eval_metrics
 
 
+@failure_hook(required_resource_keys={"mlflow_tracking"})
+def mlflow_failure_hook(context):
+    mlflow = context.resources.mlflow_tracking
+    error_message = f"Dagster job failed: {context.failure_event.message}"
+    mlflow.set_tag("dagster_job_status", "failed")
+    mlflow.set_tag("dagster_error_message", error_message)
+    mlflow.log_param("dagster_failed_step", context.step_key)
+    mlflow.log_param("dagster_run_id", context.run_id)
+
+
 era5_full_pipeline_job = define_asset_job(
     name="era5_temperature_pipeline_job",
     selection=[
@@ -298,7 +307,7 @@ era5_full_pipeline_job = define_asset_job(
         train_simple_model,
         evaluate_model,
     ],
-    # hooks={end_mlflow_on_run_finished},
+    hooks={mlflow_failure_hook},
 )
 
 # Add this schedule definition
