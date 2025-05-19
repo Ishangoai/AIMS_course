@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
-from dagster import asset, Definitions, AssetExecutionContext, define_asset_job
+from dagster import asset, Definitions, AssetExecutionContext, define_asset_job, ScheduleDefinition
 
 from .resources import mlflow_resource # Import the configured resource
 
@@ -290,21 +290,22 @@ def evaluate_model(context: AssetExecutionContext, trained_temperature_model_dat
 
 
 era5_full_pipeline_job = define_asset_job(
-    name="era5_temperature_pipeline_job", # This is your custom job name
-    selection=[  # You can select specific assets or use "*" for all assets in the current Definitions
+    name="era5_temperature_pipeline_job",
+    selection=[
         fetch_era5_data,
         process_temperature_dataframe,
         clean_temperature_data_pandas,
         train_simple_model,
         evaluate_model,
     ],
-    # You can also provide tags directly to the job definition.
-    # These tags will be applied to all runs of this job by default,
-    # unless overridden at launch time.
-    # tags={"owner": "data_team", "project": "era5_analysis"}
     # hooks={end_mlflow_on_run_finished},
-    # let key mlflow is mlflow_tracking
+)
 
+# Add this schedule definition
+era5_daily_schedule = ScheduleDefinition(
+    job=era5_full_pipeline_job,
+    cron_schedule="0 7 * * *",  # Every day at 7:00 AM
+    name="era5_daily_schedule"
 )
 
 # Define all assets and resources for Dagster to discover
@@ -320,4 +321,5 @@ defs = Definitions(
         "mlflow_tracking": mlflow_resource,
     },
     jobs=[era5_full_pipeline_job],
+    schedules=[era5_daily_schedule]
 )
