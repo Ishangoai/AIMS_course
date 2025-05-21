@@ -7,7 +7,6 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split  # For robust splitting
 
 from dagster import asset, Definitions, AssetExecutionContext, define_asset_job, ScheduleDefinition, failure_hook
-from dagster import AssetSpec
 
 from .resources import mlflow_resource
 
@@ -195,7 +194,7 @@ def clean_temperature_data_pandas(context: AssetExecutionContext,
 
 
 @asset(
-    name="tuned_hyperparameters_and_data_split_split",
+    name="tuned_hyperparameters_and_data_split",
     description="Tunes Ridge regression hyperparameters using Hyperopt and prepares data splits.",
     deps=[clean_temperature_data_pandas],
     required_resource_keys={"mlflow_tracking"},
@@ -350,7 +349,7 @@ def tune_ridge_hyperparameters(context: AssetExecutionContext,  # noqa: C901
 @asset(
     name="trained_tuned_model_data",
     description="Trains a Ridge model using the best hyperparameters found by Hyperopt.",
-    deps=[AssetSpec("tuned_hyperparameters_and_data_split")],  # Using AssetSpec for multi-output dependency
+    deps=["tuned_hyperparameters_and_data_split"],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="3_modeling"
@@ -395,13 +394,12 @@ def train_tuned_model(context: AssetExecutionContext, tuned_hyperparameters_and_
 @asset(
     name="evaluated_temperature_model",
     description="Evaluates the tuned model and logs model and metrics to MLflow.",
-    deps=[AssetSpec("trained_tuned_model_data")],  # Corrected dependency
+    deps=["trained_tuned_model_data"],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="3_modeling"
 )
-def evaluate_model(context: AssetExecutionContext,
-                   trained_tuned_model_data: dict):  # Renamed input
+def evaluate_model(context: AssetExecutionContext, trained_tuned_model_data: dict):
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model evaluation.")
 
