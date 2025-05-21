@@ -161,7 +161,7 @@ def clean_temperature_data_pandas(context: AssetExecutionContext,
     mean_temp_celsius = df["t2m_celsius"].mean() if not df["t2m_celsius"].empty else float('nan')
 
     mlflow_client.log_metric("cleaned_num_rows", cleaned_rows)
-    if pd.notna(mean_temp_celsius):
+    if bool(pd.notna(mean_temp_celsius)):
         mlflow_client.log_metric("cleaned_mean_temperature_c", mean_temp_celsius)
         context.log.info(f"Data cleaned. Rows: {cleaned_rows}, Mean Temp (C): {mean_temp_celsius:.2f}")
     else:
@@ -239,7 +239,7 @@ def tune_ridge_hyperparameters(context: AssetExecutionContext,  # noqa: C901
         context.log.error(msg)
         raise ValueError(msg)
 
-    context.log.info(f"Data split: X_train_val: {X_train_val.shape}, X_test: {X_test.shape}")
+    context.log.info(f"Data split: X_train_val: {X_train_val.shape}, X_test: {X_test.shape}")  # type: ignore
 
     # Define Hyperopt search space for Ridge alpha
     search_space = {
