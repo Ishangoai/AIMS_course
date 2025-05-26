@@ -29,6 +29,7 @@ dependencies = [
     "scipy==1.15.1",
     "uvicorn>=0.34.0",
     "xarray>=2025.4.0",
+    "hyperopt==0.2.7"
 ]
 
 [project.urls]
