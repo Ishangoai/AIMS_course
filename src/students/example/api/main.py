@@ -7,6 +7,7 @@ import gradio as gr
 from api.models import UserRequest, UpdateUserRequest
 from api.safe_eval import safe_eval
 from gradioapp.app import app as demo
+from gradioapp.heart_disease_app import heart_app
 
 app = FastAPI(
     title="AIMS Course API",
@@ -121,3 +122,4 @@ def update_user_details(username: str, request: UpdateUserRequest):
 
 
 gr.mount_gradio_app(app, demo, path="/gradio")
+gr.mount_gradio_app(app, heart_app, path="/heart-disease")
