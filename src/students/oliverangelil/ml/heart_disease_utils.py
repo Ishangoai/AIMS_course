@@ -10,7 +10,7 @@ model = joblib.load(MODEL_PATH)
 
 def predict_heart_disease(features: list):
     """
-    Predict heart disease using loaded model
+    Predict heart disease using loaded model.
     :param features: list of 13 features in correct order
     :return: "High Risk" or "Low risk"
     """
