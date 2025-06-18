@@ -60,6 +60,7 @@ env:
   CLOUD_RUN_REGION: 'europe-west2'
   REPOSITORY: '${{ secrets.GCP_PROJECT_NAME }}-gcr'
   WORKLOAD_IDENTITY_PROVIDER: 'projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github'
+  DEPLOY_EXAMPLE: 'false' # <--- Toggle this to 'true' to deploy the example folder
 
 jobs:
   setup-build-publish-deploy:
@@ -128,7 +129,7 @@ jobs:
       # Build the Docker image
       - name: 'Build Docker container'
         run: |-
-          if [ "${{ env.PR_AUTHOR }}" == "${{ github.actor }}" ]; then
+          if [ "${{ env.DEPLOY_EXAMPLE }}" = "true" ] && { [ "$PR_AUTHOR" = "oliverangelil" ] || [ "$PR_AUTHOR" = "aduuna" ] || [ "$PR_AUTHOR" = "cyrille-feu" ]; }; then
             DEPLOYMENT_TARGET="ROOT"
             echo "CLOUD_RUN_SERVICE=${{ secrets.GCP_PROJECT_NAME }}-service" >> $GITHUB_ENV
             echo "IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image" >> $GITHUB_ENV
@@ -139,6 +140,7 @@ jobs:
             echo "IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image-$PR_AUTHOR" >> $GITHUB_ENV
             IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image-$PR_AUTHOR
           fi
+          echo "DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET" >> $GITHUB_ENV
           DOCKER_TAG="${GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${GITHUB_SHA}"
           docker build \
             --build-arg DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET \
