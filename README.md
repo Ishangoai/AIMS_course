@@ -10,6 +10,7 @@ Other tips:
 - type `uv run pytest` to run unit tests
 - type `uv ruff check` to run PEP8 checks
 - type `uv run pyright` to run type-hinting checks
+- type `uv python find` to see which uv environment is currently active
 - type `ml` run run the module (see the `[project.scripts]` section in `pyproject.toml`)
 
 All these checks are also run in GitHub Actions (CI pipelines) when a new PR is raised to merge into `development`
