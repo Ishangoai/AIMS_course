@@ -249,14 +249,14 @@ def tune_ridge_hyperparameters(context: AssetExecutionContext,  # noqa: C901
     # MLflow experiment context for nested runs
     # Ensure the experiment exists or is created
     try:
-        experiment = mlflow_client.get_experiment_by_name("Default")
+        experiment = mlflow_client.get_experiment_by_name("era5_temperature_analysis")
         if experiment is None:
-            experiment = mlflow_client.create_experiment("Default")
+            experiment = mlflow_client.create_experiment("era5_temperature_analysis")
             experiment_id = experiment.experiment_id
         else:
             experiment_id = experiment.experiment_id
     except Exception:  # Handle cases where get_experiment_by_name might raise error if not found
-        experiment_id = mlflow_client.create_experiment("Default")
+        experiment_id = mlflow_client.create_experiment("era5_temperature_analysis")
 
     trials = Trials()
 
