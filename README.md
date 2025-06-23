@@ -3,9 +3,11 @@
 ### Instructions for development:
 - create new feature branch from `development` following this convention: "feature-branch-{your name}"
 - open the branch in CodeSpaces, selecting the weakest compute specs
-- in the CodeSpace bash terminal, type `source .venv/bin/activate` to activate your personal Python environment
+
 
 Other tips:
+- type `deactivate` in the CodeSpace bash terminal to decativate your uv Python environment
+- type `source .venv/bin/activate` to activate your personal uv Python environment (keep like this)
 - type `uv pip list` to see installed Python packages
 - type `uv run pytest` to run unit tests
 - type `uv ruff check` to run PEP8 checks
