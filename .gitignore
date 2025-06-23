@@ -201,3 +201,24 @@ opentofu/.env
 opentofu/.DS_Store
 
 tofu-key.json
+
+# dagster output files
+dagster_home/
+dagster_logs/
+dagster_run_logs/
+dagster_event_logs/
+dagster_instance/
+
+# Dagster generated temp files
+dagster_tmp/
+dagster_temp/
+*.dagstertmp
+.tmp_dagster_*
+
+# General tmp files
+tmp/
+temp/
+*.tmp
+
+# mlflow backend db
+mlflow_local_tracking.db
