@@ -8,6 +8,7 @@
 Other tips:
 - type `deactivate` in the CodeSpace bash terminal to decativate your uv Python environment
 - type `source .venv/bin/activate` to activate your personal uv Python environment (keep like this)
+- type `which python` to see which Python interpreter is active
 - type `uv pip list` to see installed Python packages
 - type `uv run pytest` to run unit tests
 - type `uv ruff check` to run PEP8 checks
