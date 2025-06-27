@@ -35,8 +35,8 @@ dependencies = [
 [project.urls]
 Homepage = "https://ishango.ai/"
 
-[project.scripts]
-ml = "ml.model:main"
+# [project.scripts]
+# ml = "ml.model:main"
 
 [build-system]
 requires = ["setuptools"]
