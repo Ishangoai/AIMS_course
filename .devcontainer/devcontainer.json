@@ -19,6 +19,9 @@
 	"customizations": {
 		// Configure properties specific to VS Code.
 		"vscode": {
+			"settings": {
+				"python.defaultInterpreterPath": ".venv/bin/python"
+			},
 	  	// Add the IDs of extensions you want installed when the container is created.
 	  		"extensions": [
 				"github.copilot",
