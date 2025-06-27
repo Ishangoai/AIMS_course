@@ -1,5 +1,5 @@
 import gradio as gr
-from utils.heart_disease_utils import predict_heart_disease
+from ml.heart_disease_utils import predict_heart_disease
 
 
 def wrapped_predict(*args):
