@@ -4,7 +4,7 @@ import os
 import numpy as np
 
 # Load model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "ml", "heart_model.pkl")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "heart_model.pkl")
 model = joblib.load(MODEL_PATH)
 
 
