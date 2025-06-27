@@ -13,12 +13,15 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "uv sync",
+	"postCreateCommand": "uv sync && echo 'source .venv/bin/activate' >> ~/.bashrc",
 
 	// Configure tool-specific properties.
 	"customizations": {
 		// Configure properties specific to VS Code.
 		"vscode": {
+			"settings": {
+				"python.defaultInterpreterPath": ".venv/bin/python"
+			},
 	  	// Add the IDs of extensions you want installed when the container is created.
 	  		"extensions": [
 				"github.copilot",
