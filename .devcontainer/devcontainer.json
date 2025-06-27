@@ -13,7 +13,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "uv sync && . .venv/bin/activate",
+	"postCreateCommand": "uv sync",
 
 	// Configure tool-specific properties.
 	"customizations": {
