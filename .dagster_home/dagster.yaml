@@ -1,0 +1,5 @@
+run_coordinator:
+  module: src.students.example.mlflow.era5_temperature_project.era5_pipeline.assets
+  class: QueuedRunCoordinator
+  config:
+    max_concurrent_runs: 10
