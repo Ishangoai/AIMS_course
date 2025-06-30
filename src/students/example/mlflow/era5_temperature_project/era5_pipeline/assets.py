@@ -174,6 +174,7 @@ def clean_temperature_data_pandas(context: AssetExecutionContext,
     # Log a sample of the cleaned data to MLflow as a CSV artifact (optional)
     if not df.empty:
         sample_csv_path = os.path.join(DATA_DIR, "cleaned", "cleaned_sample.csv")
+        os.makedirs(os.path.dirname(sample_csv_path), exist_ok=True)
         df.head().to_csv(sample_csv_path, index=False)
         mlflow_client.log_artifact(sample_csv_path, artifact_path="processed_data_samples")
         try:
