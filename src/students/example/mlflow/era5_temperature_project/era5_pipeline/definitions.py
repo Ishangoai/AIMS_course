@@ -1,5 +1,5 @@
 import dagster as dg
-import assets
+from . import assets
 from .resources import mlflow_resource
 
 my_assets = dg.load_assets_from_modules([assets])
