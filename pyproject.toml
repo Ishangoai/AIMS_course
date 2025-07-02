@@ -16,6 +16,7 @@ dependencies = [
     "dagster>=1.10.14",
     "dagster-mlflow>=0.26.14",
     "dagster-webserver>=1.10.14",
+    "dagster-dg-cli==1.11.0",
     "fastapi[standard]>=0.115.12",
     "gradio>=5.27.1",
     "mlflow>=2.22.0",
@@ -71,3 +72,9 @@ package = true
 
 [tool.dagster]
 module_name = "src.students.example.mlflow.era5_temperature_project.era5_pipeline.assets"
+
+[tool.dg]
+directory_type = "project"
+
+[tool.dg.project]
+root_module = "src.students.example.mlflow.era5_temperature_project.era5_pipeline"
