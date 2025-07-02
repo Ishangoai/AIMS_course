@@ -6,9 +6,8 @@ from sklearn.linear_model import Ridge  # Changed from LinearRegression for tuni
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split  # For robust splitting
 
-from dagster import asset, Definitions, AssetExecutionContext, define_asset_job, ScheduleDefinition, failure_hook
+import dagster as dg
 
-from .resources import mlflow_resource
 
 # Hyperopt imports
 from hyperopt import fmin, tpe, hp, STATUS_OK, STATUS_FAIL, Trials
@@ -28,14 +27,14 @@ OUTPUT_FILENAME = "era5_temperature_data.nc"  # Output file name for the downloa
 MAX_HYPEROPT_EVALS = 20  # Max evaluations for Hyperopt
 
 
-@asset(
+@dg.asset(
     name="raw_era5_temperature_data",
     description="Fetches raw ERA5 2m temperature data from the CDS.",
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="1_ingestion"  # Updated group name
 )
-def fetch_era5_data(context: AssetExecutionContext) -> str:
+def fetch_era5_data(context: dg.AssetExecutionContext) -> str:
     """
     Fetches ERA5 temperature data and logs parameters to MLflow.
     Returns the path to the downloaded NetCDF file.
@@ -79,7 +78,7 @@ def fetch_era5_data(context: AssetExecutionContext) -> str:
         raise
 
 
-@asset(
+@dg.asset(
     name="processed_temperature_dataframe",
     description="Loads the raw NetCDF data into a pandas DataFrame and logs some metrics.",
     deps=[fetch_era5_data],
@@ -87,7 +86,7 @@ def fetch_era5_data(context: AssetExecutionContext) -> str:
     compute_kind="python",
     group_name="2_processing"
 )
-def process_temperature_dataframe(context: AssetExecutionContext, raw_era5_temperature_data: str) -> pd.DataFrame:
+def process_temperature_dataframe(context: dg.AssetExecutionContext, raw_era5_temperature_data: str) -> pd.DataFrame:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info(f"Processing file: {raw_era5_temperature_data}")
     try:
@@ -123,7 +122,7 @@ def process_temperature_dataframe(context: AssetExecutionContext, raw_era5_tempe
     return df_agg
 
 
-@asset(
+@dg.asset(
     name="cleaned_temperature_data_pandas",
     description="Cleans the temperature data. Converts Kelvin to Celsius.",
     deps=[process_temperature_dataframe],
@@ -131,7 +130,7 @@ def process_temperature_dataframe(context: AssetExecutionContext, raw_era5_tempe
     compute_kind="python",
     group_name="2_processing"
 )
-def clean_temperature_data_pandas(context: AssetExecutionContext,
+def clean_temperature_data_pandas(context: dg.AssetExecutionContext,
                                   processed_temperature_dataframe: pd.DataFrame) -> pd.DataFrame:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting data cleaning.")
@@ -193,7 +192,7 @@ def clean_temperature_data_pandas(context: AssetExecutionContext,
     return df
 
 
-@asset(
+@dg.asset(
     name="tuned_hyperparameters_and_data_split",
     description="Tunes Ridge regression hyperparameters using Hyperopt and prepares data splits.",
     deps=[clean_temperature_data_pandas],
@@ -201,7 +200,7 @@ def clean_temperature_data_pandas(context: AssetExecutionContext,
     compute_kind="python",
     group_name="3_modeling",
 )
-def tune_ridge_hyperparameters(context: AssetExecutionContext,  # noqa: C901
+def tune_ridge_hyperparameters(context: dg.AssetExecutionContext,  # noqa: C901
                                cleaned_temperature_data_pandas: pd.DataFrame):
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting hyperparameter tuning for Ridge model.")
@@ -346,7 +345,7 @@ def tune_ridge_hyperparameters(context: AssetExecutionContext,  # noqa: C901
     }
 
 
-@asset(
+@dg.asset(
     name="trained_tuned_model_data",
     description="Trains a Ridge model using the best hyperparameters found by Hyperopt.",
     deps=["tuned_hyperparameters_and_data_split"],
@@ -354,7 +353,7 @@ def tune_ridge_hyperparameters(context: AssetExecutionContext,  # noqa: C901
     compute_kind="python",
     group_name="3_modeling"
 )
-def train_tuned_model(context: AssetExecutionContext, tuned_hyperparameters_and_data_split) -> dict:
+def train_tuned_model(context: dg.AssetExecutionContext, tuned_hyperparameters_and_data_split) -> dict:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model training with tuned hyperparameters.")
 
@@ -391,7 +390,7 @@ def train_tuned_model(context: AssetExecutionContext, tuned_hyperparameters_and_
     }
 
 
-@asset(
+@dg.asset(
     name="evaluated_temperature_model",
     description="Evaluates the tuned model and logs model and metrics to MLflow.",
     deps=["trained_tuned_model_data"],
@@ -399,7 +398,7 @@ def train_tuned_model(context: AssetExecutionContext, tuned_hyperparameters_and_
     compute_kind="python",
     group_name="3_modeling"
 )
-def evaluate_model(context: AssetExecutionContext, trained_tuned_model_data: dict):
+def evaluate_model(context: dg.AssetExecutionContext, trained_tuned_model_data: dict):
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model evaluation.")
 
@@ -432,41 +431,3 @@ def evaluate_model(context: AssetExecutionContext, trained_tuned_model_data: dic
     )
     context.log.info("Logged tuned model to MLflow Model Registry as 'tuned-temp-forecaster'.")
     return eval_metrics
-
-
-@failure_hook(required_resource_keys={"mlflow_tracking"})
-def mlflow_failure_hook(context):
-    mlflow_client = context.resources.mlflow_tracking
-    error_message = f"Dagster job failed: {context.failure_event.message}"
-    mlflow_client.set_tag("dagster_job_status", "failed")
-    mlflow_client.set_tag("dagster_error_message", error_message)
-    mlflow_client.log_param("dagster_failed_step", context.step_key)
-    mlflow_client.log_param("dagster_run_id", context.run_id)
-
-
-era5_full_pipeline_job = define_asset_job(
-    name="era5_temperature_pipeline_job",
-    selection=[
-        fetch_era5_data,
-        process_temperature_dataframe,
-        clean_temperature_data_pandas,
-        tune_ridge_hyperparameters,
-        train_tuned_model,
-        evaluate_model,
-    ],
-    hooks={mlflow_failure_hook},
-)
-
-# # A simpler way to define the job if you want all assets in the lineage of the final one:
-# era5_full_pipeline_job_simplified = define_asset_job(
-#     name="era5_temperature_pipeline_job_simplified",
-#     selection="*evaluated_temperature_model",  # Selects all upstream assets of evaluate_model
-#     hooks={mlflow_failure_hook},
-# )
-
-# Add this schedule definition
-era5_daily_schedule = ScheduleDefinition(
-    job=era5_full_pipeline_job,
-    cron_schedule="0 7 * * *",  # Every day at 7:00 AM
-    name="era5_daily_schedule"
-)
