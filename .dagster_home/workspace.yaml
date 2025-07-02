@@ -1,3 +1,0 @@
-load_from:
-  - python_module:
-      module_name: src.students.example.mlflow.era5_temperature_project.era5_pipeline.assets

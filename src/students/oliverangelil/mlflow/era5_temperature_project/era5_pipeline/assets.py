@@ -24,7 +24,10 @@ ERA5_REQUEST_PARAMS = {
     'area': [50, -5, 45, 5],  # North, West, South, East (example: a small region in Europe)
     'format': 'netcdf',
 }
-OUTPUT_FILENAME = "era5_temperature_data.nc"
+DAGSTER_HOME = os.environ.get("DAGSTER_HOME", ".dagster_home")
+DATA_DIR = os.path.join(DAGSTER_HOME, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
+OUTPUT_FILENAME = os.path.join(DATA_DIR, "era5_temperature_data.nc")
 MAX_HYPEROPT_EVALS = 20  # Max evaluations for Hyperopt
 
 
@@ -170,7 +173,8 @@ def clean_temperature_data_pandas(context: AssetExecutionContext,
 
     # Log a sample of the cleaned data to MLflow as a CSV artifact (optional)
     if not df.empty:
-        sample_csv_path = "cleaned_sample.csv"
+        sample_csv_path = os.path.join(DATA_DIR, "cleaned", "cleaned_sample.csv")
+        os.makedirs(os.path.dirname(sample_csv_path), exist_ok=True)
         df.head().to_csv(sample_csv_path, index=False)
         mlflow_client.log_artifact(sample_csv_path, artifact_path="processed_data_samples")
         try:
@@ -249,14 +253,14 @@ def tune_ridge_hyperparameters(context: AssetExecutionContext,  # noqa: C901
     # MLflow experiment context for nested runs
     # Ensure the experiment exists or is created
     try:
-        experiment = mlflow_client.get_experiment_by_name("Default")
+        experiment = mlflow_client.get_experiment_by_name("era5_temperature_analysis")
         if experiment is None:
-            experiment = mlflow_client.create_experiment("Default")
+            experiment = mlflow_client.create_experiment("era5_temperature_analysis")
             experiment_id = experiment.experiment_id
         else:
             experiment_id = experiment.experiment_id
     except Exception:  # Handle cases where get_experiment_by_name might raise error if not found
-        experiment_id = mlflow_client.create_experiment("Default")
+        experiment_id = mlflow_client.create_experiment("era5_temperature_analysis")
 
     trials = Trials()
 

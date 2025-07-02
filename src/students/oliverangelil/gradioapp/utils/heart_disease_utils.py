@@ -4,13 +4,13 @@ import os
 import numpy as np
 
 # Load model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "ml", "heart_model.pkl")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "heart_model.pkl")
 model = joblib.load(MODEL_PATH)
 
 
 def predict_heart_disease(features: list):
     """
-    Predict heart disease using loaded model.
+    Predict heart disease using loaded model
     :param features: list of 13 features in correct order
     :return: "High Risk" or "Low risk"
     """
