@@ -17,7 +17,7 @@ def mlflow_failure_hook(context):
 
 era5_full_pipeline_job = dg.define_asset_job(
     name="era5_temperature_pipeline_job",
-    selection=[*my_assets],
+    selection=dg.AssetSelection.all(),
     hooks={mlflow_failure_hook},
 )
 
