@@ -470,20 +470,3 @@ era5_daily_schedule = ScheduleDefinition(
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
     name="era5_daily_schedule"
 )
-
-# Define all assets and resources for Dagster to discover
-defs = Definitions(
-    assets=[
-        fetch_era5_data,
-        process_temperature_dataframe,
-        clean_temperature_data_pandas,
-        tune_ridge_hyperparameters,
-        train_tuned_model,
-        evaluate_model,
-    ],
-    resources={
-        "mlflow_tracking": mlflow_resource,  # Ensure this points to your configured MLflow resource
-    },
-    jobs=[era5_full_pipeline_job],
-    schedules=[era5_daily_schedule]
-)
