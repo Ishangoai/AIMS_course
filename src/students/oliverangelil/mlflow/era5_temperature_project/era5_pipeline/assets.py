@@ -123,8 +123,11 @@ def process_temperature_dataframe(context: AssetExecutionContext, raw_era5_tempe
         mlflow_client.log_metric("processed_mean_temperature_k", mean_temp_kelvin)
     context.log.info(f"Pandas DataFrame created. Time steps: {num_time_steps}, Mean Temp (K): {mean_temp_kelvin:.2f}")
     context.log.info("Logged metrics to MLflow.")
-    return df_agg
-
+    return dg.MaterializeResult(
+        metadata={
+            'Number of records': dg.MetadataValue.int(num_rows)
+        }
+)
 
 @asset(
     name="cleaned_temperature_data_pandas",
@@ -194,7 +197,7 @@ def clean_temperature_data_pandas(context: AssetExecutionContext,
         except Exception as e:
             context.log.warning(f"Could not log {sample_csv_path} as an MLflow Dataset: {e}")
 
-    return df
+    # return df
 
 
 @asset(
