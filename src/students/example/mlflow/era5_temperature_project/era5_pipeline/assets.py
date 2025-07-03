@@ -86,7 +86,10 @@ def fetch_era5_data(context: dg.AssetExecutionContext) -> str:
     compute_kind="python",
     group_name="2_processing"
 )
-def process_temperature_dataframe(context: dg.AssetExecutionContext, raw_era5_temperature_data: str) -> dg.MaterializeResult:
+def process_temperature_dataframe(
+    context: dg.AssetExecutionContext,
+    raw_era5_temperature_data: str) -> dg.MaterializeResult:
+
     mlflow_client = context.resources.mlflow_tracking
     context.log.info(f"Processing file: {raw_era5_temperature_data}")
     try:
