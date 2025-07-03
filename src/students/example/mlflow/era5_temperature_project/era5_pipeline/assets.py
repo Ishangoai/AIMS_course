@@ -86,7 +86,10 @@ def fetch_era5_data(context: dg.AssetExecutionContext) -> str:
     compute_kind="python",
     group_name="2_processing"
 )
-def process_temperature_dataframe(context: dg.AssetExecutionContext, raw_era5_temperature_data: str) -> pd.DataFrame:
+def process_temperature_dataframe(
+    context: dg.AssetExecutionContext,
+    raw_era5_temperature_data: str) -> dg.MaterializeResult:
+
     mlflow_client = context.resources.mlflow_tracking
     context.log.info(f"Processing file: {raw_era5_temperature_data}")
     try:
@@ -106,10 +109,10 @@ def process_temperature_dataframe(context: dg.AssetExecutionContext, raw_era5_te
     # For a very simple time series model, we need a single value per timestamp.
 
     if 'latitude' in df.columns and 'longitude' in df.columns:
-        df_agg = df.groupby('time')['t2m'].mean().reset_index()
+        df_agg: pd.DataFrame = df.groupby('time')['t2m'].mean().reset_index()
         context.log.info("Aggregated multiple lat/lon points by averaging 't2m' per timestamp.")
     else:
-        df_agg = df
+        df_agg: pd.DataFrame = df
 
     num_time_steps = len(df_agg)
     mean_temp_kelvin = float(df_agg['t2m'].mean()) if not df_agg['t2m'].empty else float('nan')
@@ -119,7 +122,13 @@ def process_temperature_dataframe(context: dg.AssetExecutionContext, raw_era5_te
         mlflow_client.log_metric("processed_mean_temperature_k", mean_temp_kelvin)
     context.log.info(f"Pandas DataFrame created. Time steps: {num_time_steps}, Mean Temp (K): {mean_temp_kelvin:.2f}")
     context.log.info("Logged metrics to MLflow.")
-    return df_agg
+    return dg.MaterializeResult(
+        value=df_agg,
+        metadata={
+            "number of rows": dg.MetadataValue.int(len(df_agg)),
+            "preview": dg.MetadataValue.md(df_agg.head().to_markdown() or "")
+        }
+    )
 
 
 @dg.asset(
@@ -131,14 +140,13 @@ def process_temperature_dataframe(context: dg.AssetExecutionContext, raw_era5_te
     group_name="2_processing"
 )
 def clean_temperature_data_pandas(context: dg.AssetExecutionContext,
-                                  processed_temperature_dataframe: pd.DataFrame) -> pd.DataFrame:
+                                  processed_temperature_dataframe: pd.DataFrame) -> dg.MaterializeResult:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting data cleaning.")
     df = processed_temperature_dataframe.copy()
 
     if df.empty:
         context.log.warning("Input DataFrame is empty. Skipping cleaning.")
-        return df
 
     # 1. Convert temperature from Kelvin to Celsius
     df["t2m_celsius"] = df["t2m"] - 273.15
@@ -189,7 +197,13 @@ def clean_temperature_data_pandas(context: dg.AssetExecutionContext,
         except Exception as e:
             context.log.warning(f"Could not log {sample_csv_path} as an MLflow Dataset: {e}")
 
-    return df
+    return dg.MaterializeResult(
+        value=df,
+        metadata={
+            "number of rows": dg.MetadataValue.int(len(df)),
+            "preview": dg.MetadataValue.md(df.head().to_markdown() or "")
+        }
+    )
 
 
 @dg.asset(
