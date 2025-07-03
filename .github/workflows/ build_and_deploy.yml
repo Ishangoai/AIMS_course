@@ -137,8 +137,8 @@ jobs:
           else
             DEPLOYMENT_TARGET="STUDENT"
             echo "CLOUD_RUN_SERVICE=${{ secrets.GCP_PROJECT_NAME }}-service-$PR_AUTHOR" >> $GITHUB_ENV
-            echo "IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image-$PR_AUTHOR" >> $GITHUB_ENV
-            IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image-$PR_AUTHOR
+            echo "IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image-$(echo "$PR_AUTHOR" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+            IMAGE=${{ secrets.GCP_PROJECT_NAME }}-image-$(echo "$PR_AUTHOR" | tr '[:upper:]' '[:lower:]')"
           fi
           echo "DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET" >> $GITHUB_ENV
           DOCKER_TAG="${GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${GITHUB_SHA}"
