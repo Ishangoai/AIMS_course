@@ -109,10 +109,10 @@ def process_temperature_dataframe(
     # For a very simple time series model, we need a single value per timestamp.
 
     if 'latitude' in df.columns and 'longitude' in df.columns:
-        df_agg = df.groupby('time')['t2m'].mean().reset_index()
+        df_agg: pd.DataFrame = df.groupby('time')['t2m'].mean().reset_index()
         context.log.info("Aggregated multiple lat/lon points by averaging 't2m' per timestamp.")
     else:
-        df_agg = df
+        df_agg: pd.DataFrame = df
 
     num_time_steps = len(df_agg)
     mean_temp_kelvin = float(df_agg['t2m'].mean()) if not df_agg['t2m'].empty else float('nan')
@@ -126,7 +126,7 @@ def process_temperature_dataframe(
         value=df_agg,
         metadata={
             "number of rows": dg.MetadataValue.int(len(df_agg)),
-            "preview": dg.MetadataValue.md(df_agg.head().to_markdown())
+            "preview": dg.MetadataValue.md(df_agg.head().to_markdown() or "")
         }
     )
 
@@ -147,7 +147,6 @@ def clean_temperature_data_pandas(context: dg.AssetExecutionContext,
 
     if df.empty:
         context.log.warning("Input DataFrame is empty. Skipping cleaning.")
-        return df
 
     # 1. Convert temperature from Kelvin to Celsius
     df["t2m_celsius"] = df["t2m"] - 273.15
@@ -202,7 +201,7 @@ def clean_temperature_data_pandas(context: dg.AssetExecutionContext,
         value=df,
         metadata={
             "number of rows": dg.MetadataValue.int(len(df)),
-            "preview": dg.MetadataValue.md(df.head().to_markdown())
+            "preview": dg.MetadataValue.md(df.head().to_markdown() or "")
         }
     )
 
