@@ -17,6 +17,41 @@ jobs:
     steps:
     - name: checkout repository
       uses: actions/checkout@v4
+    
+    - name: 'Get PR Author'
+      id: get_pr_author
+      run: |
+        # Query the GitHub API to find the PR associated with the commit SHA
+        PR_RESPONSE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ github.repository }}/pulls?state=closed&sort=updated&direction=desc")
+        
+        # Extract the PR author's username for the PR that matches the commit SHA
+        PR_AUTHOR=$(echo "$PR_RESPONSE" | jq -r --arg sha "${{ github.sha }}" \
+          '.[] | select(.merge_commit_sha == $sha) | .user.login')
+        
+        # Fallback to github.actor if no PR author is found
+        if [ -z "$PR_AUTHOR" ]; then
+          PR_AUTHOR="${{ github.actor }}"
+        fi
+        
+        echo "PR_AUTHOR=$PR_AUTHOR" >> $GITHUB_ENV
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: fetch latest development branch
+      run: git fetch origin development
+
+    - name: check that all changes in this pr was made in the src/pr_author directory except for users "aduuna", "oliverangelil", and "cyrille-feu"
+      run: |
+        if [ "$PR_AUTHOR" = "oliverangelil" ] || [ "$PR_AUTHOR" = "aduuna" ] || [ "$PR_AUTHOR" = "cyrille-feu" ]; then
+          echo "User $PR_AUTHOR is exempt from directory check."
+          exit 0
+        fi;
+        if git diff --name-only origin/development | grep -q -v "^src/students/$PR_AUTHOR/"; then
+          echo "Error: All changes in this PR must be made in the src/students/$PR_AUTHOR directory."
+          exit 1
+        fi
       
     - name: install uv
       uses: astral-sh/setup-uv@v5
