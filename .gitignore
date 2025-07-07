@@ -210,5 +210,6 @@ tmp/
 temp/
 *.tmp
 
-# mlflow backend db
+# mlflow backend
+mlruns/
 mlflow_local_tracking.db
