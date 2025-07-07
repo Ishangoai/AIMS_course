@@ -453,7 +453,7 @@ def evaluate_model(context: dg.AssetExecutionContext, train_tuned_model: dict) -
     registered_model_name = "tuned-temp-forecaster"
     model_version_info = None
 
-    with mlflow.start_run(nested=True) as current_run: 
+    with mlflow.start_run(nested=True) as current_run:
         context.log.info(f"Starting nested MLflow run for model logging: {current_run.info.run_id}")
 
         log_model_info = ms.log_model(
@@ -487,7 +487,8 @@ def evaluate_model(context: dg.AssetExecutionContext, train_tuned_model: dict) -
             context.log.info("Successfully retrieved registered model version info from registry.")
         else:
             context.log.error(
-                f"Could not find registered model version for run ID {current_run.info.run_id} and name '{registered_model_name}'."
+                f"Could not find registered model version for run ID {current_run.info.run_id} "
+                f"and name '{registered_model_name}'."
             )
             raise Exception("Failed to retrieve registered model version details after logging.")
 
@@ -606,7 +607,8 @@ def promote_model_to_staging(context: dg.AssetExecutionContext, evaluate_model: 
     compute_kind="python",
     group_name="4_promotion"
 )
-def promote_model_to_production(context: dg.AssetExecutionContext, promote_model_to_staging: dict) -> dg.MaterializeResult:
+def promote_model_to_production(context: dg.AssetExecutionContext,
+                                promote_model_to_staging: dict) -> dg.MaterializeResult:
     # mlflow_client = context.resources.mlflow_tracking
     mlflow_client = context.resources.mlflow_client
     context.log.info("Starting model promotion to Production.")
