@@ -501,8 +501,8 @@ def evaluate_model(context: dg.AssetExecutionContext, train_tuned_model: dict) -
     return dg.MaterializeResult(
         value=output_value_for_downstream,
         metadata={
-            "test_mse": dg.MetadataValue.float(mse),
-            "test_mae": dg.MetadataValue.float(mae),
+            "test_mse": dg.MetadataValue.float(float(mse)),
+            "test_mae": dg.MetadataValue.float(float(mae)),
             "model_name": dg.MetadataValue.text(model_version_info["name"]),
             "model_version": dg.MetadataValue.text(str(model_version_info["version"])),
             "mlflow_run_id": dg.MetadataValue.text(current_run.info.run_id),
