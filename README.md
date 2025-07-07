@@ -17,4 +17,3 @@ Other tips:
 - type `ml` run run the module (see the `[project.scripts]` section in `pyproject.toml`)
 
 All these checks are also run in GitHub Actions (CI pipelines) when a new PR is raised to merge into `development`
-
