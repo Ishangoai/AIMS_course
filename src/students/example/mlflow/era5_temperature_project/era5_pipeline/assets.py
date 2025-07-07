@@ -28,13 +28,12 @@ MAX_HYPEROPT_EVALS = 20  # Max evaluations for Hyperopt
 
 
 @dg.asset(
-    name="raw_era5_temperature_data",
     description="Fetches raw ERA5 2m temperature data from the CDS.",
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="1_ingestion"  # Updated group name
 )
-def fetch_era5_data(context: dg.AssetExecutionContext) -> str:
+def raw_netcdf_file(context: dg.AssetExecutionContext) -> str:
     """
     Fetches ERA5 temperature data and logs parameters to MLflow.
     Returns the path to the downloaded NetCDF file.
@@ -79,23 +78,22 @@ def fetch_era5_data(context: dg.AssetExecutionContext) -> str:
 
 
 @dg.asset(
-    name="processed_temperature_dataframe",
     description="Loads the raw NetCDF data into a pandas DataFrame and logs some metrics.",
-    deps=[fetch_era5_data],
+    deps=[raw_netcdf_file],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="2_processing"
 )
-def process_temperature_dataframe(
+def create_pandas_df(
     context: dg.AssetExecutionContext,
-    raw_era5_temperature_data: str) -> dg.MaterializeResult:
+    raw_netcdf_file: str) -> dg.MaterializeResult:
 
     mlflow_client = context.resources.mlflow_tracking
-    context.log.info(f"Processing file: {raw_era5_temperature_data}")
+    context.log.info(f"Processing file: {raw_netcdf_file}")
     try:
-        ds = xr.open_dataset(raw_era5_temperature_data)
+        ds = xr.open_dataset(raw_netcdf_file)
     except FileNotFoundError:
-        context.log.error(f"Input file {raw_era5_temperature_data} not found")
+        context.log.error(f"Input file {raw_netcdf_file} not found")
         raise
 
     # Convert to pandas DataFrame
@@ -132,18 +130,17 @@ def process_temperature_dataframe(
 
 
 @dg.asset(
-    name="cleaned_temperature_data_pandas",
     description="Cleans the temperature data. Converts Kelvin to Celsius.",
-    deps=[process_temperature_dataframe],
+    deps=[create_pandas_df],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="2_processing"
 )
-def clean_temperature_data_pandas(context: dg.AssetExecutionContext,
-                                  processed_temperature_dataframe: pd.DataFrame) -> dg.MaterializeResult:
+def clean_df(context: dg.AssetExecutionContext,
+                                  create_pandas_df: pd.DataFrame) -> dg.MaterializeResult:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting data cleaning.")
-    df = processed_temperature_dataframe.copy()
+    df = create_pandas_df.copy()
 
     if df.empty:
         context.log.warning("Input DataFrame is empty. Skipping cleaning.")
@@ -207,26 +204,25 @@ def clean_temperature_data_pandas(context: dg.AssetExecutionContext,
 
 
 @dg.asset(
-    name="tuned_hyperparameters_and_data_split",
     description="Tunes Ridge regression hyperparameters using Hyperopt and prepares data splits.",
-    deps=[clean_temperature_data_pandas],
+    deps=[clean_df],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="3_modeling",
 )
 def tune_ridge_hyperparameters(context: dg.AssetExecutionContext,  # noqa: C901
-                               cleaned_temperature_data_pandas: pd.DataFrame):
+                               clean_df: pd.DataFrame):
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting hyperparameter tuning for Ridge model.")
 
-    if len(cleaned_temperature_data_pandas) < 20:  # Increased threshold for meaningful splits
+    if len(clean_df) < 20:  # Increased threshold for meaningful splits
         msg = "Not enough data points for hyperparameter tuning, training, and testing. Need at least 20."
         context.log.error(msg)
         raise ValueError(msg)
 
     # Feature Engineering: Create a lagged temperature feature
     lag_period = 1
-    df_with_lag = cleaned_temperature_data_pandas.copy()
+    df_with_lag = clean_df.copy()
     feature_name = f"t2m_celsius_lag{lag_period}"
     df_with_lag[feature_name] = df_with_lag["t2m_celsius"].shift(lag_period)
     df_with_lag = df_with_lag.dropna().reset_index(drop=True)
@@ -360,23 +356,22 @@ def tune_ridge_hyperparameters(context: dg.AssetExecutionContext,  # noqa: C901
 
 
 @dg.asset(
-    name="trained_tuned_model_data",
     description="Trains a Ridge model using the best hyperparameters found by Hyperopt.",
-    deps=["tuned_hyperparameters_and_data_split"],
+    deps=["tune_ridge_hyperparameters"],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="3_modeling"
 )
-def train_tuned_model(context: dg.AssetExecutionContext, tuned_hyperparameters_and_data_split) -> dict:
+def train_tuned_model(context: dg.AssetExecutionContext, tune_ridge_hyperparameters) -> dict:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model training with tuned hyperparameters.")
 
-    best_params = tuned_hyperparameters_and_data_split["best_params"]
-    X_train_val = tuned_hyperparameters_and_data_split["X_train_val"]
-    y_train_val = tuned_hyperparameters_and_data_split["y_train_val"]
-    X_test = tuned_hyperparameters_and_data_split["X_test"]
-    y_test = tuned_hyperparameters_and_data_split["y_test"]
-    feature_names = tuned_hyperparameters_and_data_split["feature_names"]
+    best_params = tune_ridge_hyperparameters["best_params"]
+    X_train_val = tune_ridge_hyperparameters["X_train_val"]
+    y_train_val = tune_ridge_hyperparameters["y_train_val"]
+    X_test = tune_ridge_hyperparameters["X_test"]
+    y_test = tune_ridge_hyperparameters["y_test"]
+    feature_names = tune_ridge_hyperparameters["feature_names"]
 
     context.log.info(f"Training Ridge model with parameters: {best_params}")
     context.log.info(f"Training on {len(X_train_val)} samples.")
@@ -405,21 +400,20 @@ def train_tuned_model(context: dg.AssetExecutionContext, tuned_hyperparameters_a
 
 
 @dg.asset(
-    name="evaluated_temperature_model",
     description="Evaluates the tuned model and logs model and metrics to MLflow.",
-    deps=["trained_tuned_model_data"],
+    deps=["train_tuned_model"],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="3_modeling"
 )
-def evaluate_model(context: dg.AssetExecutionContext, trained_tuned_model_data: dict):
+def evaluate_model(context: dg.AssetExecutionContext, train_tuned_model: dict):
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model evaluation.")
 
-    model = trained_tuned_model_data["model"]
-    X_test = trained_tuned_model_data["X_test"]
-    y_test = trained_tuned_model_data["y_test"]
-    feature_names = trained_tuned_model_data.get("feature_names", ["feature"])  # Get feature names if provided
+    model = train_tuned_model["model"]
+    X_test = train_tuned_model["X_test"]
+    y_test = train_tuned_model["y_test"]
+    feature_names = train_tuned_model.get("feature_names", ["feature"])  # Get feature names if provided
 
     if len(X_test) == 0:
         context.log.warning("Test set is empty. Skipping evaluation and model logging.")
