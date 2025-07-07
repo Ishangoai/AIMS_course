@@ -7,10 +7,15 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split  # For robust splitting
 
 import dagster as dg
-
+import mlflow
+import mlflow.sklearn as ms
 
 # Hyperopt imports
 from hyperopt import fmin, tpe, hp, STATUS_OK, STATUS_FAIL, Trials
+
+
+# import mlflow # Ensure mlflow library is installed
+
 
 # Configuration for the ERA5 data request
 ERA5_REQUEST_PARAMS = {
@@ -25,6 +30,10 @@ ERA5_REQUEST_PARAMS = {
 }
 OUTPUT_FILENAME = "era5_temperature_data.nc"  # Output file name for the downloaded data
 MAX_HYPEROPT_EVALS = 20  # Max evaluations for Hyperopt
+
+# Define promotion criteria
+STAGING_MSE_THRESHOLD = 2
+STAGING_MAE_THRESHOLD = 2
 
 
 @dg.asset(
@@ -348,7 +357,7 @@ def tune_ridge_hyperparameters(context: dg.AssetExecutionContext,  # noqa: C901
 @dg.asset(
     name="trained_tuned_model_data",
     description="Trains a Ridge model using the best hyperparameters found by Hyperopt.",
-    deps=["tuned_hyperparameters_and_data_split"],
+    deps=[tune_ridge_hyperparameters],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="3_modeling"
@@ -390,22 +399,72 @@ def train_tuned_model(context: dg.AssetExecutionContext, tuned_hyperparameters_a
     }
 
 
+# @dg.asset(
+#     name="evaluated_temperature_model",
+#     description="Evaluates the tuned model and logs model and metrics to MLflow.",
+#     deps=[train_tuned_model],
+#     required_resource_keys={"mlflow_tracking"},
+#     compute_kind="python",
+#     group_name="3_modeling"
+# )
+# def evaluate_model(context: dg.AssetExecutionContext, trained_tuned_model_data: dict):
+#     mlflow_client = context.resources.mlflow_tracking
+#     context.log.info("Starting final model evaluation.")
+
+#     model = trained_tuned_model_data["model"]
+#     X_test = trained_tuned_model_data["X_test"]
+#     y_test = trained_tuned_model_data["y_test"]
+#     feature_names = trained_tuned_model_data.get("feature_names", ["feature"])  # Get feature names if provided
+
+#     if len(X_test) == 0:
+#         context.log.warning("Test set is empty. Skipping evaluation and model logging.")
+#         return {"warning": "Test set empty, evaluation skipped."}
+
+#     predictions = model.predict(X_test)
+#     mse = mean_squared_error(y_test, predictions)
+#     mae = mean_absolute_error(y_test, predictions)
+#     context.log.info(f"Final Model Evaluation Metrics on Test Set: MSE={mse:.4f}, MAE={mae:.4f}")
+
+#     eval_metrics = {"test_mse": mse, "test_mae": mae}  # Prefixed with test_ for clarity
+#     mlflow_client.log_metrics(eval_metrics)
+#     context.log.info(f"Logged final evaluation metrics to MLflow: {eval_metrics}")
+
+#     # Log the model to MLflow
+#     # For sklearn, it's good to provide an input example for signature inference
+#     input_example_df = pd.DataFrame(X_test[:5], columns=feature_names)
+#     model_info = mlflow_client.sklearn.log_model(
+#         sk_model=model,
+#         artifact_path="tuned_temperature_forecaster",  # This is how the model will be named in MLflow artifacts
+#         input_example=input_example_df,  # Provide an input example
+#         registered_model_name="tuned-temp-forecaster"  # Optional: register the model
+#     )
+#     context.log.info("Logged tuned model to MLflow Model Registry as 'tuned-temp-forecaster'.")
+#     # Return relevant model version info for promotion steps
+#     return {
+#         "eval_metrics": eval_metrics,
+#         "model_version_info": {
+#             "name": model_info.name,
+#             "version": model_info.version,
+#             "status": model_info.status,
+#             "model_uri": model_info.model_uri
+#         }
+#     }
+
 @dg.asset(
-    name="evaluated_temperature_model",
-    description="Evaluates the tuned model and logs model and metrics to MLflow.",
-    deps=["trained_tuned_model_data"],
+    name="evaluate_model",
+    description="Trains and evaluates a temperature forecasting model, logging to MLflow.",
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
-    group_name="3_modeling"
+    group_name="3_evaluation"
 )
-def evaluate_model(context: dg.AssetExecutionContext, trained_tuned_model_data: dict):
+def evaluate_model(context: dg.AssetExecutionContext, trained_tuned_model_data: dict) -> dict:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model evaluation.")
 
     model = trained_tuned_model_data["model"]
     X_test = trained_tuned_model_data["X_test"]
     y_test = trained_tuned_model_data["y_test"]
-    feature_names = trained_tuned_model_data.get("feature_names", ["feature"])  # Get feature names if provided
+    feature_names = trained_tuned_model_data.get("feature_names", []) # Default to empty list if not provided
 
     if len(X_test) == 0:
         context.log.warning("Test set is empty. Skipping evaluation and model logging.")
@@ -416,18 +475,182 @@ def evaluate_model(context: dg.AssetExecutionContext, trained_tuned_model_data: 
     mae = mean_absolute_error(y_test, predictions)
     context.log.info(f"Final Model Evaluation Metrics on Test Set: MSE={mse:.4f}, MAE={mae:.4f}")
 
-    eval_metrics = {"test_mse": mse, "test_mae": mae}  # Prefixed with test_ for clarity
+    eval_metrics = {"test_mse": mse, "test_mae": mae}
     mlflow_client.log_metrics(eval_metrics)
     context.log.info(f"Logged final evaluation metrics to MLflow: {eval_metrics}")
 
-    # Log the model to MLflow
-    # For sklearn, it's good to provide an input example for signature inference
-    input_example_df = pd.DataFrame(X_test[:5], columns=feature_names)
-    mlflow_client.sklearn.log_model(
-        sk_model=model,
-        artifact_path="tuned_temperature_forecaster",  # This is how the model will be named in MLflow artifacts
-        input_example=input_example_df,  # Provide an input example
-        registered_model_name="tuned-temp-forecaster"  # Optional: register the model
-    )
-    context.log.info("Logged tuned model to MLflow Model Registry as 'tuned-temp-forecaster'.")
-    return eval_metrics
+    registered_model_name = "tuned-temp-forecaster" # Define your registered model name
+
+    # Start an MLflow run to log artifacts and associate with the model registration
+    with mlflow.start_run() as current_run:
+        # Log the model and register it
+        log_model_info = ms.log_model(
+            sk_model=model,
+            artifact_path="tuned_temperature_forecaster",
+            input_example=pd.DataFrame(X_test[:1], columns=feature_names),
+            registered_model_name=registered_model_name
+        )
+        context.log.info(f"Model logged to MLflow Run ID: {current_run.info.run_id}")
+        context.log.info(f"Logged model artifact URI: {log_model_info.model_uri}")
+
+
+    # Retrieve the full ModelVersion object for the newly registered model
+    # It's crucial to wait a moment or query reliably to ensure the registration is complete.
+    # Searching by run_id is the most reliable way to link the logged model to its
+    # registered version.
+    registered_model_version = None
+    try:
+        # Give MLflow a tiny moment to process the registration, though usually not needed
+        # in synchronous operations if the tracking server is responsive.
+        # time.sleep(0.5) # Uncomment if you suspect timing issues
+
+        # Search for model versions associated with this run ID and name
+        # Using filter_string for precise search
+        model_versions = mlflow_client.search_model_versions(
+            f"run_id = '{current_run.info.run_id}' AND name = '{registered_model_name}'"
+        )
+        
+        # There should ideally be only one such version.
+        if model_versions:
+            registered_model_version = model_versions[0]
+            context.log.info(f"Successfully retrieved registered model version info.")
+            context.log.info(f"Registered Model Name: {registered_model_version.name}")
+            context.log.info(f"Registered Model Version: {registered_model_version.version}")
+            context.log.info(f"Registered Model Status: {registered_model_version.status}")
+            context.log.info(f"Registered Model URI: models:/{registered_model_version.name}/{registered_model_version.version}")
+
+        else:
+            context.log.error(f"Could not find registered model version for run ID {current_run.info.run_id} and name '{registered_model_name}'.")
+            raise Exception("Failed to retrieve registered model version details after logging.")
+
+    except Exception as e:
+        context.log.error(f"Error retrieving registered model info: {e}")
+        raise # Re-raise to fail the Dagster asset if model info cannot be obtained
+
+    # Return relevant model version info for promotion steps
+    return {
+        "eval_metrics": eval_metrics,
+        "model_version_info": {
+            "name": registered_model_version.name,
+            "version": registered_model_version.version,
+            "status": registered_model_version.status,
+            "model_uri": f"models:/{registered_model_version.name}/{registered_model_version.version}"
+        }
+    }
+
+
+@dg.asset(
+    name="promote_model_to_staging",
+    description="Promotes the newly trained model to Staging if it meets performance criteria.",
+    deps=[evaluate_model],
+    required_resource_keys={"mlflow_tracking"},
+    compute_kind="python",
+    group_name="4_promotion"
+)
+def promote_model_to_staging(context: dg.AssetExecutionContext, evaluated_temperature_model: dict) -> dict:
+    mlflow_client = context.resources.mlflow_tracking
+    context.log.info("Starting model promotion to Staging.")
+
+    eval_metrics = evaluated_temperature_model.get("eval_metrics", {})
+    model_version_info = evaluated_temperature_model.get("model_version_info")
+
+    if not model_version_info:
+        context.log.warning("No model version info found from evaluation. Skipping staging promotion.")
+        return {"status": "skipped", "reason": "no_model_version_info"}
+
+    current_mse = eval_metrics.get("test_mse", float('inf'))
+    current_mae = eval_metrics.get("test_mae", float('inf'))
+
+    context.log.info(f"Model evaluated with MSE: {current_mse:.4f}, MAE: {current_mae:.4f}")
+    context.log.info(f"Staging promotion thresholds: MSE < {STAGING_MSE_THRESHOLD}, MAE < {STAGING_MAE_THRESHOLD}")
+
+    if current_mse <= STAGING_MSE_THRESHOLD and current_mae <= STAGING_MAE_THRESHOLD:
+        try:
+            model_name = model_version_info["name"]
+            model_version = model_version_info["version"]
+
+            context.log.info(f"Model '{model_name}' (version {model_version}) meets criteria. Promoting to Staging")
+            mlflow_client.transition_model_version_stage(
+                name=model_name,
+                version=model_version,
+                stage="Staging"
+            )
+            context.log.info(f"Model '{model_name}' (version {model_version}) promoted to Staging.")
+            return {
+                "status": "promoted_to_staging",
+                "model_name": model_name,
+                "model_version": model_version,
+                "metrics": eval_metrics
+            }
+        except Exception as e:
+            context.log.error(f"Error promoting model to Staging: {e}")
+            return {"status": "failed_promotion_to_staging", "error": str(e)}
+    else:
+        context.log.info("Model does not meet performance criteria for Staging promotion. Skipping.")
+        return {
+            "status": "not_promoted_to_staging",
+            "reason": "criteria_not_met",
+            "metrics": eval_metrics
+        }
+
+
+@dg.asset(
+    name="promote_model_to_production",
+    description="Promotes the best model from Staging to Production, usually with manual approval.",
+    deps=[promote_model_to_staging],
+    required_resource_keys={"mlflow_tracking"},
+    compute_kind="python",
+    group_name="4_promotion"
+)
+def promote_model_to_production(context: dg.AssetExecutionContext, promote_model_to_staging: dict) -> dict:
+    mlflow_client = context.resources.mlflow_tracking
+    context.log.info("Starting model promotion to Production.")
+
+    promoted_model_info = promote_model_to_staging
+    if promoted_model_info.get("status") != "promoted_to_staging":
+        context.log.info("No model was promoted to Staging in the previous step. Skipping production promotion.")
+        return {"status": "skipped", "reason": "no_model_in_staging_from_previous_step"}
+
+    model_name = promoted_model_info.get("model_name", "tuned-temp-forecaster")
+
+    # In a real scenario, this would involve a manual review/approval process.
+    # For this exercise, we'll simulate manual approval.
+    manual_approval_granted = True
+
+    if manual_approval_granted:
+        try:
+            # Find the latest model version in Staging for the given model_name
+            # This is safer than relying on the `promoted_model_info`'s version directly
+            # as a manual approval might be for a *different* version already in staging.
+            latest_staging_version = None
+            for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
+                if mv.current_stage == "Staging":
+                    if latest_staging_version is None or mv.version > latest_staging_version.version:
+                        latest_staging_version = mv
+
+            if not latest_staging_version:
+                context.log.warning(f"No model found in Staging stage for '{model_name}'. Skipping prod promotion.")
+                return {"status": "skipped", "reason": "no_staging_model_found"}
+
+            prod_model_name = latest_staging_version.name
+            prod_model_version = latest_staging_version.version
+
+            context.log.info(f"Manual approval granted for model '{prod_model_name}' (version {prod_model_version})")
+            mlflow_client.transition_model_version_stage(
+                name=prod_model_name,
+                version=prod_model_version,
+                stage="Production"
+            )
+            context.log.info(f"Model '{prod_model_name}' (version {prod_model_version}) promoted to Production.")
+            return {
+                "status": "promoted_to_production",
+                "model_name": prod_model_name,
+                "model_version": prod_model_version,
+                "previous_metrics": promoted_model_info.get("metrics")
+            }
+        except Exception as e:
+            context.log.error(f"Error promoting model to Production: {e}")
+            return {"status": "failed_promotion_to_production", "error": str(e)}
+    else:
+        context.log.info("Manual approval not granted. Skipping production promotion")
+        return {"status": "not_promoted_to_production", "reason": "manual_approval_denied"}
