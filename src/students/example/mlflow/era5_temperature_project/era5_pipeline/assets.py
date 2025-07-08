@@ -8,10 +8,11 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split  # For robust splitting
 
 import dagster as dg
-
+import mlflow
+import mlflow.sklearn as ms
 
 # Hyperopt imports
-from hyperopt import fmin, tpe, hp, STATUS_OK, STATUS_FAIL, Trials
+import hyperopt
 
 # Configuration for the ERA5 data request
 ERA5_REQUEST_PARAMS = {
@@ -27,6 +28,10 @@ ERA5_REQUEST_PARAMS = {
 
 DATA_DIR = Path.cwd()
 MAX_HYPEROPT_EVALS = 20  # Max evaluations for Hyperopt
+
+# Define promotion criteria
+STAGING_MSE_THRESHOLD = 2
+STAGING_MAE_THRESHOLD = 2
 
 
 @dg.asset(
@@ -257,7 +262,7 @@ def tune_ridge_hyperparameters(context: dg.AssetExecutionContext,  # noqa: C901
 
     # Define Hyperopt search space for Ridge alpha
     search_space = {
-        'alpha': hp.loguniform('alpha', -5, 2)  # Alpha between ~0.0067 and ~7.39
+        'alpha': hyperopt.hp.loguniform('alpha', -5, 2)  # Alpha between ~0.0067 and ~7.39
     }
 
     # MLflow experiment context for nested runs
@@ -272,7 +277,7 @@ def tune_ridge_hyperparameters(context: dg.AssetExecutionContext,  # noqa: C901
     except Exception:  # Handle cases where get_experiment_by_name might raise error if not found
         experiment_id = mlflow_client.create_experiment("era5_temperature_analysis")
 
-    trials = Trials()
+    trials = hyperopt.Trials()
 
     # Objective function for Hyperopt
     def objective(params):
@@ -290,7 +295,7 @@ def tune_ridge_hyperparameters(context: dg.AssetExecutionContext,  # noqa: C901
             if len(X_train_h) == 0 or len(X_val_h) == 0:
                 context.log.warning(f"Trial {trial_num}: Skipped due to empty train/val split for params: {params}")
                 # This case should be rare given prior checks but good to have
-                return {'loss': float('inf'), 'status': STATUS_OK, 'params': params}  # Penalize if split fails
+                return {'loss': float('inf'), 'status': hyperopt.STATUS_OK, 'params': params}  # Penalize if split fails
             run_name = f"hyperopt_trial_{trial_num}_alpha_{alpha:.4f}"
 
             with mlflow_client.start_run(experiment_id=experiment_id,
@@ -303,16 +308,16 @@ def tune_ridge_hyperparameters(context: dg.AssetExecutionContext,  # noqa: C901
                 rmse = mean_squared_error(y_val_h, preds)
                 mlflow_client.log_metric("validation_mse", rmse)
                 context.log.info(f"Trial {trial_num} successful: params={params}, mse={rmse:.4f}")
-            return {'loss': rmse, 'status': STATUS_OK, 'params': params}
+            return {'loss': rmse, 'status': hyperopt.STATUS_OK, 'params': params}
         except Exception as e:
             context.log.error(f"Trial {trial_num}: Exception in objective function for params {params}: {e}",
                               exc_info=True)
-            return {'loss': float('inf'), 'status': STATUS_FAIL, 'params': params, 'error_message': str(e)}
+            return {'loss': float('inf'), 'status': hyperopt.STATUS_FAIL, 'params': params, 'error_message': str(e)}
 
-    best_hyperparams = fmin(
+    best_hyperparams = hyperopt.fmin(
         fn=objective,
         space=search_space,
-        algo=tpe.suggest,
+        algo=hyperopt.tpe.suggest,
         max_evals=MAX_HYPEROPT_EVALS,  # Number of iterations
         trials=trials
     )
@@ -409,38 +414,288 @@ def train_tuned_model(context: dg.AssetExecutionContext, tune_ridge_hyperparamet
     deps=["train_tuned_model"],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
-    group_name="3_modeling"
+    group_name="3_evaluation"
 )
-def evaluate_model(context: dg.AssetExecutionContext, train_tuned_model: dict):
+def evaluate_model(context: dg.AssetExecutionContext, train_tuned_model: dict) -> dg.MaterializeResult:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model evaluation.")
 
     model = train_tuned_model["model"]
     X_test = train_tuned_model["X_test"]
     y_test = train_tuned_model["y_test"]
-    feature_names = train_tuned_model.get("feature_names", ["feature"])  # Get feature names if provided
+    feature_names = train_tuned_model.get("feature_names", ["feature"])
 
     if len(X_test) == 0:
         context.log.warning("Test set is empty. Skipping evaluation and model logging.")
-        return {"warning": "Test set empty, evaluation skipped."}
+        return dg.MaterializeResult(
+            value={
+                "status": "skipped_evaluation",
+                "reason": "Test set empty, evaluation skipped.",
+                "eval_metrics": {"test_mse": float('nan'), "test_mae": float('nan')},
+                "model_version_info": None
+            },
+            metadata={
+                "status": "skipped_evaluation",
+                "reason": dg.MetadataValue.text("Test set was empty, no evaluation performed."),
+                "test_mse": dg.MetadataValue.float(float('nan')),
+                "test_mae": dg.MetadataValue.float(float('nan'))
+            }
+        )
 
     predictions = model.predict(X_test)
     mse = mean_squared_error(y_test, predictions)
     mae = mean_absolute_error(y_test, predictions)
     context.log.info(f"Final Model Evaluation Metrics on Test Set: MSE={mse:.4f}, MAE={mae:.4f}")
 
-    eval_metrics = {"test_mse": mse, "test_mae": mae}  # Prefixed with test_ for clarity
+    eval_metrics = {"test_mse": mse, "test_mae": mae}
     mlflow_client.log_metrics(eval_metrics)
     context.log.info(f"Logged final evaluation metrics to MLflow: {eval_metrics}")
 
-    # Log the model to MLflow
-    # For sklearn, it's good to provide an input example for signature inference
-    input_example_df = pd.DataFrame(X_test[:5], columns=feature_names)
-    mlflow_client.sklearn.log_model(
-        sk_model=model,
-        artifact_path="tuned_temperature_forecaster",  # This is how the model will be named in MLflow artifacts
-        input_example=input_example_df,  # Provide an input example
-        registered_model_name="tuned-temp-forecaster"  # Optional: register the model
+    registered_model_name = "tuned-temp-forecaster"
+    model_version_info = None
+
+    with mlflow.start_run(nested=True) as current_run:
+        context.log.info(f"Starting nested MLflow run for model logging: {current_run.info.run_id}")
+
+        log_model_info = ms.log_model(
+            sk_model=model,
+            artifact_path="tuned_temperature_forecaster",
+            input_example=pd.DataFrame(X_test[:min(5, len(X_test))], columns=feature_names),
+            registered_model_name=registered_model_name
+        )
+        context.log.info(f"Model logged to MLflow Run ID: {current_run.info.run_id}")
+        context.log.info(f"Logged model artifact URI: {log_model_info.model_uri}")
+
+        # use search_model_versions with a proper filter string
+        model_versions = mlflow_client.search_model_versions(
+            filter_string=f"name='{registered_model_name}'"
+        )
+
+        # Find the model version registered in this run
+        matching_versions = [
+            mv for mv in model_versions if mv.run_id == current_run.info.run_id
+        ]
+
+        if matching_versions:
+            registered_model_version = matching_versions[0]
+            model_version_info = {
+                "name": registered_model_version.name,
+                "version": registered_model_version.version,
+                "status": registered_model_version.status,
+                "stage": registered_model_version.current_stage,
+                "model_uri": f"models:/{registered_model_version.name}/{registered_model_version.version}"
+            }
+            context.log.info("Successfully retrieved registered model version info from registry.")
+        else:
+            context.log.error(
+                f"Could not find registered model version for run ID {current_run.info.run_id} "
+                f"and name '{registered_model_name}'."
+            )
+            raise Exception("Failed to retrieve registered model version details after logging.")
+
+    output_value_for_downstream = {
+        "eval_metrics": eval_metrics,
+        "model_version_info": model_version_info,
+        "status": "evaluated_successfully"
+    }
+
+    return dg.MaterializeResult(
+        value=output_value_for_downstream,
+        metadata={
+            "test_mse": dg.MetadataValue.float(float(mse)),
+            "test_mae": dg.MetadataValue.float(float(mae)),
+            "model_name": dg.MetadataValue.text(model_version_info["name"]),
+            "model_version": dg.MetadataValue.text(str(model_version_info["version"])),
+            "mlflow_run_id": dg.MetadataValue.text(current_run.info.run_id),
+            "mlflow_model_uri": dg.MetadataValue.text(model_version_info["model_uri"]),
+            "mlflow_stage": dg.MetadataValue.text(model_version_info["stage"])
+        }
     )
-    context.log.info("Logged tuned model to MLflow Model Registry as 'tuned-temp-forecaster'.")
-    return eval_metrics
+
+
+# Promoting a model to Staging means it passed your quality checks and is ready
+# for more thorough testing or limited release
+@dg.asset(
+    description="Promotes the newly trained model to Staging if it meets performance criteria.",
+    deps=["evaluate_model"],  # This show that the asset depends on the output of the evaluation step
+    required_resource_keys={"mlflow_tracking", "mlflow_client"},
+    compute_kind="python",
+    group_name="4_promotion"
+)
+def promote_model_to_staging(context: dg.AssetExecutionContext, evaluate_model: dict) -> dg.MaterializeResult:
+    # Get the MLflow client from the context to interact with the model registry
+    mlflow_client = context.resources.mlflow_client
+    context.log.info("Starting model promotion to Staging.")
+
+    # If the evaluation step was skipped, we also skip promotion
+    if evaluate_model.get("status") == "skipped_evaluation":
+        context.log.info("Evaluation was skipped in the previous step. Skipping staging promotion.")
+        return dg.MaterializeResult(
+            value={"status": "skipped_promotion", "reason": "evaluation_skipped_upstream"},
+            metadata={"status": "skipped_promotion_due_to_upstream_skip"}
+        )
+    # Extract metrics and model version info from evaluation result
+    eval_metrics = evaluate_model.get("eval_metrics", {})
+    model_version_info = evaluate_model.get("model_version_info")
+
+    # If no model version info was returned, skip promotion.
+    # model_version_info might be None due to an upstream failure
+    if not model_version_info:
+        context.log.warning("No valid model version info found from evaluation. Skipping staging promotion.")
+        return dg.MaterializeResult(
+            value={"status": "skipped_promotion", "reason": "no_model_version_info_from_evaluation"},
+            metadata={"status": "skipped_promotion_no_model_info"}
+        )
+    # Get performance metrics (default to infinity if missing)
+    current_mse = eval_metrics.get("test_mse", float('inf'))
+    current_mae = eval_metrics.get("test_mae", float('inf'))
+
+    # Log the evaluation metrics and threshold criteria
+    context.log.info(f"Model evaluated with MSE: {current_mse:.4f}, MAE: {current_mae:.4f}")
+    context.log.info(f"Staging promotion thresholds: MSE < {STAGING_MSE_THRESHOLD}, MAE < {STAGING_MAE_THRESHOLD}")
+
+    # Check if model meets promotion criteria
+    if current_mse <= STAGING_MSE_THRESHOLD and current_mae <= STAGING_MAE_THRESHOLD:
+        try:
+            # Extract the model name and version for promotion
+            model_name = model_version_info["name"]
+            model_version = model_version_info["version"]
+
+            # Promote the model to the 'Staging' stage
+            context.log.info(f"Model '{model_name}' (version {model_version}) meets criteria. Promoting to Staging")
+            mlflow_client.transition_model_version_stage(
+                name=model_name,
+                version=model_version,
+                stage="Staging"
+            )
+
+            # Return successful result with status and relevant metadata
+            context.log.info(f"Model '{model_name}' (version {model_version}) promoted to Staging.")
+            return dg.MaterializeResult(
+                value={
+                    "status": "promoted_to_staging",
+                    "model_name": model_name,
+                    "model_version": model_version,
+                    "metrics": eval_metrics
+                },
+                metadata={
+                    "status": "promoted_to_staging",
+                    "model_name": dg.MetadataValue.text(model_name),
+                    "model_version": dg.MetadataValue.text(str(model_version)),
+                    "mse_at_promotion": dg.MetadataValue.float(current_mse),
+                    "mae_at_promotion": dg.MetadataValue.float(current_mae)
+                }
+            )
+        except Exception as e:
+            # Handle any exception during promotion and log the error
+            context.log.error(f"Error promoting model to Staging: {e}")
+            return dg.MaterializeResult(
+                value={"status": "failed_promotion_to_staging", "error": str(e)},
+                metadata={"status": "failed_promotion_to_staging", "error_message": dg.MetadataValue.text(str(e))}
+            )
+    # If model doesn't meet criteria, log and return "not promoted"
+    else:
+        context.log.info("Model does not meet performance criteria for Staging promotion. Skipping.")
+        return dg.MaterializeResult(
+            value={
+                "status": "not_promoted_to_staging",
+                "reason": "criteria_not_met",
+                "metrics": eval_metrics
+            },
+            metadata={
+                "status": "not_promoted_to_staging",
+                "mse": dg.MetadataValue.float(current_mse),
+                "mae": dg.MetadataValue.float(current_mae)
+            }
+        )
+
+
+@dg.asset(
+    description="Promotes the best model from Staging to Production, usually with manual approval.",
+    deps=["promote_model_to_staging"],
+    required_resource_keys={"mlflow_tracking", "mlflow_client"},
+    compute_kind="python",
+    group_name="4_promotion"
+)
+def promote_model_to_production(context: dg.AssetExecutionContext,
+                                promote_model_to_staging: dict) -> dg.MaterializeResult:
+    # Get the MLflow client to interact with the model registry
+    mlflow_client = context.resources.mlflow_client
+    context.log.info("Starting model promotion to Production.")
+
+    # Step 1: Check if a model was promoted to Staging previously
+    if promote_model_to_staging.get("status") != "promoted_to_staging":
+        # If no model was promoted to staging in the last step, skip production promotion
+        context.log.info("No model was promoted to Staging in the previous step. Skipping production promotion.")
+        return dg.MaterializeResult(
+            value={"status": "skipped_production_promotion", "reason": "no_model_in_staging_from_previous_step"},
+            metadata={"status": "skipped_production_promotion"}
+        )
+    # Get the model name from the previous promotion step
+    model_name = promote_model_to_staging.get("model_name", "tuned-temp-forecaster")
+
+    # Simulate manual approval
+    # In a real scenario, this would involve a manual review/approval process.
+    manual_approval_granted = True
+
+    # Proceed with promotion only if manual approval is granted
+    if manual_approval_granted:
+        try:
+            # Find the latest model version in Staging for the given model_name
+            latest_staging_version = None
+            for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
+                if mv.current_stage == "Staging":
+                    # Ensure we promote the highest version currently in Staging
+                    if latest_staging_version is None or mv.version > latest_staging_version.version:
+                        latest_staging_version = mv
+
+            # If no model is found in staging, log a warning and skip promotion
+            if not latest_staging_version:
+                context.log.warning(f"No model found in Staging stage for '{model_name}'. Skipping prod promotion.")
+                return dg.MaterializeResult(
+                    value={"status": "skipped_production_promotion", "reason": "no_staging_model_found_for_prod"},
+                    metadata={"status": "skipped_production_promotion_no_staging_model"}
+                )
+
+            # Extract the model name and version to promote
+            prod_model_name = latest_staging_version.name
+            prod_model_version = latest_staging_version.version
+
+            # Log and perform the promotion to Production stage
+            context.log.info(f"Manual approval granted for model '{prod_model_name}' (version {prod_model_version})")
+            mlflow_client.transition_model_version_stage(
+                name=prod_model_name,
+                version=prod_model_version,
+                stage="Production"
+            )
+
+            # Return success with metadata about the promoted model
+            context.log.info(f"Model '{prod_model_name}' (version {prod_model_version}) promoted to Production.")
+            return dg.MaterializeResult(
+                value={
+                    "status": "promoted_to_production",
+                    "model_name": prod_model_name,
+                    "model_version": prod_model_version,
+                    "previous_metrics": promote_model_to_staging.get("metrics")
+                },
+                metadata={
+                    "status": "promoted_to_production",
+                    "model_name": dg.MetadataValue.text(prod_model_name),
+                    "model_version": dg.MetadataValue.text(str(prod_model_version))
+                }
+            )
+        except Exception as e:
+            # Catch and log any error that occurs during the promotion process
+            context.log.error(f"Error promoting model to Production: {e}")
+            return dg.MaterializeResult(
+                value={"status": "failed_production_promotion", "error": str(e)},
+                metadata={"status": "failed_production_promotion", "error_message": dg.MetadataValue.text(str(e))}
+            )
+
+    # If manual approval was denied, skip promotion and return reason
+    else:
+        context.log.info("Manual approval not granted. Skipping production promotion")
+        return dg.MaterializeResult(
+            value={"status": "not_promoted_to_production", "reason": "manual_approval_denied"},
+            metadata={"status": "not_promoted_to_production"}
+        )

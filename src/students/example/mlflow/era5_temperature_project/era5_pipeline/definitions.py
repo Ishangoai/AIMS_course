@@ -1,6 +1,6 @@
 import dagster as dg
 from . import assets
-from .resources import mlflow_resource
+from .resources import mlflow_resource, mlflow_client
 
 my_assets = dg.load_assets_from_modules([assets])
 
@@ -32,6 +32,7 @@ defs = dg.Definitions(
     assets=[*my_assets],
     resources={
         "mlflow_tracking": mlflow_resource,  # Ensure this points to your configured MLflow resource
+        "mlflow_client": mlflow_client,
     },
     jobs=[era5_full_pipeline_job],
     schedules=[era5_daily_schedule]
