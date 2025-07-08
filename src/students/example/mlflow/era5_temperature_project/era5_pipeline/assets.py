@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import cdsapi
 import xarray as xr
 import pandas as pd
@@ -28,7 +29,8 @@ ERA5_REQUEST_PARAMS = {
     'area': [50, -5, 45, 5],  # North, West, South, East (example: a small region in Europe)
     'format': 'netcdf',
 }
-OUTPUT_FILENAME = "era5_temperature_data.nc"  # Output file name for the downloaded data
+
+DATA_DIR = Path.cwd()
 MAX_HYPEROPT_EVALS = 20  # Max evaluations for Hyperopt
 
 # Define promotion criteria
@@ -42,11 +44,12 @@ STAGING_MAE_THRESHOLD = 2
     compute_kind="python",
     group_name="1_ingestion"  # Updated group name
 )
-def raw_netcdf_file(context: dg.AssetExecutionContext) -> str:
+def raw_netcdf_dataset(context: dg.AssetExecutionContext) -> dg.MaterializeResult:
     """
     Fetches ERA5 temperature data and logs parameters to MLflow.
     Returns the path to the downloaded NetCDF file.
     """
+    OUTPUT_FILENAME = DATA_DIR / "era5_temperature_data.nc"
     mlflow_client = context.resources.mlflow_tracking  # Use mlflow_client as the variable name for clarity
 
     # Log parameters to MLflow
@@ -78,35 +81,47 @@ def raw_netcdf_file(context: dg.AssetExecutionContext) -> str:
 
         # Log an artifact (the downloaded file) to MLflow
         mlflow_client.log_artifact(OUTPUT_FILENAME, artifact_path="raw_data")
-        context.log.info(f"Logged {OUTPUT_FILENAME} as an artifact to MLflow.")
+        size = OUTPUT_FILENAME.stat().st_size
+        context.log.info(f"Logged {OUTPUT_FILENAME} as artifact to MLflow. Size: {size} bytes")
 
-        return OUTPUT_FILENAME
+        ds = xr.open_dataset(OUTPUT_FILENAME)
+
+        os.remove(OUTPUT_FILENAME)  # Remove the file after logading
+
     except Exception as e:
         context.log.error(f"Error fetching ERA5 data: {e}")
         raise
 
+    return dg.MaterializeResult(
+        value=ds,
+        metadata={
+            "source": dg.MetadataValue.text(str(OUTPUT_FILENAME)),
+            "size_bytes": dg.MetadataValue.int(size),
+            "preview": dg.MetadataValue.md(ds.to_dataframe().head().to_markdown() or ""),
+            "parameters": dg.MetadataValue.json(flat_params),
+            "description": dg.MetadataValue.text(
+                "Raw ERA5 2m temperature data for January 2023, fetched from the CDS."
+            )
+        }
+    )
+
 
 @dg.asset(
     description="Loads the raw NetCDF data into a pandas DataFrame and logs some metrics.",
-    deps=[raw_netcdf_file],
+    deps=[raw_netcdf_dataset],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="2_processing"
 )
 def create_pandas_df(
     context: dg.AssetExecutionContext,
-    raw_netcdf_file: str) -> dg.MaterializeResult:
+    raw_netcdf_dataset: xr.Dataset) -> dg.MaterializeResult:
 
     mlflow_client = context.resources.mlflow_tracking
-    context.log.info(f"Processing file: {raw_netcdf_file}")
-    try:
-        ds = xr.open_dataset(raw_netcdf_file)
-    except FileNotFoundError:
-        context.log.error(f"Input file {raw_netcdf_file} not found")
-        raise
+    context.log.info(f"Processing file: {raw_netcdf_dataset}")
 
     # Convert to pandas DataFrame
-    df: pd.DataFrame = ds['t2m'].to_dataframe().reset_index()  # t2m is 2m temperature
+    df: pd.DataFrame = raw_netcdf_dataset['t2m'].to_dataframe().reset_index()  # t2m is 2m temperature
     context.log.info(df)
     df = pd.DataFrame(df[['valid_time', 'latitude', 'longitude', 't2m']])  # Select and order columns
     df = df.rename(columns={'valid_time': 'time'})
@@ -183,22 +198,12 @@ def clean_df(context: dg.AssetExecutionContext,
 
     # Log a sample of the cleaned data to MLflow as a CSV artifact (optional)
     if not df.empty:
-        sample_csv_path = "cleaned_sample.csv"
+        sample_csv_path = DATA_DIR / "cleaned_sample.csv"
         df.head().to_csv(sample_csv_path, index=False)
         mlflow_client.log_artifact(sample_csv_path, artifact_path="processed_data_samples")
+        os.remove(sample_csv_path)  # Clean up the sample file after logging
         try:
-            # Option 1: If you want to create the dataset from the in-memory pandas DataFrame sample
-            # cleaned_sample_dataset = from_pandas(
-            #     df=sample_df_for_artifact,
-            #     source=f"file://{os.path.abspath(sample_csv_path)}", # Original source file
-            #     name="cleaned_temperature_sample"
-            # )
-            # mlflow.log_input(dataset=cleaned_sample_dataset, context="cleaned_data_sample")
-
-            # Option 2: Create the dataset from the CSV file you just wrote (simpler if you just want to mark the file)
-            dataset_source_uri = f"file://{os.path.abspath(sample_csv_path)}"
-            cleaned_csv_as_input = mlflow_client.data.from_files(path=dataset_source_uri,
-                                                                 name="cleaned_temperature_sample_csv")
+            cleaned_csv_as_input = mlflow_client.data.from_pandas(df.head(), name="cleaned_temperature_sample_csv")
             mlflow_client.log_input(dataset=cleaned_csv_as_input, context="cleaned_data_sample")
         except Exception as e:
             context.log.warning(f"Could not log {sample_csv_path} as an MLflow Dataset: {e}")
