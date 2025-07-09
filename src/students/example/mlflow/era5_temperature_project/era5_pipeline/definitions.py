@@ -1,6 +1,6 @@
 import dagster as dg
 from . import assets
-from .resources import mlflow_resource, mlflow_client
+from .resources import mlflow_resource, mlflow_client, CDSAPI
 
 my_assets = dg.load_assets_from_modules([assets])
 
@@ -32,8 +32,9 @@ defs = dg.Definitions(
     assets=[*my_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
-        "mlflow_tracking": mlflow_resource,  # Ensure this points to your configured MLflow resource
+        "mlflow_tracking": mlflow_resource,
         "mlflow_client": mlflow_client,
+        "cds_api": CDSAPI(api_key=dg.EnvVar("CDS_API_KEY")),
     },
     jobs=[era5_full_pipeline_job],
     schedules=[era5_daily_schedule]

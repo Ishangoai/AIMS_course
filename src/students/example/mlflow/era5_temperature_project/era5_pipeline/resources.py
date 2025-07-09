@@ -1,7 +1,8 @@
 from dagster_mlflow import mlflow_tracking
 import os
 from mlflow.tracking import MlflowClient
-from dagster import resource
+from cdsapi import Client
+import dagster as dg
 
 # Configuration for Local SQLite and Local Artifacts
 # Using DAGSTER_HOME if set, otherwise, defaults to the current directory
@@ -25,6 +26,15 @@ mlflow_resource = mlflow_tracking.configured(
 
 
 # Raw MlflowClient for advanced API access (transition_model_version_stage,....)
-@resource
+@dg.resource
 def mlflow_client(_):
     return MlflowClient(tracking_uri=f"sqlite:///{SQLITE_DB_PATH}")
+
+
+class CDSAPI(dg.ConfigurableResource):
+    host_url: str = "https://cds.climate.copernicus.eu/api"
+    api_key: str = ""
+
+    @property
+    def client(self):
+        return Client(url=self.host_url, key=self.api_key)
