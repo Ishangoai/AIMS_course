@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-import cdsapi
 import xarray as xr
 import pandas as pd
 from sklearn.linear_model import Ridge  # Changed from LinearRegression for tuning
@@ -67,7 +66,7 @@ def raw_netcdf_dataset(
             "CDSAPI_URL and/or CDSAPI_KEY environment variables are not set. "
             "Ensure your CDS API credentials are configured, e.g., in a .cdsapirc file or environment variables."
         )
-    c = cdsapi.Client()  # Assumes .cdsapirc is configured or env vars are set
+    c = context.resources.cds_api.client  # Assumes env var CDS_API_KEY is set in the environment
     try:
         context.log.info(f"Requesting data with parameters: {ERA5_REQUEST_PARAMS}")
         c.retrieve(

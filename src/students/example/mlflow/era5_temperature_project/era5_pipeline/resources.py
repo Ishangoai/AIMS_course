@@ -1,6 +1,7 @@
 from dagster_mlflow import mlflow_tracking
 import os
 from mlflow.tracking import MlflowClient
+from cdsapi import Client
 import dagster as dg
 
 # Configuration for Local SQLite and Local Artifacts
@@ -32,11 +33,8 @@ def mlflow_client(_):
 
 class CDSAPI(dg.ConfigurableResource):
     host_url: str = "https://cds.climate.copernicus.eu/api"
+    api_key: str = ""
 
-
-@dg.resource(
-   config_schema=CDSAPI.to_config_schema(),
-   description=CDSAPI.__doc__,
-)
-def cds_api(context: dg.InitResourceContext):
-    return UnifiedSparkSessionResource.from_resource_context(context)
+    @property
+    def client(self):
+        return Client(url=self.host_url, key=self.api_key)
