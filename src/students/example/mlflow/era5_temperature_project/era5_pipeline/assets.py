@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.linear_model import Ridge  # Changed from LinearRegression for tuning
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split  # For robust splitting
-from .resources import Era5RequestConfig
+from .resources import Era5RequestConfig, TuningConfig, PromotionConfig
 
 import dagster as dg
 import mlflow
@@ -16,12 +16,6 @@ import hyperopt
 
 
 DATA_DIR = Path.cwd()
-MAX_HYPEROPT_EVALS = 20  # Max evaluations for Hyperopt
-
-# Define promotion criteria
-STAGING_MSE_THRESHOLD = 2
-STAGING_MAE_THRESHOLD = 2
-
 
 @dg.asset(
     description="Fetches raw ERA5 2m temperature data from the CDS.",
@@ -207,6 +201,7 @@ def clean_df(context: dg.AssetExecutionContext,
 )
 def tune_ridge_hyperparameters(  # noqa: C901
     context: dg.AssetExecutionContext,
+    config: TuningConfig,
     clean_df: pd.DataFrame
 ) -> dict:
     mlflow_client = context.resources.mlflow_tracking
@@ -305,7 +300,7 @@ def tune_ridge_hyperparameters(  # noqa: C901
         fn=objective,
         space=search_space,
         algo=hyperopt.tpe.suggest,
-        max_evals=MAX_HYPEROPT_EVALS,  # Number of iterations
+        max_evals=config.max_hyperopt_evals,  # Number of iterations
         trials=trials
     )
     context.log.info(f"fmin completed. Returned best_hyperparams: {best_hyperparams}")
@@ -514,6 +509,7 @@ def evaluate_model(
 )
 def promote_model_to_staging(
     context: dg.AssetExecutionContext,
+    config: PromotionConfig,
     evaluate_model: dict
 ) -> dg.MaterializeResult:
     # Get the MLflow client from the context to interact with the model registry
@@ -543,6 +539,8 @@ def promote_model_to_staging(
     current_mse = eval_metrics.get("test_mse", float('inf'))
     current_mae = eval_metrics.get("test_mae", float('inf'))
 
+    STAGING_MSE_THRESHOLD = config.staging_mse_threshold
+    STAGING_MAE_THRESHOLD = config.staging_mae_threshold
     # Log the evaluation metrics and threshold criteria
     context.log.info(f"Model evaluated with MSE: {current_mse:.4f}, MAE: {current_mae:.4f}")
     context.log.info(f"Staging promotion thresholds: MSE < {STAGING_MSE_THRESHOLD}, MAE < {STAGING_MAE_THRESHOLD}")

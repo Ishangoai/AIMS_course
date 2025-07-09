@@ -75,3 +75,23 @@ class Era5RequestConfig(dg.Config):
         default="netcdf",
         description="Format to download (e.g., netcdf)"
     )
+
+
+class TuningConfig(dg.Config):
+    """Configuration for model tuning and optimization"""
+    max_hyperopt_evals: int = pyd.Field(
+        default=20,
+        description="Maximum number of evaluations allowed by Hyperopt during model tuning."
+    )
+
+
+class PromotionConfig(dg.Config):
+    """Configuration for model promotion thresholds"""
+    staging_mse_threshold: float = pyd.Field(
+        default=1.5,
+        description="Maximum acceptable MSE for promoting a model to Staging."
+    )
+    staging_mae_threshold: float = pyd.Field(
+        default=1.5,
+        description="Maximum acceptable MAE for promoting a model to Staging."
+    )
