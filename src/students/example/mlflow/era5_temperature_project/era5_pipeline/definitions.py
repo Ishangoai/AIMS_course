@@ -31,6 +31,7 @@ era5_daily_schedule = dg.ScheduleDefinition(
 defs = dg.Definitions(
     assets=[*my_assets],
     resources={
+        "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
         "mlflow_tracking": mlflow_resource,  # Ensure this points to your configured MLflow resource
         "mlflow_client": mlflow_client,
     },
