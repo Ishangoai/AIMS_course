@@ -40,7 +40,7 @@ STAGING_MAE_THRESHOLD = 2
     compute_kind="python",
     group_name="1_ingestion"  # Updated group name
 )
-def raw_netcdf_dataset(context: dg.AssetExecutionContext) -> dg.MaterializeResult:
+def raw_netcdf_dataset(context: dg.AssetExecutionContext):
     """
     Fetches ERA5 temperature data and logs parameters to MLflow.
     Returns the path to the downloaded NetCDF file.
@@ -81,7 +81,6 @@ def raw_netcdf_dataset(context: dg.AssetExecutionContext) -> dg.MaterializeResul
         context.log.info(f"Logged {OUTPUT_FILENAME} as artifact to MLflow. Size: {size} bytes")
 
         ds = xr.open_dataset(OUTPUT_FILENAME)
-
         os.remove(OUTPUT_FILENAME)  # Remove the file after logading
 
     except Exception as e:
@@ -104,7 +103,6 @@ def raw_netcdf_dataset(context: dg.AssetExecutionContext) -> dg.MaterializeResul
 
 @dg.asset(
     description="Loads the raw NetCDF data into a pandas DataFrame and logs some metrics.",
-    deps=[raw_netcdf_dataset],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="2_processing"
@@ -215,7 +213,6 @@ def clean_df(context: dg.AssetExecutionContext,
 
 @dg.asset(
     description="Tunes Ridge regression hyperparameters using Hyperopt and prepares data splits.",
-    deps=[clean_df],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="3_modeling",
@@ -367,7 +364,6 @@ def tune_ridge_hyperparameters(context: dg.AssetExecutionContext,  # noqa: C901
 
 @dg.asset(
     description="Trains a Ridge model using the best hyperparameters found by Hyperopt.",
-    deps=["tune_ridge_hyperparameters"],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="3_modeling"
@@ -411,7 +407,6 @@ def train_tuned_model(context: dg.AssetExecutionContext, tune_ridge_hyperparamet
 
 @dg.asset(
     description="Evaluates the tuned model and logs model and metrics to MLflow.",
-    deps=["train_tuned_model"],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="3_evaluation"
@@ -517,7 +512,6 @@ def evaluate_model(context: dg.AssetExecutionContext, train_tuned_model: dict) -
 # for more thorough testing or limited release
 @dg.asset(
     description="Promotes the newly trained model to Staging if it meets performance criteria.",
-    deps=["evaluate_model"],  # This show that the asset depends on the output of the evaluation step
     required_resource_keys={"mlflow_tracking", "mlflow_client"},
     compute_kind="python",
     group_name="4_promotion"
@@ -612,7 +606,6 @@ def promote_model_to_staging(context: dg.AssetExecutionContext, evaluate_model: 
 
 @dg.asset(
     description="Promotes the best model from Staging to Production, usually with manual approval.",
-    deps=["promote_model_to_staging"],
     required_resource_keys={"mlflow_tracking", "mlflow_client"},
     compute_kind="python",
     group_name="4_promotion"
