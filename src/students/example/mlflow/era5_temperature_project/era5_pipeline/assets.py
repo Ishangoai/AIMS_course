@@ -40,7 +40,9 @@ STAGING_MAE_THRESHOLD = 2
     compute_kind="python",
     group_name="1_ingestion"  # Updated group name
 )
-def raw_netcdf_dataset(context: dg.AssetExecutionContext):
+def raw_netcdf_dataset(
+    context: dg.AssetExecutionContext
+) -> dg.MaterializeResult:
     """
     Fetches ERA5 temperature data and logs parameters to MLflow.
     Returns the path to the downloaded NetCDF file.
@@ -109,7 +111,8 @@ def raw_netcdf_dataset(context: dg.AssetExecutionContext):
 )
 def create_pandas_df(
     context: dg.AssetExecutionContext,
-    raw_netcdf_dataset: xr.Dataset) -> dg.MaterializeResult:
+    raw_netcdf_dataset: xr.Dataset
+) -> dg.MaterializeResult:
 
     mlflow_client = context.resources.mlflow_tracking
     context.log.info(f"Processing file: {raw_netcdf_dataset}")
@@ -217,8 +220,10 @@ def clean_df(context: dg.AssetExecutionContext,
     compute_kind="python",
     group_name="3_modeling",
 )
-def tune_ridge_hyperparameters(context: dg.AssetExecutionContext,  # noqa: C901
-                               clean_df: pd.DataFrame):
+def tune_ridge_hyperparameters( # noqa: C901
+    context: dg.AssetExecutionContext,
+    clean_df: pd.DataFrame
+) -> dict:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting hyperparameter tuning for Ridge model.")
 
@@ -368,7 +373,10 @@ def tune_ridge_hyperparameters(context: dg.AssetExecutionContext,  # noqa: C901
     compute_kind="python",
     group_name="3_modeling"
 )
-def train_tuned_model(context: dg.AssetExecutionContext, tune_ridge_hyperparameters) -> dict:
+def train_tuned_model(
+    context: dg.AssetExecutionContext,
+    tune_ridge_hyperparameters
+) -> dict:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model training with tuned hyperparameters.")
 
@@ -411,7 +419,10 @@ def train_tuned_model(context: dg.AssetExecutionContext, tune_ridge_hyperparamet
     compute_kind="python",
     group_name="3_evaluation"
 )
-def evaluate_model(context: dg.AssetExecutionContext, train_tuned_model: dict) -> dg.MaterializeResult:
+def evaluate_model(
+    context: dg.AssetExecutionContext,
+    train_tuned_model: dict
+) -> dg.MaterializeResult:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model evaluation.")
 
@@ -516,7 +527,10 @@ def evaluate_model(context: dg.AssetExecutionContext, train_tuned_model: dict) -
     compute_kind="python",
     group_name="4_promotion"
 )
-def promote_model_to_staging(context: dg.AssetExecutionContext, evaluate_model: dict) -> dg.MaterializeResult:
+def promote_model_to_staging(
+    context: dg.AssetExecutionContext,
+    evaluate_model: dict
+) -> dg.MaterializeResult:
     # Get the MLflow client from the context to interact with the model registry
     mlflow_client = context.resources.mlflow_client
     context.log.info("Starting model promotion to Staging.")
@@ -610,8 +624,10 @@ def promote_model_to_staging(context: dg.AssetExecutionContext, evaluate_model: 
     compute_kind="python",
     group_name="4_promotion"
 )
-def promote_model_to_production(context: dg.AssetExecutionContext,
-                                promote_model_to_staging: dict) -> dg.MaterializeResult:
+def promote_model_to_production(
+    context: dg.AssetExecutionContext,
+    promote_model_to_staging: dict
+) -> dg.MaterializeResult:
     # Get the MLflow client to interact with the model registry
     mlflow_client = context.resources.mlflow_client
     context.log.info("Starting model promotion to Production.")
