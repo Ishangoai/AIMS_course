@@ -655,8 +655,18 @@ def promote_model_to_production(
             prod_model_name = latest_staging_version.name
             prod_model_version = latest_staging_version.version
 
-            # Log and perform the promotion to Production stage
-            context.log.info(f"Manual approval granted for model '{prod_model_name}' (version {prod_model_version})")
+            # Archive all existing models in Production
+            for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
+                if mv.current_stage == "Production":
+                    context.log.info(f"Archiving previous Production model '{mv.name}' (version {mv.version})")
+                    mlflow_client.transition_model_version_stage(
+                        name=mv.name,
+                        version=mv.version,
+                        stage="Archived"
+                    )
+
+            # Promote the new version to Production
+            context.log.info(f"Promoting model '{prod_model_name}' (version {prod_model_version}) to Production")
             mlflow_client.transition_model_version_stage(
                 name=prod_model_name,
                 version=prod_model_version,
