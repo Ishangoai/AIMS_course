@@ -19,6 +19,22 @@ era5_full_pipeline_job = dg.define_asset_job(
     name="era5_temperature_pipeline_job",
     selection=dg.AssetSelection.all(),
     hooks={mlflow_failure_hook},
+    config={
+        "ops": {
+            "raw_netcdf_dataset": {
+                "config": {
+                    "product_type": "reanalysis",
+                    "variable": "2m_temperature",
+                    "year": "2023",
+                    "month": "01",
+                    "day": [f"{i:02d}" for i in range(1, 16)],
+                    "time": ["00:00", "06:00", "12:00", "18:00"],
+                    "area": [50.0, -5.0, 45.0, 5.0],
+                    "format": "netcdf",
+                }
+            }
+        }
+    }
 )
 
 era5_daily_schedule = dg.ScheduleDefinition(

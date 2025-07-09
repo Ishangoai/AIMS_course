@@ -7,23 +7,13 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split  # For robust splitting
 
 import dagster as dg
+import pydantic as pyd
 import mlflow
 import mlflow.sklearn as ms
 
 # Hyperopt imports
 import hyperopt
 
-# Configuration for the ERA5 data request
-ERA5_REQUEST_PARAMS = {
-    'product_type': 'reanalysis',
-    'variable': '2m_temperature',
-    'year': '2023',
-    'month': '01',
-    'day': [f"{i:02d}" for i in range(1, 16)],  # Fetch for 15 days for more data
-    'time': ['00:00', '06:00', '12:00', '18:00'],
-    'area': [50, -5, 45, 5],  # North, West, South, East (example: a small region in Europe)
-    'format': 'netcdf',
-}
 
 DATA_DIR = Path.cwd()
 MAX_HYPEROPT_EVALS = 20  # Max evaluations for Hyperopt
@@ -33,6 +23,42 @@ STAGING_MSE_THRESHOLD = 2
 STAGING_MAE_THRESHOLD = 2
 
 
+# configuration for the raw_netcdf_dataset asset
+class Era5RequestConfig(dg.Config):
+    product_type: str = pyd.Field(
+        default="reanalysis",
+        description="The product type to request"
+    )
+    variable: str = pyd.Field(
+        default="2m_temperature",
+        description="The meteorological variable to retrieve"
+    )
+    year: str = pyd.Field(
+        default="2023",
+        description="The year for which to retrieve data"
+    )
+    month: str = pyd.Field(
+        default="01",
+        description="The month for which to retrieve data"
+    )
+    day: list[str] = pyd.Field(
+        default=[f"{i:02d}" for i in range(1, 16)],
+        description="A list of days to retrieve"
+    )
+    time: list[str] = pyd.Field(
+        default=["00:00", "06:00", "12:00", "18:00"],
+        description="Times of day to retrieve data"
+    )
+    area: list[float] = pyd.Field(
+        default=[50.0, -5.0, 45.0, 5.0],
+        description="Area: [North, West, South, East]"
+    )
+    format: str = pyd.Field(
+        default="netcdf",
+        description="Format to download (e.g., netcdf)"
+    )
+
+
 @dg.asset(
     description="Fetches raw ERA5 2m temperature data from the CDS.",
     required_resource_keys={"mlflow_tracking", "cds_api"},
@@ -40,7 +66,8 @@ STAGING_MAE_THRESHOLD = 2
     group_name="1_ingestion"  # Updated group name
 )
 def raw_netcdf_dataset(
-    context: dg.AssetExecutionContext
+    context: dg.AssetExecutionContext,
+    config: Era5RequestConfig,
 ) -> dg.MaterializeResult:
     """
     Fetches ERA5 temperature data and logs parameters to MLflow.
@@ -48,11 +75,12 @@ def raw_netcdf_dataset(
     """
     OUTPUT_FILENAME = DATA_DIR / "era5_temperature_data.nc"
     mlflow_client = context.resources.mlflow_tracking  # Use mlflow_client as the variable name for clarity
-
+    # Convert the Config object to a dictionary for CDS API
+    era5_request_params_dict = config.model_dump()
     # Log parameters to MLflow
     # MLflow prefers flat dictionaries for parameters
     flat_params = {}
-    for key, value in ERA5_REQUEST_PARAMS.items():
+    for key, value in era5_request_params_dict.items():
         if isinstance(value, list):
             flat_params[f"{key}"] = ",".join(map(str, value))  # Convert lists to comma-separated strings
         else:
@@ -62,10 +90,10 @@ def raw_netcdf_dataset(
 
     c = context.resources.cds_api.client  # Assumes env var CDS_API_KEY is set in the environment
     try:
-        context.log.info(f"Requesting data with parameters: {ERA5_REQUEST_PARAMS}")
+        context.log.info(f"Requesting data with parameters: {era5_request_params_dict}")
         c.retrieve(
             'reanalysis-era5-single-levels',
-            ERA5_REQUEST_PARAMS,
+            era5_request_params_dict,
             OUTPUT_FILENAME
         )
         context.log.info(f"Successfully downloaded data to {OUTPUT_FILENAME}")
