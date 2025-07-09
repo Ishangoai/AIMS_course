@@ -220,7 +220,7 @@ def clean_df(context: dg.AssetExecutionContext,
     compute_kind="python",
     group_name="3_modeling",
 )
-def tune_ridge_hyperparameters( # noqa: C901
+def tune_ridge_hyperparameters(  # noqa: C901
     context: dg.AssetExecutionContext,
     clean_df: pd.DataFrame
 ) -> dict:
