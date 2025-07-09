@@ -17,6 +17,7 @@ import hyperopt
 
 DATA_DIR = Path.cwd()
 
+
 @dg.asset(
     description="Fetches raw ERA5 2m temperature data from the CDS.",
     required_resource_keys={"mlflow_tracking", "cds_api"},
