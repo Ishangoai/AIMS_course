@@ -60,12 +60,6 @@ def raw_netcdf_dataset(
     mlflow_client.log_params(flat_params)
     context.log.info(f"Logged parameters to MLflow: {flat_params}")
 
-    # Check if CDSAPI_KEY and CDSAPI_URL are set, otherwise cdsapi.Client() might fail silently or use defaults
-    if not (os.getenv("CDSAPI_URL") and os.getenv("CDSAPI_KEY")):
-        context.log.warning(
-            "CDSAPI_URL and/or CDSAPI_KEY environment variables are not set. "
-            "Ensure your CDS API credentials are configured, e.g., in a .cdsapirc file or environment variables."
-        )
     c = context.resources.cds_api.client  # Assumes env var CDS_API_KEY is set in the environment
     try:
         context.log.info(f"Requesting data with parameters: {ERA5_REQUEST_PARAMS}")
