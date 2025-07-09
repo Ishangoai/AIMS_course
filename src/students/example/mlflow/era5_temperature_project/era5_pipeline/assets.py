@@ -5,9 +5,9 @@ import pandas as pd
 from sklearn.linear_model import Ridge  # Changed from LinearRegression for tuning
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split  # For robust splitting
+from .resources import Era5RequestConfig
 
 import dagster as dg
-import pydantic as pyd
 import mlflow
 import mlflow.sklearn as ms
 
@@ -21,42 +21,6 @@ MAX_HYPEROPT_EVALS = 20  # Max evaluations for Hyperopt
 # Define promotion criteria
 STAGING_MSE_THRESHOLD = 2
 STAGING_MAE_THRESHOLD = 2
-
-
-# configuration for the raw_netcdf_dataset asset
-class Era5RequestConfig(dg.Config):
-    product_type: str = pyd.Field(
-        default="reanalysis",
-        description="The product type to request"
-    )
-    variable: str = pyd.Field(
-        default="2m_temperature",
-        description="The meteorological variable to retrieve"
-    )
-    year: str = pyd.Field(
-        default="2023",
-        description="The year for which to retrieve data"
-    )
-    month: str = pyd.Field(
-        default="01",
-        description="The month for which to retrieve data"
-    )
-    day: list[str] = pyd.Field(
-        default=[f"{i:02d}" for i in range(1, 16)],
-        description="A list of days to retrieve"
-    )
-    time: list[str] = pyd.Field(
-        default=["00:00", "06:00", "12:00", "18:00"],
-        description="Times of day to retrieve data"
-    )
-    area: list[float] = pyd.Field(
-        default=[50.0, -5.0, 45.0, 5.0],
-        description="Area: [North, West, South, East]"
-    )
-    format: str = pyd.Field(
-        default="netcdf",
-        description="Format to download (e.g., netcdf)"
-    )
 
 
 @dg.asset(
