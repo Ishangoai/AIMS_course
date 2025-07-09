@@ -138,6 +138,7 @@ def create_pandas_df(
         mlflow_client.log_metric("processed_mean_temperature_k", mean_temp_kelvin)
     context.log.info(f"Pandas DataFrame created. Time steps: {num_time_steps}, Mean Temp (K): {mean_temp_kelvin:.2f}")
     context.log.info("Logged metrics to MLflow.")
+    # context.pdb.set_trace()
     return dg.MaterializeResult(
         value=df_agg,
         metadata={
