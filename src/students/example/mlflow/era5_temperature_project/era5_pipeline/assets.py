@@ -36,7 +36,7 @@ STAGING_MAE_THRESHOLD = 2
 
 @dg.asset(
     description="Fetches raw ERA5 2m temperature data from the CDS.",
-    required_resource_keys={"mlflow_tracking"},
+    required_resource_keys={"mlflow_tracking", "cds_api"},
     compute_kind="python",
     group_name="1_ingestion"  # Updated group name
 )
