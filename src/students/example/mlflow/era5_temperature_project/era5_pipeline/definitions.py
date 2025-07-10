@@ -3,6 +3,7 @@ from . import assets
 from .resources import mlflow_resource, mlflow_client, CDSAPI
 
 my_assets = dg.load_assets_from_modules([assets])
+my_checks = dg.load_asset_checks_from_modules([assets])
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
@@ -64,5 +65,6 @@ defs = dg.Definitions(
         "cds_api": CDSAPI(),
     },
     jobs=[era5_full_pipeline_job],
-    schedules=[era5_daily_schedule]
+    schedules=[era5_daily_schedule],
+    asset_checks=[*my_checks]
 )
