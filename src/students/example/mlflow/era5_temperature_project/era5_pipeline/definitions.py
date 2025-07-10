@@ -61,7 +61,7 @@ defs = dg.Definitions(
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
         "mlflow_tracking": mlflow_resource,
         "mlflow_client": mlflow_client,
-        "cds_api": CDSAPI(api_key=dg.EnvVar("CDS_API_KEY")),
+        "cds_api": CDSAPI(),
     },
     jobs=[era5_full_pipeline_job],
     schedules=[era5_daily_schedule]
