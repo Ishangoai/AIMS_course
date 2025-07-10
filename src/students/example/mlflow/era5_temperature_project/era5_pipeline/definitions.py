@@ -32,6 +32,17 @@ era5_full_pipeline_job = dg.define_asset_job(
                     "area": [50.0, -5.0, 45.0, 5.0],
                     "format": "netcdf",
                 }
+            },
+            "promote_model_to_production": {
+                "config": {
+                    "staging_mse_threshold": 1.5,
+                    "staging_mae_threshold": 1.5
+                }
+            },
+            "tune_ridge_hyperparameters": {
+                "config": {
+                    "max_hyperopt_evals": 20
+                }
             }
         }
     }

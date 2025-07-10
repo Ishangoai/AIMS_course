@@ -5,9 +5,9 @@ import pandas as pd
 from sklearn.linear_model import Ridge  # Changed from LinearRegression for tuning
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split  # For robust splitting
+from .resources import Era5RequestConfig, TuningConfig, PromotionConfig
 
 import dagster as dg
-import pydantic as pyd
 import mlflow
 import mlflow.sklearn as ms
 
@@ -16,47 +16,6 @@ import hyperopt
 
 
 DATA_DIR = Path.cwd()
-MAX_HYPEROPT_EVALS = 20  # Max evaluations for Hyperopt
-
-# Define promotion criteria
-STAGING_MSE_THRESHOLD = 2
-STAGING_MAE_THRESHOLD = 2
-
-
-# configuration for the raw_netcdf_dataset asset
-class Era5RequestConfig(dg.Config):
-    product_type: str = pyd.Field(
-        default="reanalysis",
-        description="The product type to request"
-    )
-    variable: str = pyd.Field(
-        default="2m_temperature",
-        description="The meteorological variable to retrieve"
-    )
-    year: str = pyd.Field(
-        default="2023",
-        description="The year for which to retrieve data"
-    )
-    month: str = pyd.Field(
-        default="01",
-        description="The month for which to retrieve data"
-    )
-    day: list[str] = pyd.Field(
-        default=[f"{i:02d}" for i in range(1, 16)],
-        description="A list of days to retrieve"
-    )
-    time: list[str] = pyd.Field(
-        default=["00:00", "06:00", "12:00", "18:00"],
-        description="Times of day to retrieve data"
-    )
-    area: list[float] = pyd.Field(
-        default=[50.0, -5.0, 45.0, 5.0],
-        description="Area: [North, West, South, East]"
-    )
-    format: str = pyd.Field(
-        default="netcdf",
-        description="Format to download (e.g., netcdf)"
-    )
 
 
 @dg.asset(
@@ -243,6 +202,7 @@ def clean_df(context: dg.AssetExecutionContext,
 )
 def tune_ridge_hyperparameters(  # noqa: C901
     context: dg.AssetExecutionContext,
+    config: TuningConfig,
     clean_df: pd.DataFrame
 ) -> dict:
     mlflow_client = context.resources.mlflow_tracking
@@ -341,7 +301,7 @@ def tune_ridge_hyperparameters(  # noqa: C901
         fn=objective,
         space=search_space,
         algo=hyperopt.tpe.suggest,
-        max_evals=MAX_HYPEROPT_EVALS,  # Number of iterations
+        max_evals=config.max_hyperopt_evals,  # Number of iterations
         trials=trials
     )
     context.log.info(f"fmin completed. Returned best_hyperparams: {best_hyperparams}")
@@ -550,6 +510,7 @@ def evaluate_model(
 )
 def promote_model_to_staging(
     context: dg.AssetExecutionContext,
+    config: PromotionConfig,
     evaluate_model: dict
 ) -> dg.MaterializeResult:
     # Get the MLflow client from the context to interact with the model registry
@@ -579,6 +540,8 @@ def promote_model_to_staging(
     current_mse = eval_metrics.get("test_mse", float('inf'))
     current_mae = eval_metrics.get("test_mae", float('inf'))
 
+    STAGING_MSE_THRESHOLD = config.staging_mse_threshold
+    STAGING_MAE_THRESHOLD = config.staging_mae_threshold
     # Log the evaluation metrics and threshold criteria
     context.log.info(f"Model evaluated with MSE: {current_mse:.4f}, MAE: {current_mae:.4f}")
     context.log.info(f"Staging promotion thresholds: MSE < {STAGING_MSE_THRESHOLD}, MAE < {STAGING_MAE_THRESHOLD}")
@@ -691,8 +654,18 @@ def promote_model_to_production(
             prod_model_name = latest_staging_version.name
             prod_model_version = latest_staging_version.version
 
-            # Log and perform the promotion to Production stage
-            context.log.info(f"Manual approval granted for model '{prod_model_name}' (version {prod_model_version})")
+            # Archive all existing models in Production
+            for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
+                if mv.current_stage == "Production":
+                    context.log.info(f"Archiving previous Production model '{mv.name}' (version {mv.version})")
+                    mlflow_client.transition_model_version_stage(
+                        name=mv.name,
+                        version=mv.version,
+                        stage="Archived"
+                    )
+
+            # Promote the new version to Production
+            context.log.info(f"Promoting model '{prod_model_name}' (version {prod_model_version}) to Production")
             mlflow_client.transition_model_version_stage(
                 name=prod_model_name,
                 version=prod_model_version,
