@@ -6,6 +6,7 @@ from sklearn.linear_model import Ridge  # Changed from LinearRegression for tuni
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split  # For robust splitting
 from .resources import Era5RequestConfig, TuningConfig, PromotionConfig
+from collections import abc
 
 import dagster as dg
 import mlflow
@@ -130,15 +131,41 @@ def create_pandas_df(
     )
 
 
+@dg.multi_asset_check(
+    # Map checks to targeted assets
+    specs=[
+        dg.AssetCheckSpec(name="no_nulls", asset="create_pandas_df"),
+        dg.AssetCheckSpec(name="impossible_temperatures", asset="create_pandas_df"),
+    ]
+)
+def dq_check(create_pandas_df) -> abc.Iterable[dg.AssetCheckResult]:
+    # Check for null temperature values
+    num_null = create_pandas_df["t2m"].isna().sum()
+    yield dg.AssetCheckResult(
+        check_name="no_nulls",
+        passed=bool(num_null == 0),
+        asset_key="create_pandas_df",
+    )
+
+    # Check for impossible temperature values
+    num_impossible_temperatures = (create_pandas_df["t2m"] < 0).sum()
+    yield dg.AssetCheckResult(
+        check_name="impossible_temperatures",
+        passed=bool(num_impossible_temperatures == 0),
+        asset_key="create_pandas_df",
+    )
+
+
 @dg.asset(
     description="Cleans the temperature data. Converts Kelvin to Celsius.",
-    deps=[create_pandas_df],
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="2_processing"
 )
-def clean_df(context: dg.AssetExecutionContext,
-                                  create_pandas_df: pd.DataFrame) -> dg.MaterializeResult:
+def clean_df(
+    context: dg.AssetExecutionContext,
+    create_pandas_df: pd.DataFrame
+) -> dg.MaterializeResult:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting data cleaning.")
     df = create_pandas_df.copy()
