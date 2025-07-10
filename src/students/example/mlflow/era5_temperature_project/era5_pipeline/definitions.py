@@ -1,6 +1,13 @@
 import dagster as dg
 from . import assets
-from .resources import mlflow_resource, mlflow_client, CDSAPI
+from .resources import (
+    mlflow_resource,
+    mlflow_client,
+    CDSAPI,
+    Era5RequestConfig,
+    TuningConfig,
+    PromotionConfig
+)
 
 my_assets = dg.load_assets_from_modules([assets])
 
@@ -22,27 +29,13 @@ era5_full_pipeline_job = dg.define_asset_job(
     config={
         "ops": {
             "raw_netcdf_dataset": {
-                "config": {
-                    "product_type": "reanalysis",
-                    "variable": "2m_temperature",
-                    "year": "2023",
-                    "month": "01",
-                    "day": [f"{i:02d}" for i in range(1, 16)],
-                    "time": ["00:00", "06:00", "12:00", "18:00"],
-                    "area": [50.0, -5.0, 45.0, 5.0],
-                    "format": "netcdf",
-                }
+                "config": Era5RequestConfig().model_dump()
             },
             "promote_model_to_production": {
-                "config": {
-                    "staging_mse_threshold": 1.5,
-                    "staging_mae_threshold": 1.5
-                }
+                "config": PromotionConfig().model_dump()
             },
             "tune_ridge_hyperparameters": {
-                "config": {
-                    "max_hyperopt_evals": 20
-                }
+                "config": TuningConfig().model_dump()
             }
         }
     }
