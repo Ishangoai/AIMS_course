@@ -1,7 +1,7 @@
 from dagster_mlflow import mlflow_tracking
 import os
 from mlflow.tracking import MlflowClient
-from cdsapi import Client
+import cdsapi
 import dagster as dg
 import pydantic as pyd
 
@@ -34,11 +34,11 @@ def mlflow_client(_):
 
 class CDSAPI(dg.ConfigurableResource):
     host_url: str = "https://cds.climate.copernicus.eu/api"
-    api_key: str = ""
+    api_key: str = dg.EnvVar("CDS_API_KEY")
 
     @property
-    def client(self):
-        return Client(url=self.host_url, key=self.api_key)
+    def client(self) -> cdsapi.Client:
+        return cdsapi.Client(url=self.host_url, key=self.api_key)
 
 
 # configuration for the raw_netcdf_dataset asset

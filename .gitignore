@@ -204,6 +204,7 @@ tofu-key.json
 
 # Dagster generated temp files
 .tmp_dagster_*
+tmp_dg*
 
 # General tmp files
 tmp/
