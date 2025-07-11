@@ -139,7 +139,7 @@ def create_pandas_df(
     ]
 )
 def dq_check(create_pandas_df) -> abc.Iterable[dg.AssetCheckResult]:
-    # Check for null order_id column values
+    # Check for null temperature values
     num_null = create_pandas_df["t2m"].isna().sum()
     yield dg.AssetCheckResult(
         check_name="no_nulls",
@@ -147,7 +147,7 @@ def dq_check(create_pandas_df) -> abc.Iterable[dg.AssetCheckResult]:
         asset_key="create_pandas_df",
     )
 
-    # Check for null item_id column values
+    # Check for impossible temperature values
     num_impossible_temperatures = (create_pandas_df["t2m"] < 0).sum()
     yield dg.AssetCheckResult(
         check_name="impossible_temperatures",
