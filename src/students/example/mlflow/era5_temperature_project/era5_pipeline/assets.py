@@ -147,7 +147,7 @@ def dq_check(raw_pandas_df) -> abc.Iterable[dg.AssetCheckResult]:
 
 
 @dg.asset(
-    description="Cleans the temperature data. Converts Kelvin to Celsius.",
+    description="Takes spatial mean. Converts Kelvin to Celsius. Cleans columns",
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="2_processing"
@@ -170,8 +170,7 @@ def clean_df(
     mean_temp_kelvin = df_spatial_mean['t2m'].mean()
 
     mlflow_client.log_metric("processed_num_time_steps", num_time_steps)
-    if pd.notna(mean_temp_kelvin):
-        mlflow_client.log_metric("processed_mean_temperature_k", mean_temp_kelvin)
+    mlflow_client.log_metric("processed_mean_temperature_k", mean_temp_kelvin)
     context.log.info(f"Pandas DataFrame created. Time steps: {num_time_steps}, Mean Temp (K): {mean_temp_kelvin:.2f}")
     context.log.info("Logged metrics to MLflow.")
 
@@ -183,7 +182,8 @@ def clean_df(
         df_spatial_mean["time"] = pd.to_datetime(df_spatial_mean["time"])
 
     # 3. Sort by time
-    df_spatial_mean = df_spatial_mean.sort_values("time").reset_index(drop=True)  # Reset index after sort
+    # Reset index after sort
+    df_spatial_mean = df_spatial_mean.sort_values("time").reset_index(drop=True)
 
     # Log the cleaned data to MLflow
     spatial_mean_dataset = mlflow_client.data.from_pandas(df_spatial_mean, name="cleaned_spatial_mean_temperature")
