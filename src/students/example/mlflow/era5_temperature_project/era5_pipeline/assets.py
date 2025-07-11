@@ -166,7 +166,6 @@ def clean_df(
     context.log.info("Aggregated multiple lat/lon points by averaging 't2m' per timestamp.")
 
     num_time_steps = len(df_spatial_mean)
-    # mean_temp_kelvin = float(df_spatial_mean['t2m'].mean()) if not df_spatial_mean['t2m'].empty else float('nan')
     mean_temp_kelvin = df_spatial_mean['t2m'].mean()
 
     mlflow_client.log_metric("processed_num_time_steps", num_time_steps)
