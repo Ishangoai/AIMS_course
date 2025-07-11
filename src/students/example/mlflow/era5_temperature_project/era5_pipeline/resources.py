@@ -41,7 +41,7 @@ class CDSAPI(dg.ConfigurableResource):
         return cdsapi.Client(url=self.host_url, key=self.api_key)
 
 
-# configuration for the raw_netcdf_dataset asset
+# configuration for the raw_xarray_dataset asset
 class Era5RequestConfig(dg.Config):
     product_type: str = pyd.Field(
         default="reanalysis",

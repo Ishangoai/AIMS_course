@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 import xarray as xr
 import pandas as pd
 from sklearn.linear_model import Ridge  # Changed from LinearRegression for tuning
@@ -16,16 +15,13 @@ import mlflow.sklearn as ms
 import hyperopt
 
 
-DATA_DIR = Path.cwd()
-
-
 @dg.asset(
     description="Fetches raw ERA5 2m temperature data from the CDS.",
     required_resource_keys={"mlflow_tracking", "cds_api"},
     compute_kind="python",
-    group_name="1_ingestion"  # Updated group name
+    group_name="1_ingestion"
 )
-def raw_netcdf_dataset(
+def raw_xarray_dataset(
     context: dg.AssetExecutionContext,
     config: Era5RequestConfig,
 ) -> dg.MaterializeResult:
@@ -33,42 +29,48 @@ def raw_netcdf_dataset(
     Fetches ERA5 temperature data and logs parameters to MLflow.
     Returns the path to the downloaded NetCDF file.
     """
-    OUTPUT_FILENAME = DATA_DIR / "era5_temperature_data.nc"
-    mlflow_client = context.resources.mlflow_tracking  # Use mlflow_client as the variable name for clarity
-    # Convert the Config object to a dictionary for CDS API
+    # Initialize mlflow tracking
+    mlflow_client = context.resources.mlflow_tracking
+
+    OUTPUT_FILENAME = os.getcwd() + "/era5_temperature_data.nc"
+
+    # Convert the Config object to a dictionary for the CDS API
     era5_request_params_dict = config.model_dump()
+
     # Log parameters to MLflow
     # MLflow prefers flat dictionaries for parameters
     flat_params = {}
     for key, value in era5_request_params_dict.items():
         if isinstance(value, list):
-            flat_params[f"{key}"] = ",".join(map(str, value))  # Convert lists to comma-separated strings
+            # Convert lists to comma-separated strings
+            flat_params[f"{key}"] = ",".join(map(str, value))
         else:
             flat_params[key] = str(value)
     mlflow_client.log_params(flat_params)
     context.log.info(f"Logged parameters to MLflow: {flat_params}")
 
-    c = context.resources.cds_api.client  # Assumes env var CDS_API_KEY is set in the environment
-    try:
-        context.log.info(f"Requesting data with parameters: {era5_request_params_dict}")
-        c.retrieve(
-            'reanalysis-era5-single-levels',
-            era5_request_params_dict,
-            OUTPUT_FILENAME
-        )
-        context.log.info(f"Successfully downloaded data to {OUTPUT_FILENAME}")
+    # Assumes env var CDS_API_KEY is set as an environment variable
+    # this can be confimed in bash terminal with "echo $CDS_API_KEY"
+    c = context.resources.cds_api.client
+    context.log.info("Download data from CSD API")
 
-        # Log an artifact (the downloaded file) to MLflow
-        mlflow_client.log_artifact(OUTPUT_FILENAME, artifact_path="raw_data")
-        size = OUTPUT_FILENAME.stat().st_size
-        context.log.info(f"Logged {OUTPUT_FILENAME} as artifact to MLflow. Size: {size} bytes")
+    c.retrieve(
+        'reanalysis-era5-single-levels',
+        era5_request_params_dict,
+        OUTPUT_FILENAME
+    )
+    context.log.info(f"Successfully downloaded data to {OUTPUT_FILENAME}")
 
-        ds = xr.open_dataset(OUTPUT_FILENAME)
-        os.remove(OUTPUT_FILENAME)  # Remove the file after logading
+    # Log the downloaded file to MLflow
+    mlflow_client.log_artifact(OUTPUT_FILENAME, artifact_path="raw data")
 
-    except Exception as e:
-        context.log.error(f"Error fetching ERA5 data: {e}")
-        raise
+    # log file size to dagster
+    size = os.path.getsize(OUTPUT_FILENAME)
+    context.log.info(f"Logged {OUTPUT_FILENAME} as artifact to MLflow. Size: {size} bytes")
+
+    # convert netcdf file to xarray Dataset
+    ds = xr.open_dataset(OUTPUT_FILENAME)
+    os.remove(OUTPUT_FILENAME)  # Remove the file after loading
 
     return dg.MaterializeResult(
         value=ds,
@@ -85,48 +87,36 @@ def raw_netcdf_dataset(
 
 
 @dg.asset(
-    description="Loads the raw NetCDF data into a pandas DataFrame and logs some metrics.",
+    description="Loads the raw xarray data into a pandas DataFrame and logs some metrics.",
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
     group_name="2_processing"
 )
 def create_pandas_df(
     context: dg.AssetExecutionContext,
-    raw_netcdf_dataset: xr.Dataset
+    raw_xarray_dataset: xr.Dataset
 ) -> dg.MaterializeResult:
 
     mlflow_client = context.resources.mlflow_tracking
-    context.log.info(f"Processing file: {raw_netcdf_dataset}")
+    context.log.info(f"Processing file:\n {raw_xarray_dataset}")
 
     # Convert to pandas DataFrame
-    df: pd.DataFrame = raw_netcdf_dataset['t2m'].to_dataframe().reset_index()  # t2m is 2m temperature
-    context.log.info(df)
-    df = pd.DataFrame(df[['valid_time', 'latitude', 'longitude', 't2m']])  # Select and order columns
+    # t2m is 2m air temperature
+    df: pd.DataFrame = raw_xarray_dataset['t2m'].to_dataframe().reset_index()
+    context.log.info(f"Pandas DataFrame:\n {df}")
+
+    # Select and order columns
+    df = pd.DataFrame(df[['valid_time', 'latitude', 'longitude', 't2m']])
     df = df.rename(columns={'valid_time': 'time'})
 
-    # For simplicity, if multiple lat/lon, average them or pick one. Here, we average if multiple.
-    # ERA5 data for a region will have multiple lat/lon points per time.
-    # For a very simple time series model, we need a single value per timestamp.
+    dataset = mlflow_client.data.from_pandas(df, name="era5_raw_temperature_data")
+    mlflow_client.log_input(dataset=dataset, context="training")
 
-    if 'latitude' in df.columns and 'longitude' in df.columns:
-        df_agg: pd.DataFrame = df.groupby('time')['t2m'].mean().reset_index()
-        context.log.info("Aggregated multiple lat/lon points by averaging 't2m' per timestamp.")
-    else:
-        df_agg: pd.DataFrame = df
-
-    num_time_steps = len(df_agg)
-    mean_temp_kelvin = float(df_agg['t2m'].mean()) if not df_agg['t2m'].empty else float('nan')
-
-    mlflow_client.log_metric("processed_num_time_steps", num_time_steps)
-    if pd.notna(mean_temp_kelvin):
-        mlflow_client.log_metric("processed_mean_temperature_k", mean_temp_kelvin)
-    context.log.info(f"Pandas DataFrame created. Time steps: {num_time_steps}, Mean Temp (K): {mean_temp_kelvin:.2f}")
-    context.log.info("Logged metrics to MLflow.")
     return dg.MaterializeResult(
-        value=df_agg,
+        value=df,
         metadata={
-            "number of rows": dg.MetadataValue.int(len(df_agg)),
-            "preview": dg.MetadataValue.md(df_agg.head().to_markdown() or "")
+            "number of rows": dg.MetadataValue.int(len(df)),
+            "preview": dg.MetadataValue.md(df.head().to_markdown() or "")
         }
     )
 
@@ -168,55 +158,42 @@ def clean_df(
 ) -> dg.MaterializeResult:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting data cleaning.")
-    df = create_pandas_df.copy()
 
-    if df.empty:
-        context.log.warning("Input DataFrame is empty. Skipping cleaning.")
+    # ERA5 data for a region will have multiple lat/lon points per time.
+    # For a very simple time series model, we need a single value per timestamp.
+    # Take a spatial mean across all lat/lon points for each timestamp.
+    df_spatial_mean: pd.DataFrame = create_pandas_df.groupby('time')['t2m'].mean().reset_index()
+    context.log.info("Aggregated multiple lat/lon points by averaging 't2m' per timestamp.")
+
+    num_time_steps = len(df_spatial_mean)
+    # mean_temp_kelvin = float(df_spatial_mean['t2m'].mean()) if not df_spatial_mean['t2m'].empty else float('nan')
+    mean_temp_kelvin = df_spatial_mean['t2m'].mean()
+
+    mlflow_client.log_metric("processed_num_time_steps", num_time_steps)
+    if pd.notna(mean_temp_kelvin):
+        mlflow_client.log_metric("processed_mean_temperature_k", mean_temp_kelvin)
+    context.log.info(f"Pandas DataFrame created. Time steps: {num_time_steps}, Mean Temp (K): {mean_temp_kelvin:.2f}")
+    context.log.info("Logged metrics to MLflow.")
 
     # 1. Convert temperature from Kelvin to Celsius
-    df["t2m_celsius"] = df["t2m"] - 273.15
+    df_spatial_mean["t2m_celsius"] = df_spatial_mean["t2m"] - 273.15
 
     # 2. Ensure 'time' column is datetime type
-    if not pd.api.types.is_datetime64_any_dtype(df["time"]):
-        df["time"] = pd.to_datetime(df["time"])
+    if not pd.api.types.is_datetime64_any_dtype(df_spatial_mean["time"]):
+        df_spatial_mean["time"] = pd.to_datetime(df_spatial_mean["time"])
 
     # 3. Sort by time
-    df = df.sort_values("time").reset_index(drop=True)  # Reset index after sort
+    df_spatial_mean = df_spatial_mean.sort_values("time").reset_index(drop=True)  # Reset index after sort
 
-    # 4. Handle missing values (drop rows with nulls in 't2m_celsius')
-    initial_rows = len(df)
-    df = df.dropna(subset=["t2m_celsius"])
-    rows_after_dropna = len(df)
-    context.log.info(f"Dropped {initial_rows - rows_after_dropna} rows with null t2m_celsius.")
-
-    cleaned_rows = len(df)
-    mean_temp_celsius = df["t2m_celsius"].mean() if not df["t2m_celsius"].empty else float('nan')
-
-    mlflow_client.log_metric("cleaned_num_rows", cleaned_rows)
-    if bool(pd.notna(mean_temp_celsius)):
-        mlflow_client.log_metric("cleaned_mean_temperature_c", mean_temp_celsius)
-        context.log.info(f"Data cleaned. Rows: {cleaned_rows}, Mean Temp (C): {mean_temp_celsius:.2f}")
-    else:
-        context.log.warning("Mean temperature (C) could not be calculated.")
-        mlflow_client.log_metric("cleaned_mean_temperature_c", float('nan'))
-
-    # Log a sample of the cleaned data to MLflow as a CSV artifact (optional)
-    if not df.empty:
-        sample_csv_path = DATA_DIR / "cleaned_sample.csv"
-        df.head().to_csv(sample_csv_path, index=False)
-        mlflow_client.log_artifact(sample_csv_path, artifact_path="processed_data_samples")
-        os.remove(sample_csv_path)  # Clean up the sample file after logging
-        try:
-            cleaned_csv_as_input = mlflow_client.data.from_pandas(df.head(), name="cleaned_temperature_sample_csv")
-            mlflow_client.log_input(dataset=cleaned_csv_as_input, context="cleaned_data_sample")
-        except Exception as e:
-            context.log.warning(f"Could not log {sample_csv_path} as an MLflow Dataset: {e}")
+    # Log the cleaned data to MLflow
+    spatial_mean_dataset = mlflow_client.data.from_pandas(df_spatial_mean, name="cleaned_spatial_mean_temperature")
+    mlflow_client.log_input(dataset=spatial_mean_dataset, context="training")
 
     return dg.MaterializeResult(
-        value=df,
+        value=df_spatial_mean,
         metadata={
-            "number of rows": dg.MetadataValue.int(len(df)),
-            "preview": dg.MetadataValue.md(df.head().to_markdown() or "")
+            "number of rows": dg.MetadataValue.int(len(df_spatial_mean)),
+            "preview": dg.MetadataValue.md(df_spatial_mean.head().to_markdown() or "")
         }
     )
 
