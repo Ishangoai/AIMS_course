@@ -1,0 +1,8 @@
+{
+    "python.testing.pytestArgs": [
+        "src/students/example/mlflow/era5_temperature_project/era5_pipeline/tests",
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}
