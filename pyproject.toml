@@ -44,8 +44,12 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = [
+    "tests",
+    "src/students/example/mlflow/era5_temperature_project/era5_pipeline/tests"
+    ]
 addopts = "-vv"
+pythonpath = ["src/students/example/mlflow/era5_temperature_project"]
 
 [tool.pyright]
 exclude = []
