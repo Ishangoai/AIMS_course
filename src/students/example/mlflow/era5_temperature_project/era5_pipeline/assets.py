@@ -92,7 +92,7 @@ def raw_xarray_dataset(
     compute_kind="python",
     group_name="2_processing"
 )
-def create_pandas_df(
+def raw_pandas_df(
     context: dg.AssetExecutionContext,
     raw_xarray_dataset: xr.Dataset
 ) -> dg.MaterializeResult:
@@ -124,25 +124,25 @@ def create_pandas_df(
 @dg.multi_asset_check(
     # Map checks to targeted assets
     specs=[
-        dg.AssetCheckSpec(name="no_nulls", asset="create_pandas_df"),
-        dg.AssetCheckSpec(name="impossible_temperatures", asset="create_pandas_df"),
+        dg.AssetCheckSpec(name="no_nulls", asset="raw_pandas_df"),
+        dg.AssetCheckSpec(name="impossible_temperatures", asset="raw_pandas_df"),
     ]
 )
-def dq_check(create_pandas_df) -> abc.Iterable[dg.AssetCheckResult]:
+def dq_check(raw_pandas_df) -> abc.Iterable[dg.AssetCheckResult]:
     # Check for null temperature values
-    num_null = create_pandas_df["t2m"].isna().sum()
+    num_null = raw_pandas_df["t2m"].isna().sum()
     yield dg.AssetCheckResult(
         check_name="no_nulls",
         passed=bool(num_null == 0),
-        asset_key="create_pandas_df",
+        asset_key="raw_pandas_df",
     )
 
     # Check for impossible temperature values
-    num_impossible_temperatures = (create_pandas_df["t2m"] < 0).sum()
+    num_impossible_temperatures = (raw_pandas_df["t2m"] < 0).sum()
     yield dg.AssetCheckResult(
         check_name="impossible_temperatures",
         passed=bool(num_impossible_temperatures == 0),
-        asset_key="create_pandas_df",
+        asset_key="raw_pandas_df",
     )
 
 
@@ -154,7 +154,7 @@ def dq_check(create_pandas_df) -> abc.Iterable[dg.AssetCheckResult]:
 )
 def clean_df(
     context: dg.AssetExecutionContext,
-    create_pandas_df: pd.DataFrame
+    raw_pandas_df: pd.DataFrame
 ) -> dg.MaterializeResult:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting data cleaning.")
@@ -162,7 +162,7 @@ def clean_df(
     # ERA5 data for a region will have multiple lat/lon points per time.
     # For a very simple time series model, we need a single value per timestamp.
     # Take a spatial mean across all lat/lon points for each timestamp.
-    df_spatial_mean: pd.DataFrame = create_pandas_df.groupby('time')['t2m'].mean().reset_index()
+    df_spatial_mean: pd.DataFrame = raw_pandas_df.groupby('time')['t2m'].mean().reset_index()
     context.log.info("Aggregated multiple lat/lon points by averaging 't2m' per timestamp.")
 
     num_time_steps = len(df_spatial_mean)
