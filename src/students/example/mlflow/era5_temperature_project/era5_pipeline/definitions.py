@@ -29,7 +29,7 @@ era5_full_pipeline_job = dg.define_asset_job(
     hooks={mlflow_failure_hook},
     config={
         "ops": {
-            "raw_netcdf_dataset": {
+            "raw_xarray_dataset": {
                 "config": Era5RequestConfig().model_dump()
             },
             "promote_model_to_production": {

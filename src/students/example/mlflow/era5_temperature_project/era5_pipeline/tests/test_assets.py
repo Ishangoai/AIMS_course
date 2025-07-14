@@ -5,11 +5,11 @@ import xarray as xr
 import dagster as dg
 import typing
 from unittest import mock
-from era5_pipeline.assets import (
-    create_pandas_df,
+from ..assets import (
+    raw_pandas_df,
     tune_ridge_hyperparameters,
 )
-from era5_pipeline.resources import TuningConfig
+from ..resources import TuningConfig
 
 
 # Dummy xarray Dataset for testing create_pandas_df
@@ -26,7 +26,7 @@ def dummy_xr_dataset():
 def test_create_pandas_df(dummy_xr_dataset):
 
     basic_context = dg.build_asset_context(resources={"mlflow_tracking": mock.Mock()})
-    result: typing.Any = create_pandas_df(basic_context, dummy_xr_dataset)
+    result: typing.Any = raw_pandas_df(basic_context, dummy_xr_dataset)
 
     # Verify the output is a DataFrame
     assert isinstance(result.value, pd.DataFrame), "Output is not a DataFrame"
