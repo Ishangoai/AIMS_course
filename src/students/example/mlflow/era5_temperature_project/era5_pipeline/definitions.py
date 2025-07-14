@@ -1,13 +1,7 @@
 import dagster as dg
+
 from . import assets
-from .resources import (
-    mlflow_resource,
-    mlflow_client,
-    CDSAPI,
-    Era5RequestConfig,
-    TuningConfig,
-    PromotionConfig
-)
+from .resources import CDSAPI, Era5RequestConfig, PromotionConfig, TuningConfig, mlflow_client, mlflow_resource
 
 my_assets = dg.load_assets_from_modules([assets])
 my_checks = dg.load_asset_checks_from_modules([assets])

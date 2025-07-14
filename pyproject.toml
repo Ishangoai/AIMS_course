@@ -64,7 +64,7 @@ executionEnvironments= [
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "C90"]
+select = ["E", "F", "W", "C90", "I"]
 preview = true
 
 #this is a replacement for black. not sure whether to use it.
