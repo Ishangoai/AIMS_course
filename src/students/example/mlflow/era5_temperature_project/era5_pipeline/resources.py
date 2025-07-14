@@ -1,9 +1,10 @@
-from dagster_mlflow import mlflow_tracking
 import os
-from mlflow.tracking import MlflowClient
+
 import cdsapi
 import dagster as dg
 import pydantic as pyd
+from dagster_mlflow import mlflow_tracking
+from mlflow.tracking import MlflowClient
 
 # Configuration for Local SQLite and Local Artifacts
 # Using DAGSTER_HOME if set, otherwise, defaults to the current directory
@@ -41,7 +42,7 @@ class CDSAPI(dg.ConfigurableResource):
         return cdsapi.Client(url=self.host_url, key=self.api_key)
 
 
-# configuration for the raw_netcdf_dataset asset
+# configuration for the raw_xarray_dataset asset
 class Era5RequestConfig(dg.Config):
     product_type: str = pyd.Field(
         default="reanalysis",

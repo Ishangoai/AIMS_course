@@ -1,13 +1,7 @@
 import dagster as dg
+
 from . import assets
-from .resources import (
-    mlflow_resource,
-    mlflow_client,
-    CDSAPI,
-    Era5RequestConfig,
-    TuningConfig,
-    PromotionConfig
-)
+from .resources import CDSAPI, Era5RequestConfig, PromotionConfig, TuningConfig, mlflow_client, mlflow_resource
 
 my_assets = dg.load_assets_from_modules([assets])
 my_checks = dg.load_asset_checks_from_modules([assets])
@@ -29,7 +23,7 @@ era5_full_pipeline_job = dg.define_asset_job(
     hooks={mlflow_failure_hook},
     config={
         "ops": {
-            "raw_netcdf_dataset": {
+            "raw_xarray_dataset": {
                 "config": Era5RequestConfig().model_dump()
             },
             "promote_model_to_production": {
