@@ -30,7 +30,13 @@ dependencies = [
     "scipy==1.15.1",
     "uvicorn>=0.34.0",
     "xarray>=2025.4.0",
-    "hyperopt==0.2.7"
+    "hyperopt==0.2.7",
+    "langgraph>=0.5.2",
+    "langchain>=0.3.26",
+    "langchain-core>=0.3.68",
+    "langchain-google-genai>=2.1.7",
+    "langchain-community>=0.3.27",
+    "langgraph-cli[inmem]>=0.3.4",
 ]
 
 [project.urls]
