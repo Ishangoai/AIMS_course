@@ -1,16 +1,15 @@
 import os
+
 import cdsapi
-import xarray as xr
-import pandas as pd
-from sklearn.linear_model import Ridge  # Changed from LinearRegression for tuning
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-from sklearn.model_selection import train_test_split  # For robust splitting
-
 import dagster as dg
-
+import pandas as pd
+import xarray as xr
 
 # Hyperopt imports
-from hyperopt import fmin, tpe, hp, STATUS_OK, STATUS_FAIL, Trials
+from hyperopt import STATUS_FAIL, STATUS_OK, Trials, fmin, hp, tpe
+from sklearn.linear_model import Ridge  # Changed from LinearRegression for tuning
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import train_test_split  # For robust splitting
 
 # Configuration for the ERA5 data request
 ERA5_REQUEST_PARAMS = {

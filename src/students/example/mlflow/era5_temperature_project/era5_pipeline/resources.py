@@ -1,9 +1,10 @@
-from dagster_mlflow import mlflow_tracking
 import os
-from mlflow.tracking import MlflowClient
+
 import cdsapi
 import dagster as dg
 import pydantic as pyd
+from dagster_mlflow import mlflow_tracking
+from mlflow.tracking import MlflowClient
 
 # Configuration for Local SQLite and Local Artifacts
 # Using DAGSTER_HOME if set, otherwise, defaults to the current directory

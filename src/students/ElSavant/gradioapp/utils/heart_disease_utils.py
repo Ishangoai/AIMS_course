@@ -1,6 +1,7 @@
 # scripts/utils.py
-import joblib
 import os
+
+import joblib
 import numpy as np
 
 # Load model

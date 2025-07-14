@@ -1,6 +1,6 @@
-from dagster_mlflow import mlflow_tracking
 import os
 
+from dagster_mlflow import mlflow_tracking
 
 # Configuration for Local SQLite and Local Artifacts
 # Using DAGSTER_HOME if set, otherwise, defaults to the current directory
