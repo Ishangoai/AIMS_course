@@ -1,38 +1,46 @@
 import pytest
 import pandas as pd
 import numpy as np
-import xarray as xr
 import dagster as dg
 import typing
 from unittest import mock
 from ..assets import (
-    raw_pandas_df,
+    clean_df,
     tune_ridge_hyperparameters,
 )
 from ..resources import TuningConfig
 
 
-# Dummy xarray Dataset for testing create_pandas_df
+# Dummy pandas Dataset for testing clean_df
 @pytest.fixture
-def dummy_xr_dataset():
-    return xr.Dataset({
-        "t2m": (("valid_time", "latitude", "longitude"), [[[280.0]]]),
-        "latitude": (("latitude",), [0.0]),
-        "longitude": (("longitude",), [0.0]),
-        "valid_time": (("valid_time",), pd.date_range("2023-01-01", periods=1))
+def dummy_df_input():
+    # Create a simple pandas DataFrame directly
+    df_input = pd.DataFrame({
+        "t2m": [280.0, 281.5, 279.8, 282.1],
+        "latitude": [0.0, 1.0, -1.0, 0.5],
+        "longitude": [0.0, 2.0, -2.0, 1.5],
+        "time": [
+            pd.Timestamp("2023-01-01 00:00"),
+            pd.Timestamp("2023-01-01 00:00"),
+            pd.Timestamp("2023-01-01 00:00"),
+            pd.Timestamp("2023-01-01 00:00"),
+        ]
     })
+    return df_input
 
 
-def test_create_pandas_df(dummy_xr_dataset):
+def test_create_pandas_df(dummy_df_input):
 
     basic_context = dg.build_asset_context(resources={"mlflow_tracking": mock.Mock()})
-    result: typing.Any = raw_pandas_df(basic_context, dummy_xr_dataset)
+    df_actual = clean_df(basic_context, dummy_df_input)
 
-    # Verify the output is a DataFrame
-    assert isinstance(result.value, pd.DataFrame), "Output is not a DataFrame"
-    # Check important columns exist in the DataFrame
-    assert "t2m" in result.value.columns, "t2m column missing in DataFrame"
-    assert "time" in result.value.columns, "time column missing in DataFrame"
+    df_expected = pd.DataFrame({
+        "time": [pd.Timestamp("2023-01-01 00:00")],
+        "t2m": [280.85],
+        "t2m_celsius": [7.7],
+    })
+
+    pd.testing.assert_frame_equal(df_actual.value, df_expected)
 
 
 # Simple clean DataFrame with enough rows for tuning tests
