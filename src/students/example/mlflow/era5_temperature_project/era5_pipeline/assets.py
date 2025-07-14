@@ -113,11 +113,14 @@ def raw_pandas_df(
     dataset = mlflow_client.data.from_pandas(df, name="era5_raw_temperature_data")
     mlflow_client.log_input(dataset=dataset, context="training")
 
+    columns = [dg.TableColumn(k, str(v)) for k, v in df.dtypes.to_dict().items()]
+
     return dg.MaterializeResult(
         value=df,
         metadata={
-            "number of rows": dg.MetadataValue.int(len(df)),
-            "preview": dg.MetadataValue.md(df.head().to_markdown() or "")
+            "preview": dg.MetadataValue.md(df.head().to_markdown() or ""),
+            "dagster/row_count": len(df),
+            "dagster/column_schema": dg.TableSchema(columns=columns)
         }
     )
 
@@ -189,10 +192,13 @@ def clean_df(
     spatial_mean_dataset = mlflow_client.data.from_pandas(df_spatial_mean, name="cleaned_spatial_mean_temperature")
     mlflow_client.log_input(dataset=spatial_mean_dataset, context="training")
 
+    columns = [dg.TableColumn(k, str(v)) for k, v in df_spatial_mean.dtypes.to_dict().items()]
+
     return dg.MaterializeResult(
         value=df_spatial_mean,
         metadata={
-            "number of rows": dg.MetadataValue.int(len(df_spatial_mean)),
+            "dagster/row_count": len(df_spatial_mean),
+            "dagster/column_schema": dg.TableSchema(columns=columns),
             "preview": dg.MetadataValue.md(df_spatial_mean.head().to_markdown() or "")
         }
     )

@@ -15,9 +15,9 @@ from ..resources import TuningConfig
 
 # Dummy pandas Dataset for testing clean_df
 @pytest.fixture
-def dummy_df_input():
+def dummy_raw_pandas_df():
     # Create a simple pandas DataFrame directly
-    df_input = pd.DataFrame({
+    df = pd.DataFrame({
         "t2m": [280.0, 281.5, 279.8, 282.1],
         "latitude": [0.0, 1.0, -1.0, 0.5],
         "longitude": [0.0, 2.0, -2.0, 1.5],
@@ -28,13 +28,13 @@ def dummy_df_input():
             pd.Timestamp("2023-01-01 00:00"),
         ]
     })
-    return df_input
+    return df
 
 
-def test_create_pandas_df(dummy_df_input):
+def test_create_pandas_df(dummy_raw_pandas_df):
 
     basic_context = dg.build_asset_context(resources={"mlflow_tracking": mock.Mock()})
-    df_actual: typing.Any = clean_df(basic_context, dummy_df_input)
+    df_actual: typing.Any = clean_df(basic_context, dummy_raw_pandas_df)
 
     df_expected = pd.DataFrame({
         "time": [pd.Timestamp("2023-01-01 00:00")],
