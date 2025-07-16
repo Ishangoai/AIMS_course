@@ -96,3 +96,7 @@ class PromotionConfig(dg.Config):
         default=1.5,
         description="Maximum acceptable MAE for promoting a model to Staging."
     )
+    staging_r2_threshold: float = pyd.Field(
+        default=0.8,
+        description="Minimum acceptable R2 for promoting a model to Staging."
+    )

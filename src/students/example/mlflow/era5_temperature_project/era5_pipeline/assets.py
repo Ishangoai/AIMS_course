@@ -10,7 +10,7 @@ import mlflow.sklearn as ms
 import pandas as pd
 import xarray as xr
 from sklearn.linear_model import Ridge  # Changed from LinearRegression for tuning
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split  # For robust splitting
 
 from .resources import Era5RequestConfig, PromotionConfig, TuningConfig
@@ -435,16 +435,18 @@ def evaluate_model(
                 "status": "skipped_evaluation",
                 "reason": dg.MetadataValue.text("Test set was empty, no evaluation performed."),
                 "test_mse": dg.MetadataValue.float(float('nan')),
-                "test_mae": dg.MetadataValue.float(float('nan'))
+                "test_mae": dg.MetadataValue.float(float('nan')),
+                "test_r2": dg.MetadataValue.float(float('nan')),
             }
         )
 
     predictions = model.predict(X_test)
     mse = mean_squared_error(y_test, predictions)
     mae = mean_absolute_error(y_test, predictions)
-    context.log.info(f"Final Model Evaluation Metrics on Test Set: MSE={mse:.4f}, MAE={mae:.4f}")
+    r2 = r2_score(y_test, predictions)
+    context.log.info(f"Final Model Evaluation Metrics on Test Set: MSE={mse:.4f}, MAE={mae:.4f}, R2={r2:.4f}")
 
-    eval_metrics = {"test_mse": mse, "test_mae": mae}
+    eval_metrics = {"test_mse": mse, "test_mae": mae, "test_r2": r2}
     mlflow_client.log_metrics(eval_metrics)
     context.log.info(f"Logged final evaluation metrics to MLflow: {eval_metrics}")
 
@@ -501,6 +503,7 @@ def evaluate_model(
         metadata={
             "test_mse": dg.MetadataValue.float(float(mse)),
             "test_mae": dg.MetadataValue.float(float(mae)),
+            "test_r2": dg.MetadataValue.float(float(r2)),
             "model_name": dg.MetadataValue.text(model_version_info["name"]),
             "model_version": dg.MetadataValue.text(str(model_version_info["version"])),
             "mlflow_run_id": dg.MetadataValue.text(current_run.info.run_id),
@@ -549,15 +552,17 @@ def promote_model_to_staging(
     # Get performance metrics (default to infinity if missing)
     current_mse = eval_metrics.get("test_mse", float('inf'))
     current_mae = eval_metrics.get("test_mae", float('inf'))
+    current_r2 = eval_metrics.get("test_r2", float('inf'))
 
-    STAGING_MSE_THRESHOLD = config.staging_mse_threshold
-    STAGING_MAE_THRESHOLD = config.staging_mae_threshold
+    # STAGING_MSE_THRESHOLD = config.staging_mse_threshold
+    # STAGING_MAE_THRESHOLD = config.staging_mae_threshold
+    STAGING_R2_THRESHOLD = config.staging_r2_threshold
     # Log the evaluation metrics and threshold criteria
     context.log.info(f"Model evaluated with MSE: {current_mse:.4f}, MAE: {current_mae:.4f}")
-    context.log.info(f"Staging promotion thresholds: MSE < {STAGING_MSE_THRESHOLD}, MAE < {STAGING_MAE_THRESHOLD}")
+    context.log.info(f"Staging promotion thresholds: R2 > {STAGING_R2_THRESHOLD}")
 
     # Check if model meets promotion criteria
-    if current_mse <= STAGING_MSE_THRESHOLD and current_mae <= STAGING_MAE_THRESHOLD:
+    if current_r2 >= STAGING_R2_THRESHOLD:
         try:
             # Extract the model name and version for promotion
             model_name = model_version_info["name"]
@@ -585,7 +590,8 @@ def promote_model_to_staging(
                     "model_name": dg.MetadataValue.text(model_name),
                     "model_version": dg.MetadataValue.text(str(model_version)),
                     "mse_at_promotion": dg.MetadataValue.float(current_mse),
-                    "mae_at_promotion": dg.MetadataValue.float(current_mae)
+                    "mae_at_promotion": dg.MetadataValue.float(current_mae),
+                    "r2_at_promotion": dg.MetadataValue.float(current_r2)
                 }
             )
         except Exception as e:
@@ -607,7 +613,8 @@ def promote_model_to_staging(
             metadata={
                 "status": "not_promoted_to_staging",
                 "mse": dg.MetadataValue.float(current_mse),
-                "mae": dg.MetadataValue.float(current_mae)
+                "mae": dg.MetadataValue.float(current_mae),
+                "r2": dg.MetadataValue.float(current_r2)
             }
         )
 
