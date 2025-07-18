@@ -1,7 +1,6 @@
 
 import gradio as gr
-
-from graph import graph
+from agents.graph import graph
 
 
 def chat_with_graph(message, history):
@@ -19,16 +18,14 @@ def chat_with_graph(message, history):
     return reply
 
 
-def main():
-    """Launch the Gradio UI for the currency assistant chat."""
-    with gr.Blocks() as demo:
-        gr.Markdown("# Global Currency Assistant.\nYou can tell me which currency you prefer to convert")
-        gr.ChatInterface(
-            fn=chat_with_graph,
-            title="Currency Assistant",
-            description="Ask about currency conversion and get the latest exchange rates."
-        )
-    demo.launch()
+with gr.Blocks() as llm_chat:
+    gr.Markdown("# Global Currency Assistant.\nYou can tell me which currency you prefer to convert")
+    gr.ChatInterface(
+        fn=chat_with_graph,
+        title="Currency Assistant",
+        description="Ask about currency conversion and get the latest exchange rates."
+    )
+    
 
 if __name__ == "__main__":
-    main()
+    llm_chat.launch()
