@@ -11,8 +11,8 @@ from langgraph.prebuilt import create_react_agent
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Initialize the Gemini model, adjust temperature as needed
-gemini_model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=1.0)  # 0.0 is deterministic and 2.0 is more creative
+# Initialize the Gemini model, adjust temperature as needed, 0.0 is deterministic and 2.0 is more creative
+gemini_model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=1.0)
 
 search = GoogleSearchAPIWrapper()
 
@@ -29,4 +29,3 @@ graph = create_react_agent(
     tools=[search_google],
     prompt="You are a helpful assistant. Always answer in a funny way",
 )
-

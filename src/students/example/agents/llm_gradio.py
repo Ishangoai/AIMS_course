@@ -25,7 +25,7 @@ with gr.Blocks() as llm_chat:
         title="Currency Assistant",
         description="Ask about currency conversion and get the latest exchange rates."
     )
-    
+
 
 if __name__ == "__main__":
     llm_chat.launch()
