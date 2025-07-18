@@ -37,6 +37,7 @@ dependencies = [
     "langchain-google-genai>=2.1.7",
     "langchain-community>=0.3.27",
     "langgraph-cli[inmem]>=0.3.4",
+    "langchain-google-community>=2.0.7",
 ]
 
 [project.urls]
