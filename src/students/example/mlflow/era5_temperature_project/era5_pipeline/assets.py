@@ -62,9 +62,6 @@ def raw_xarray_dataset(
     )
     context.log.info(f"Successfully downloaded data to {OUTPUT_FILENAME}")
 
-    # Log the downloaded file to MLflow
-    mlflow_client.log_artifact(OUTPUT_FILENAME, artifact_path="raw data")
-
     # log file size to dagster
     size = os.path.getsize(OUTPUT_FILENAME)
     context.log.info(f"Logged {OUTPUT_FILENAME} as artifact to MLflow. Size: {size} bytes")

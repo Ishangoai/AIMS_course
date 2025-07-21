@@ -2,10 +2,8 @@ import os
 
 import cdsapi
 import dagster as dg
-import mlflow
 import pydantic as pyd
-
-# from dagster_mlflow import mlflow_tracking
+from dagster_mlflow import mlflow_tracking
 from mlflow.tracking import MlflowClient
 
 # Configuration for Local SQLite and Local Artifacts
@@ -20,42 +18,14 @@ SQLITE_DB_PATH = os.path.join(BASE_DIR, SQLITE_DB_FILENAME)
 DEFAULT_EXPERIMENT_NAME = "era5_temperature_analysis"
 
 
-class MyMLflowResource(dg.ConfigurableResource):
-    mlflow_tracking_uri: str
-    experiment_name: str
-
-    def setup_for_run(self) -> None:
-        # Set the tracking URI
-        mlflow.set_tracking_uri(self.mlflow_tracking_uri)
-
-        # Create experiment if it doesn't exist
-        client = MlflowClient(tracking_uri=self.mlflow_tracking_uri)
-        if client.get_experiment_by_name(self.experiment_name) is None:
-            client.create_experiment(self.experiment_name)
-
-        # Set the experiment for this run
-        mlflow.set_experiment(self.experiment_name)
-
-    def _ensure_run(self):
-        """Start a run if none is active"""
-        if mlflow.active_run() is None:
-            mlflow.start_run()
-
-    def log_params(self, params: dict):
-        self._ensure_run()
-        mlflow.log_params(params)
-
-    def log_metrics(self, metrics: dict):
-        self._ensure_run()
-        mlflow.log_metrics(metrics)
-
-    def log_artifact(self, path: str):
-        self._ensure_run()
-        mlflow.log_artifact(path)
-
-    def end_run(self):
-        if mlflow.active_run() is not None:
-            mlflow.end_run()
+# Define the MLflow resource
+mlflow_resource = mlflow_tracking.configured(
+    {
+        # Point MLflow to use the local SQLite database
+        "mlflow_tracking_uri": f"sqlite:///{SQLITE_DB_PATH}",
+        "experiment_name": DEFAULT_EXPERIMENT_NAME,
+    }
+)
 
 
 # Raw MlflowClient for advanced API access (transition_model_version_stage,....)
