@@ -1,10 +1,19 @@
+import os
+
 import dagster as dg
 
 from . import assets
-from .resources import CDSAPI, Era5RequestConfig, PromotionConfig, TuningConfig, mlflow_client, mlflow_resource
+from .resources import CDSAPI, Era5RequestConfig, MyMLflowResource, PromotionConfig, TuningConfig, mlflow_client
 
 my_assets = dg.load_assets_from_modules([assets])
 my_checks = dg.load_asset_checks_from_modules([assets])
+
+BASE_DIR = os.path.abspath(os.getenv("DAGSTER_HOME", "."))  # base directory for all MLflow data.
+SQLITE_DB_FILENAME = "mlflow_local_tracking.db"  # Name of the SQLite database file
+# Construct full paths
+SQLITE_DB_PATH = os.path.join(BASE_DIR, SQLITE_DB_FILENAME)
+
+DEFAULT_EXPERIMENT_NAME = "era5_temperature_analysis"
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
@@ -47,7 +56,10 @@ defs = dg.Definitions(
     assets=[*my_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
-        "mlflow_tracking": mlflow_resource,
+        "mlflow_tracking": MyMLflowResource(
+            mlflow_tracking_uri=f"sqlite:///{SQLITE_DB_PATH}",
+            experiment_name="MyDagsterExperiment"
+        ),
         "mlflow_client": mlflow_client,
         "cds_api": CDSAPI(),
     },
