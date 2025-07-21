@@ -17,6 +17,7 @@ SQLITE_DB_PATH = os.path.join(BASE_DIR, SQLITE_DB_FILENAME)
 
 DEFAULT_EXPERIMENT_NAME = "era5_temperature_analysis"
 
+
 # Define the MLflow resource
 mlflow_resource = mlflow_tracking.configured(
     {
