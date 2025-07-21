@@ -19,11 +19,11 @@ def chat_with_graph(message, history):
 
 
 with gr.Blocks() as llm_chat:
-    gr.Markdown("# Global Currency Assistant.\nYou can tell me which currency you prefer to convert")
+    gr.Markdown("# AI general assistant.\nYou can tell me latest info by using search tool")
     gr.ChatInterface(
         fn=chat_with_graph,
         title="Currency Assistant",
-        description="Ask about currency conversion and get the latest exchange rates."
+        description="Ask about any current information in natural language."
     )
 
 
