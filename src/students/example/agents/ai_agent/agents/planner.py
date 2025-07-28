@@ -4,8 +4,8 @@ import re
 import typing
 
 from langchain_google_genai import ChatGoogleGenerativeAI
-from state import EssayState
-from tools import research_topic_tool, search_for_topic
+from agents.ai_agent.state import EssayState
+from agents.ai_agent.tools import research_topic_tool, search_for_topic
 
 logger = logging.getLogger(__name__)
 
