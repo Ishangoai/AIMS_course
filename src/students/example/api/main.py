@@ -1,9 +1,10 @@
 import os
 
 import gradio as gr
-from agents.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
+from example.agents.ai_agent.llm_gradio import llm_chat
+from example.agents.ai_agent.llm_gradio import llm_chat as agentic_llm_chat
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
@@ -124,3 +125,4 @@ def update_user_details(username: str, request: UpdateUserRequest):
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
+gr.mount_gradio_app(app, agentic_llm_chat, path="/agentic-llm-chat")
