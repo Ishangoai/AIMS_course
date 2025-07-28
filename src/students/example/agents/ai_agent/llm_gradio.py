@@ -1,5 +1,5 @@
 import gradio as gr
-from example.agents.ai_agent.agents.planner import PlannerAgent
+from agents.ai_agent.agents.planner import PlannerAgent
 
 agent = PlannerAgent()
 
