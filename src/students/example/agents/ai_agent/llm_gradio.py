@@ -1,6 +1,7 @@
-
 import gradio as gr
-from agents.graph import graph
+from example.agents.ai_agent.agents.planner import PlannerAgent
+
+agent = PlannerAgent()
 
 
 def chat_with_graph(message, history):
@@ -12,9 +13,9 @@ def chat_with_graph(message, history):
             if assistant_msg:
                 messages.append({"role": "assistant", "content": assistant_msg})
     messages.append({"role": "user", "content": message})
-    inputs = {"messages": messages}
-    result = graph.invoke(inputs)
-    reply = result["messages"][-1].content
+    # inputs = {"messages": messages}
+    result = agent.conduct_research(messages[0])  # TODO: change agentic planner to invoke graph
+    reply = result
     return reply
 
 
@@ -23,7 +24,7 @@ with gr.Blocks() as llm_chat:
     gr.ChatInterface(
         fn=chat_with_graph,
         title="Currency Assistant",
-        description="Ask about any current information in natural language."
+        description="Ask about any current information in natural language.",
     )
 
 
