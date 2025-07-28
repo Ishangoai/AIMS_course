@@ -4,6 +4,7 @@ import re
 import typing
 
 from langchain_google_genai import ChatGoogleGenerativeAI
+
 from agents.ai_agent.state import EssayState
 from agents.ai_agent.tools import research_topic_tool, search_for_topic
 
