@@ -5,26 +5,33 @@ agent = PlannerAgent()
 
 
 def chat_with_graph(message, history):
-    """Pass the full chat history to the graph and return the assistant's reply."""
-    messages = []
-    if history:
-        for user_msg, assistant_msg in history:
-            messages.append({"role": "user", "content": user_msg})
-            if assistant_msg:
-                messages.append({"role": "assistant", "content": assistant_msg})
+    """Process essay writing requests through the multi-agent system for long-form content creation."""
+    # With type="messages", history is already in the correct format
+    messages = history.copy() if history else []
     messages.append({"role": "user", "content": message})
-    # inputs = {"messages": messages}
-    result = agent.conduct_research(messages[0])  # TODO: change agentic planner to invoke graph
-    reply = result
-    return reply
+
+    # Use the latest user message for essay research and planning
+    result = agent.conduct_research(message)  # TODO: change agentic planner to invoke graph
+    return result
 
 
 with gr.Blocks() as llm_chat:
-    gr.Markdown("# AI general assistant.\nYou can tell me latest info by using search tool")
+    gr.Markdown(
+        "# 📝 AI Essay Writing Assistant\n\n"
+        "This specialized multi-agent system is designed to help you write long, cohesive essays "
+        "(typically 2000+ words). The AI agents work collaboratively to research your topic, "
+        "develop structured arguments, gather supporting evidence, and craft well-organized, "
+        "comprehensive essays with proper flow and academic rigor."
+    )
     gr.ChatInterface(
         fn=chat_with_graph,
-        title="Currency Assistant",
-        description="Ask about any current information in natural language.",
+        title="Long-Form Essay Writing Assistant",
+        description=(
+            "Provide your essay topic or research question, and let our AI agents help you "
+            "create detailed, well-structured essays of 2000+ words with thorough research "
+            "and compelling arguments."
+        ),
+        type="messages"
     )
 
 
