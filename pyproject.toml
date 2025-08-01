@@ -53,10 +53,10 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 testpaths = [
     "tests",
-    "src/students/example/mlflow/era5_temperature_project/era5_pipeline/tests"
+    "src/students/example/dagster"
     ]
 addopts = "-vv"
-pythonpath = ["src/students/example/mlflow/era5_temperature_project"]
+pythonpath = ["src/students/example/dagster/ml"]
 
 [tool.pyright]
 exclude = []

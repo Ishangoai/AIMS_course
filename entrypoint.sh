@@ -4,7 +4,7 @@ set -e
 if [ "$DEPLOYMENT_TARGET" = "STUDENT" ]; then
     # Assume you pass in the student identifier, e.g., student1.
     if [ -z "$GITHUB_USER" ]; then
-        echo "Error: STUDENT_ID is not set for a student deployment."
+        echo "Error: STUDENTID is not set for a student deployment."
         exit 1
     fi
     echo "Starting student API for $GITHUB_USER..."
