@@ -1,10 +1,10 @@
 import dagster as dg
 
-from . import assets
-from .resources import CDSAPI, Era5RequestConfig, PromotionConfig, TuningConfig, mlflow_client, mlflow_resource
+from .ml import assets as ml_assets
+from .ml.resources import CDSAPI, Era5RequestConfig, PromotionConfig, TuningConfig, mlflow_client, mlflow_resource
 
-my_assets = dg.load_assets_from_modules([assets])
-my_checks = dg.load_asset_checks_from_modules([assets])
+all_ml_assets = dg.load_assets_from_modules([ml_assets])
+all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
@@ -44,7 +44,7 @@ era5_daily_schedule = dg.ScheduleDefinition(
 
 # Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
-    assets=[*my_assets],
+    assets=[*all_ml_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
         "mlflow_tracking": mlflow_resource,
@@ -53,5 +53,5 @@ defs = dg.Definitions(
     },
     jobs=[era5_full_pipeline_job],
     schedules=[era5_daily_schedule],
-    asset_checks=[*my_checks]
+    asset_checks=[*all_ml_checks]
 )
