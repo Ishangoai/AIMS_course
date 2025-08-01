@@ -1,8 +1,10 @@
 import dagster as dg
 
+from .de import assets as de_assets
 from .ml import assets as ml_assets
 from .ml.resources import CDSAPI, Era5RequestConfig, PromotionConfig, TuningConfig, mlflow_client, mlflow_resource
 
+all_de_assets = dg.load_assets_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
 all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
 
@@ -17,9 +19,14 @@ def mlflow_failure_hook(context):
     mlflow_client.log_param("dagster_run_id", context.run_id)
 
 
-era5_full_pipeline_job = dg.define_asset_job(
-    name="era5_temperature_pipeline_job",
-    selection=dg.AssetSelection.all(),
+de_job = dg.define_asset_job(
+    name="simple_data_engineering_example",
+    selection=dg.AssetSelection.groups("de_ingest", "de_transform"),
+)
+
+ml_job = dg.define_asset_job(
+    name="era5_machine_learning_with_mlflow",
+    selection=dg.AssetSelection.groups("ml_ingest", "ml_transform", "ml_model", "ml_evaluate", "ml_promote"),
     hooks={mlflow_failure_hook},
     config={
         "ops": {
@@ -37,21 +44,21 @@ era5_full_pipeline_job = dg.define_asset_job(
 )
 
 era5_daily_schedule = dg.ScheduleDefinition(
-    job=era5_full_pipeline_job,
+    job=ml_job,
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
     name="era5_daily_schedule"
 )
 
 # Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
-    assets=[*all_ml_assets],
+    assets=[*all_ml_assets, *all_de_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
         "mlflow_tracking": mlflow_resource,
         "mlflow_client": mlflow_client,
         "cds_api": CDSAPI(),
     },
-    jobs=[era5_full_pipeline_job],
+    jobs=[de_job, ml_job],
     schedules=[era5_daily_schedule],
     asset_checks=[*all_ml_checks]
 )

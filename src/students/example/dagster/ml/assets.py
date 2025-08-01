@@ -20,7 +20,7 @@ from .resources import Era5RequestConfig, PromotionConfig, TuningConfig
     description="Fetches raw ERA5 2m temperature data from the CDS.",
     required_resource_keys={"mlflow_tracking", "cds_api"},
     compute_kind="python",
-    group_name="1_ingestion"
+    group_name="ml_ingest"
 )
 def raw_xarray_dataset(
     context: dg.AssetExecutionContext,
@@ -88,7 +88,7 @@ def raw_xarray_dataset(
     description="Loads the raw xarray data into a pandas DataFrame and logs some metrics.",
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
-    group_name="2_processing"
+    group_name="ml_transform"
 )
 def raw_pandas_df(
     context: dg.AssetExecutionContext,
@@ -151,7 +151,7 @@ def dq_check(raw_pandas_df) -> abc.Iterable[dg.AssetCheckResult]:
     description="Takes spatial mean. Converts Kelvin to Celsius. Cleans columns",
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
-    group_name="2_processing"
+    group_name="ml_transform"
 )
 def clean_df(
     context: dg.AssetExecutionContext,
@@ -205,7 +205,7 @@ def clean_df(
     description="Tunes Ridge regression hyperparameters using Hyperopt and prepares data splits.",
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
-    group_name="3_modeling",
+    group_name="ml_model",
 )
 def tune_ridge_hyperparameters(  # noqa: C901
     context: dg.AssetExecutionContext,
@@ -359,7 +359,7 @@ def tune_ridge_hyperparameters(  # noqa: C901
     description="Trains a Ridge model using the best hyperparameters found by Hyperopt.",
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
-    group_name="3_modeling"
+    group_name="ml_model"
 )
 def train_tuned_model(
     context: dg.AssetExecutionContext,
@@ -405,7 +405,7 @@ def train_tuned_model(
     description="Evaluates the tuned model and logs model and metrics to MLflow.",
     required_resource_keys={"mlflow_tracking"},
     compute_kind="python",
-    group_name="3_evaluation"
+    group_name="ml_evaluate"
 )
 def evaluate_model(
     context: dg.AssetExecutionContext,
@@ -516,7 +516,7 @@ def evaluate_model(
     description="Promotes the newly trained model to Staging if it meets performance criteria.",
     required_resource_keys={"mlflow_tracking", "mlflow_client"},
     compute_kind="python",
-    group_name="4_promotion"
+    group_name="ml_promote"
 )
 def promote_model_to_staging(
     context: dg.AssetExecutionContext,
@@ -620,7 +620,7 @@ def promote_model_to_staging(
     description="Promotes the best model from Staging to Production, usually with manual approval.",
     required_resource_keys={"mlflow_tracking", "mlflow_client"},
     compute_kind="python",
-    group_name="4_promotion"
+    group_name="ml_promote"
 )
 def promote_model_to_production(
     context: dg.AssetExecutionContext,
