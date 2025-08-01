@@ -33,6 +33,5 @@ def test_agg_data(dummy_clean_data):
         "FoodItem": ['Apple', 'Eggplant'],
         "nItems": [205, 400]
     })
-    df_expected = df_expected.set_index('FoodItem')
 
     pd.testing.assert_frame_equal(df_actual.value, df_expected)

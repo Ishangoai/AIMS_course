@@ -49,7 +49,7 @@ def clean_data(
     clean_data['Date'] = pd.to_datetime(clean_data['Date'], errors='coerce', format="mixed")
     clean_data['FoodItem'] = clean_data['FoodItem'].replace({'Applle': 'Apple', 'Aubergine': 'Eggplant'})
     clean_data['nItems'] = clean_data['nItems'].replace({'eighty': '80', 'five': '5'})
-    clean_data['nItems'] = pd.to_numeric(clean_data['nItems'], errors='coerce').astype('Int64')
+    clean_data['nItems'] = pd.to_numeric(clean_data['nItems'], errors='coerce')
 
     # log info that can be view in real time in the dagster UI
     context.log.info(f"Cleaned data with {len(clean_data)} rows after cleaning.")
@@ -76,8 +76,8 @@ def agg_data(
     clean_data: pd.DataFrame
 ) -> dg.MaterializeResult:
 
-    clean_data = clean_data[clean_data['Date'].notnull()]
-    agg_data = clean_data.groupby('FoodItem').agg({'nItems': 'sum'})
+    clean_data_no_null: pd.DataFrame = clean_data.loc[clean_data['Date'].notnull()]
+    agg_data: pd.DataFrame = clean_data_no_null.groupby('FoodItem').agg({'nItems': 'sum'}).reset_index()
 
     # log info that can be view in real time in the dagster UI
     context.log.info(f"Aggregated data with {len(agg_data)} rows.")
