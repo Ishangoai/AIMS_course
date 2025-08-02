@@ -10,11 +10,11 @@ def chat_with_graph(message, history):
     initial_state = orchestrator.create_initial_state(message)
     response = ""
     final_state = None
-    
+
     for chunk in orchestrator.app.stream(initial_state, stream_mode="updates"):
         agent, state = chunk.popitem()
         final_state = state
-        
+
         # Stream messages from the state
         messages = state.get("messages", [])
         if messages:

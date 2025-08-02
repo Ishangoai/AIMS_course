@@ -4,7 +4,6 @@ import typing
 from typing import Any, Dict
 
 from agents.ai_agent.agents.planner import planner_agent
-from agents.ai_agent.agents.writer import writer_agent
 from agents.ai_agent.state import EssayState, create_initial_state
 from agents.ai_agent.tools.counter import count_words_in_sections, word_counter_tool
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -48,19 +47,19 @@ class EssayOrchestrator:
 
         # Add agent nodes
         graph.add_node("planner", self._planner_node)
-        
+
         # Break down writer into granular steps
         graph.add_node("writer_research", self._writer_research_node)
         graph.add_node("write_section", self._write_section_node)  # Individual section writing
         graph.add_node("writer_compile", self._writer_compile_node)
-        
+
         graph.add_node("counter", self._counter_node)
         graph.add_node("coordinator", self._coordinator_node)
 
         # Define the workflow edges
         graph.add_edge("planner", "writer_research")
         graph.add_edge("writer_research", "write_section")
-        
+
         # write_section will conditionally continue to itself or move to compile
         graph.add_conditional_edges(
             "write_section",
@@ -70,7 +69,7 @@ class EssayOrchestrator:
                 "compile": "writer_compile",  # All sections done, compile
             },
         )
-        
+
         graph.add_edge("writer_compile", "counter")
         graph.add_edge("counter", "coordinator")
 
@@ -102,9 +101,7 @@ class EssayOrchestrator:
         logger.info("Executing planner node")
         try:
             updated_state = planner_agent(state)
-            updated_state["messages"].append(
-                {"role": "assistant", "content": "Planning phase completed successfully"}
-            )
+            updated_state["messages"].append({"role": "assistant", "content": "Planning phase completed successfully"})
             return updated_state
         except Exception as e:
             logger.error(f"Planner node failed: {e}")
@@ -124,23 +121,23 @@ class EssayOrchestrator:
         logger.info("Executing writer research node")
         try:
             from agents.ai_agent.agents.writer import WriterAgent
-            
+
             updated_state = state.copy()
             writer = WriterAgent()
-            
+
             # Get sections that need research
             outline = state.get("outline", [])
             if not outline:
                 updated_state["warnings"].append("No outline available for research")
                 return updated_state
-            
+
             # Conduct research for each section
             research_results = {}
             for section_title in outline:
                 research = writer.conduct_additional_research(state["topic"], section_title)
                 research_results[section_title] = research
                 logger.info(f"Research completed for section: {section_title}")
-            
+
             # Store research in state (add this field to EssayState if needed)
             updated_state["section_research"] = research_results
             updated_state["current_step"] = "researching"
@@ -148,9 +145,9 @@ class EssayOrchestrator:
             updated_state["messages"].append(
                 {"role": "assistant", "content": f"Research completed for {len(outline)} sections"}
             )
-            
+
             return updated_state
-            
+
         except Exception as e:
             logger.error(f"Writer research node failed: {e}")
             state["errors"].append(f"Research execution error: {str(e)}")
@@ -183,59 +180,61 @@ class EssayOrchestrator:
         logger.info("Executing write_section node")
         try:
             from agents.ai_agent.agents.writer import WriterAgent
-            
+
             updated_state = state.copy()
             writer = WriterAgent()
-            
+
             outline = state.get("outline", [])
             research_results = state.get("section_research", {})
             existing_sections = state.get("draft_sections", {})
             current_section_index = state.get("current_section_index", 0)
-            
+
             if not outline:
                 updated_state["errors"].append("No outline available for writing")
                 return updated_state
-            
+
             # Check if we have more sections to write
             if current_section_index >= len(outline):
                 logger.info("All sections have been written")
                 updated_state["current_step"] = "sections_complete"
                 return updated_state
-            
+
             # Get the current section to write
             section_title = outline[current_section_index]
-            
+
             logger.info(f"Writing section {current_section_index + 1}/{len(outline)}: {section_title}")
-            
+
             # Get research context for this section
             research_context = research_results.get(section_title, "")
-            
+
             # Write the section
             section_content = writer.write_section(
                 state["topic"], section_title, outline, current_section_index, research_context
             )
-            
+
             # Update draft sections
             draft_sections = existing_sections.copy()
             draft_sections[section_title] = section_content
-            
+
             # Calculate word count for this section
             section_words = word_counter_tool.invoke({"text": section_content})
-            
+
             # Update state
             updated_state["draft_sections"] = draft_sections
             updated_state["current_section_index"] = current_section_index + 1
             updated_state["current_step"] = "writing_sections"
-            
+
             # Add progress message
-            updated_state["messages"].append({
-                "role": "assistant", 
-                "content": f"Completed section {current_section_index + 1}/{len(outline)}: '{section_title}' ({section_words} words)"
-            })
-            
+            updated_state["messages"].append(
+                {
+                    "role": "assistant",
+                    "content": f"Completed section {current_section_index + 1}/{len(outline)}: '{section_title}' ({section_words} words)",
+                }
+            )
+
             logger.info(f"Successfully wrote section '{section_title}': {section_words} words")
             return updated_state
-            
+
         except Exception as e:
             logger.error(f"Write section node failed: {e}")
             state["errors"].append(f"Section writing error: {str(e)}")
@@ -253,7 +252,7 @@ class EssayOrchestrator:
         """
         outline = state.get("outline", [])
         current_section_index = state.get("current_section_index", 0)
-        
+
         # Check if there are more sections to write
         if current_section_index < len(outline):
             logger.info(f"Continuing to write section {current_section_index + 1}/{len(outline)}")
@@ -275,34 +274,36 @@ class EssayOrchestrator:
         logger.info("Executing writer compile node")
         try:
             updated_state = state.copy()
-            
+
             outline = state.get("outline", [])
             draft_sections = state.get("draft_sections", {})
-            
+
             if not outline or not draft_sections:
                 updated_state["warnings"].append("Missing outline or sections for compilation")
                 return updated_state
-            
+
             # Compile sections in order
             final_essay_parts = []
             compiled_sections = 0
-            
+
             for section_title in outline:
                 if section_title in draft_sections:
                     final_essay_parts.append(f"## {section_title}\n\n{draft_sections[section_title]}\n")
                     compiled_sections += 1
                 else:
                     logger.warning(f"Section '{section_title}' not found in draft_sections")
-            
+
             updated_state["final_essay"] = "\n".join(final_essay_parts)
             updated_state["current_step"] = "compiled"
-            updated_state["messages"].append({
-                "role": "assistant",
-                "content": f"Essay compilation completed. {compiled_sections}/{len(outline)} sections compiled."
-            })
-            
+            updated_state["messages"].append(
+                {
+                    "role": "assistant",
+                    "content": f"Essay compilation completed. {compiled_sections}/{len(outline)} sections compiled.",
+                }
+            )
+
             return updated_state
-            
+
         except Exception as e:
             logger.error(f"Writer compile node failed: {e}")
             state["errors"].append(f"Compilation error: {str(e)}")
@@ -320,7 +321,6 @@ class EssayOrchestrator:
         """
         logger.info("Executing counter node")
         try:
-
             state["current_step"] = "counting"
             # Use counter tools to get accurate statistics
             if state.get("draft_sections"):
@@ -427,24 +427,24 @@ class EssayOrchestrator:
         state["iteration_count"] += 1
         return "continue"
 
-    def create_initial_state(self, topic: str, target_word_count: int = 2000, max_iterations: int = 3) -> Dict[str, Any]:
+    def create_initial_state(
+        self, topic: str, target_word_count: int = 2000, max_iterations: int = 3
+    ) -> Dict[str, Any]:
         """
         Create initial state for the orchestrator.
-        
+
         Args:
             topic: Essay topic
             target_word_count: Target word count
             max_iterations: Maximum iterations
-            
+
         Returns:
             Dict[str, Any]: Initial state dictionary
         """
         initial_state = create_initial_state(
-            topic=topic, 
-            target_word_count=target_word_count, 
-            max_iterations=max_iterations
+            topic=topic, target_word_count=target_word_count, max_iterations=max_iterations
         )
-        
+
         # Convert to dict for streaming
         return dict(initial_state)
 
@@ -453,12 +453,9 @@ class EssayOrchestrator:
         initial_state = create_initial_state(
             topic=topic, target_word_count=target_word_count, max_iterations=max_iterations
         )
-        initial_state["messages"].append(
-            {"role": "user", "content": f"Essay creation started for topic: '{topic}'"}
-        )
+        initial_state["messages"].append({"role": "user", "content": f"Essay creation started for topic: '{topic}'"})
 
         return initial_state
-
 
     def get_essay_summary(self, state: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
         """

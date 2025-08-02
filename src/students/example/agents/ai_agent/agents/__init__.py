@@ -12,6 +12,6 @@ from .writer import WriterAgent, writer_agent
 __all__ = [
     "PlannerAgent",
     "planner_agent",
-    "WriterAgent", 
+    "WriterAgent",
     "writer_agent",
 ]

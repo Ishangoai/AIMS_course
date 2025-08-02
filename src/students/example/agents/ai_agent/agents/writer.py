@@ -229,7 +229,7 @@ to meet the target length of approximately {target_words} words."""
                 {
                     "role": "assistant",
                     "content": f"Completed essay draft with {len(draft_sections)} sections"
-                               f" totaling {total_word_count} words",
+                    f" totaling {total_word_count} words",
                 }
             )
 
