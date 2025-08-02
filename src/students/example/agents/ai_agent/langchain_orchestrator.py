@@ -153,20 +153,6 @@ class EssayOrchestrator:
             state["errors"].append(f"Research execution error: {str(e)}")
             return state
 
-    def _writer_section_node(self, state: EssayState) -> EssayState:
-        """
-        Write individual sections of the essay.
-
-        Args:
-            state: Current essay state with outline and research
-
-        Returns:
-            EssayState: Updated state with written sections
-        """
-        # This method is replaced by _write_section_node for granular section writing
-        logger.warning("_writer_section_node called - use _write_section_node instead")
-        return state
-
     def _write_section_node(self, state: EssayState) -> EssayState:
         """
         Write a single section of the essay (called iteratively for each section).
@@ -228,7 +214,8 @@ class EssayOrchestrator:
             updated_state["messages"].append(
                 {
                     "role": "assistant",
-                    "content": f"Completed section {current_section_index + 1}/{len(outline)}: '{section_title}' ({section_words} words)",
+                    "content": f"Completed section {current_section_index + 1}/{len(outline)}: "
+                    f"'{section_title}' ({section_words} words)",
                 }
             )
 
@@ -410,8 +397,6 @@ class EssayOrchestrator:
             str: "continue" or "end"
         """
         is_complete = state.get("is_complete", False)
-        max_iterations = state.get("max_iterations", 3)
-        current_iteration = state.get("iteration_count", 0)
 
         # Check completion criteria
         if is_complete:

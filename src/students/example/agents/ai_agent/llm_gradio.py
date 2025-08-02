@@ -1,5 +1,8 @@
+import io
+
 import gradio as gr
 from agents.ai_agent.langchain_orchestrator import create_essay_orchestrator
+from PIL import Image
 
 # Create the multi-agent orchestrator
 orchestrator = create_essay_orchestrator()
@@ -34,16 +37,29 @@ def chat_with_graph(message, history):
 
 with gr.Blocks() as llm_chat:
     gr.Markdown(
-        "#AI Essay Writing Assistant\n\n"
+        "# AI Essay Writing Assistant\n\n"
         "This multi-agent system helps you write comprehensive essays. "
         "Provide your topic and let the AI agents collaborate to create well-structured content."
     )
-    gr.ChatInterface(
-        fn=chat_with_graph,
-        title="Essay Writing Assistant",
-        description="Provide your essay topic for detailed, well-structured content.",
-        type="messages",
-    )
+
+    with gr.Tabs():
+        with gr.Tab("Chat"):
+            gr.ChatInterface(
+                fn=chat_with_graph,
+                title="Essay Writing Assistant",
+                description="Provide your essay topic for detailed, well-structured content.",
+                type="messages",
+            )
+
+        with gr.Tab("Agent Graph"):
+            gr.Markdown("## Multi-Agent Workflow Visualization")
+            try:
+                graph_bytes = orchestrator.app.get_graph().draw_mermaid_png()
+                graph_image = Image.open(io.BytesIO(graph_bytes))
+                gr.Image(value=graph_image, label="Agent Workflow Graph")
+            except Exception as e:
+                gr.Markdown(f"**Error generating graph:** {str(e)}")
+                gr.Markdown("Graph visualization is not available.")
 
 llm_chat.queue(max_size=10)
 if __name__ == "__main__":
