@@ -216,7 +216,7 @@ Remember: Output ONLY the Python list, no additional text or formatting."""
             updated_state["outline"] = outline
             updated_state["current_step"] = "writing"
             updated_state["messages"].append(
-                {"role": "planner", "content": f"Created outline with {len(outline)} sections: {', '.join(outline)}"}
+                {"role": "assistant", "content": f"Created outline with {len(outline)} sections: {', '.join(outline)}"}
             )
 
             logger.info(f"PlannerAgent completed successfully. Outline: {outline}")
