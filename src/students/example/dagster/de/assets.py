@@ -1,3 +1,5 @@
+from collections import abc
+
 import dagster as dg
 import pandas as pd
 
@@ -91,4 +93,40 @@ def agg_data(
             "dagster/row_count": len(agg_data),
             "dagster/column_schema": dg.TableSchema(columns=columns)
         }
+    )
+
+
+# Define a multi-asset check to validate the data quality of the assets
+@dg.multi_asset_check(
+    # Map checks to targeted assets
+    specs=[
+        # blocking=False means that the check will not block the downstream asset materialization
+        # if the check fails, the next downstream asset will still be materialized
+        dg.AssetCheckSpec(name="all_alpha", asset="raw_data", blocking=False),
+        dg.AssetCheckSpec(name="no_null_dates", asset="clean_data", blocking=False),
+        dg.AssetCheckSpec(name="impossible_nitems", asset="clean_data", blocking=False),
+    ]
+)
+def dq_check_de(raw_data, clean_data) -> abc.Iterable[dg.AssetCheckResult]:
+    num_not_alpha = (~raw_data['FoodItem'].str.isalpha()).sum()
+    yield dg.AssetCheckResult(
+            check_name="all_alpha",
+            passed=bool(num_not_alpha == 0),
+            asset_key="raw_data",
+        )
+
+    # Check for null Date values in clean_data
+    num_date_null = clean_data["Date"].isna().sum()
+    yield dg.AssetCheckResult(
+        check_name="no_null_dates",
+        passed=bool(num_date_null == 0),
+        asset_key="clean_data",
+    )
+
+    # Check for impossibe nItem values in clean_data
+    num_impossible_nitems = (clean_data["nItems"] < 0).sum()
+    yield dg.AssetCheckResult(
+        check_name="impossible_nitems",
+        passed=bool(num_impossible_nitems == 0),
+        asset_key="clean_data",
     )

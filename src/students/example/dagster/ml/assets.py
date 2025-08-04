@@ -122,31 +122,6 @@ def raw_pandas_df(
     )
 
 
-@dg.multi_asset_check(
-    # Map checks to targeted assets
-    specs=[
-        dg.AssetCheckSpec(name="no_nulls", asset="raw_pandas_df"),
-        dg.AssetCheckSpec(name="impossible_temperatures", asset="raw_pandas_df"),
-    ]
-)
-def dq_check(raw_pandas_df) -> abc.Iterable[dg.AssetCheckResult]:
-    # Check for null temperature values
-    num_null = raw_pandas_df["t2m"].isna().sum()
-    yield dg.AssetCheckResult(
-        check_name="no_nulls",
-        passed=bool(num_null == 0),
-        asset_key="raw_pandas_df",
-    )
-
-    # Check for impossible temperature values
-    num_impossible_temperatures = (raw_pandas_df["t2m"] < 0).sum()
-    yield dg.AssetCheckResult(
-        check_name="impossible_temperatures",
-        passed=bool(num_impossible_temperatures == 0),
-        asset_key="raw_pandas_df",
-    )
-
-
 @dg.asset(
     description="Takes spatial mean. Converts Kelvin to Celsius. Cleans columns",
     required_resource_keys={"mlflow_tracking"},
@@ -716,3 +691,33 @@ def promote_model_to_production(
             value={"status": "not_promoted_to_production", "reason": "manual_approval_denied"},
             metadata={"status": "not_promoted_to_production"}
         )
+
+
+# Define a multi-asset check to validate the data quality of the assets
+# This check is specific to the raw_pandas_df and ensures that the raw data
+# does not contain null or impossible values
+# usually you'd use @dg.multi_asset_check to check multiple assets
+# but here we only check one asset
+@dg.multi_asset_check(
+    # Map checks to targeted assets
+    specs=[
+        dg.AssetCheckSpec(name="no_nulls", asset="raw_pandas_df", blocking=False),
+        dg.AssetCheckSpec(name="impossible_temperatures", asset="raw_pandas_df", blocking=False),
+    ]
+)
+def dq_check_ml(raw_pandas_df) -> abc.Iterable[dg.AssetCheckResult]:
+    # Check for null temperature values
+    num_null = raw_pandas_df["t2m"].isna().sum()
+    yield dg.AssetCheckResult(
+        check_name="no_nulls",
+        passed=bool(num_null == 0),
+        asset_key="raw_pandas_df",
+    )
+
+    # Check for impossible temperature values
+    num_impossible_temperatures = (raw_pandas_df["t2m"] < 0).sum()
+    yield dg.AssetCheckResult(
+        check_name="impossible_temperatures",
+        passed=bool(num_impossible_temperatures == 0),
+        asset_key="raw_pandas_df",
+    )
