@@ -34,10 +34,6 @@ def mlflow_client(_):
     return MlflowClient(tracking_uri=f"sqlite:///{SQLITE_DB_PATH}")
 
 
-class SlackResource(dg.ConfigurableResource):
-    token: str = dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN")
-
-
 class CDSAPIResource(dg.ConfigurableResource):
     host_url: str = "https://cds.climate.copernicus.eu/api"
     api_key: str = dg.EnvVar("CDS_API_KEY")

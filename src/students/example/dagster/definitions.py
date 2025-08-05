@@ -59,7 +59,6 @@ defs = dg.Definitions(
         "mlflow_tracking": mlflow_resource,
         "mlflow_client": mlflow_client,
         "cds_api": CDSAPIResource(),
-        "slack": SlackResource()
         "slack": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))
     },
     jobs=[de_job, ml_job],
