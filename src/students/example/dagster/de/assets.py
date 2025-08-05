@@ -83,7 +83,7 @@ def agg_data(
 
     slack: dagster_slack.SlackResource = context.resources.slack
     slack.get_client().chat_postMessage(
-        channel='aims_course', text=f":wave: hey there, from {os.environ["GITHUB_USER"]}!"
+        channel='aims_course', text=f":wave: hey there, from {os.environ.get("GITHUB_USER", "default")}!"
     )
 
     clean_data_no_null: pd.DataFrame = clean_data.loc[clean_data['Date'].notnull()]
