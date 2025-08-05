@@ -1,4 +1,5 @@
 import dagster as dg
+import dagster_slack
 
 from .de import assets as de_assets
 from .ml import assets as ml_assets
@@ -58,6 +59,7 @@ defs = dg.Definitions(
         "mlflow_tracking": mlflow_resource,
         "mlflow_client": mlflow_client,
         "cds_api": CDSAPI(),
+        "slack": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))
     },
     jobs=[de_job, ml_job],
     schedules=[era5_daily_schedule],

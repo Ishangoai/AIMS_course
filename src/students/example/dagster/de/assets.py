@@ -1,6 +1,7 @@
 from collections import abc
 
 import dagster as dg
+import dagster_slack
 import pandas as pd
 
 
@@ -70,6 +71,7 @@ def clean_data(
 
 @dg.asset(
     description="Aggregates the data by grouping by FoodItem and summing nItems.",
+    required_resource_keys={"slack"},
     compute_kind="python",
     group_name="de_transform"
 )
@@ -77,6 +79,9 @@ def agg_data(
     context: dg.AssetExecutionContext,
     clean_data: pd.DataFrame
 ) -> dg.MaterializeResult:
+
+    slack: dagster_slack.SlackResource = context.resources.slack
+    slack.get_client().chat_postMessage(channel='aims_course', text=':wave: hey there!')
 
     clean_data_no_null: pd.DataFrame = clean_data.loc[clean_data['Date'].notnull()]
     agg_data: pd.DataFrame = clean_data_no_null.groupby('FoodItem').agg({'nItems': 'sum'}).reset_index()
