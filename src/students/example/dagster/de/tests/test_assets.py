@@ -1,4 +1,5 @@
 import typing
+from unittest import mock
 
 import dagster as dg
 import pandas as pd
@@ -26,7 +27,7 @@ def dummy_clean_data():
 
 def test_agg_data(dummy_clean_data):
 
-    basic_context = dg.build_asset_context()
+    basic_context = dg.build_asset_context(resources={"slack": mock.Mock()})
     df_actual: typing.Any = agg_data(basic_context, dummy_clean_data)
 
     df_expected = pd.DataFrame({
