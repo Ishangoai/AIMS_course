@@ -1,8 +1,16 @@
 import dagster as dg
+import dagster_slack
 
 from .de import assets as de_assets
 from .ml import assets as ml_assets
-from .ml.resources import CDSAPI, Era5RequestConfig, PromotionConfig, TuningConfig, mlflow_client, mlflow_resource
+from .ml.resources import (
+    CDSAPIResource,
+    Era5RequestConfig,
+    PromotionConfig,
+    TuningConfig,
+    mlflow_client,
+    mlflow_resource,
+)
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
@@ -57,7 +65,8 @@ defs = dg.Definitions(
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
         "mlflow_tracking": mlflow_resource,
         "mlflow_client": mlflow_client,
-        "cds_api": CDSAPI(),
+        "cds_api": CDSAPIResource(),
+        "slack": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))
     },
     jobs=[de_job, ml_job],
     schedules=[era5_daily_schedule],

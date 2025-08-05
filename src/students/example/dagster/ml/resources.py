@@ -34,7 +34,7 @@ def mlflow_client(_):
     return MlflowClient(tracking_uri=f"sqlite:///{SQLITE_DB_PATH}")
 
 
-class CDSAPI(dg.ConfigurableResource):
+class CDSAPIResource(dg.ConfigurableResource):
     host_url: str = "https://cds.climate.copernicus.eu/api"
     api_key: str = dg.EnvVar("CDS_API_KEY")
 
