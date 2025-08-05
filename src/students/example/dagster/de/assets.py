@@ -1,3 +1,4 @@
+import os
 from collections import abc
 
 import dagster as dg
@@ -81,7 +82,9 @@ def agg_data(
 ) -> dg.MaterializeResult:
 
     slack: dagster_slack.SlackResource = context.resources.slack
-    slack.get_client().chat_postMessage(channel='aims_course', text=':wave: hey there!')
+    slack.get_client().chat_postMessage(
+        channel='aims_course', text=f":wave: hey there, from {os.environ["GITHUB_USER"]}!"
+    )
 
     clean_data_no_null: pd.DataFrame = clean_data.loc[clean_data['Date'].notnull()]
     agg_data: pd.DataFrame = clean_data_no_null.groupby('FoodItem').agg({'nItems': 'sum'}).reset_index()

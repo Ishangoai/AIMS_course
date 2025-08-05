@@ -3,7 +3,14 @@ import dagster_slack
 
 from .de import assets as de_assets
 from .ml import assets as ml_assets
-from .ml.resources import CDSAPIResource, Era5RequestConfig, PromotionConfig, TuningConfig, mlflow_client, mlflow_resource
+from .ml.resources import (
+    CDSAPIResource,
+    Era5RequestConfig,
+    PromotionConfig,
+    TuningConfig,
+    mlflow_client,
+    mlflow_resource,
+)
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
