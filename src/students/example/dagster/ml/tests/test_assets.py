@@ -28,7 +28,12 @@ def dummy_raw_pandas_df():
 
 def test_create_pandas_df(dummy_raw_pandas_df):
 
-    basic_context = dg.build_asset_context(resources={"mlflow_tracking": mock.Mock()})
+    # mocked_clean_df = clean_df.with_resources(
+    #     {"mlflow_tracking": mock.MagicMock()}
+    # )
+    mocked_mlflow = mock.MagicMock()
+
+    basic_context = dg.build_asset_context(resources={"mlflow_tracking": mocked_mlflow})
     df_actual: typing.Any = clean_df(basic_context, dummy_raw_pandas_df)
 
     df_expected = pd.DataFrame({

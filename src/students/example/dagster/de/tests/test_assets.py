@@ -27,7 +27,7 @@ def dummy_clean_data():
 
 def test_agg_data(dummy_clean_data):
 
-    basic_context = dg.build_asset_context(resources={"slack": mock.Mock()})
+    basic_context = dg.build_asset_context()
     df_actual: typing.Any = agg_data(basic_context, dummy_clean_data)
 
     df_expected = pd.DataFrame({
