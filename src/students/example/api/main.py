@@ -127,7 +127,7 @@ def custom_openapi():
     # cif already generated, return the cached schema
     if app.openapi_schema:
         return app.openapi_schema
-    
+
     openapi_schema = get_openapi(
         title=app.title,
         version=app.version,
@@ -180,8 +180,8 @@ def custom_openapi():
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
-app.openapi = custom_openapi
 
+app.openapi = custom_openapi
 
 
 gr.mount_gradio_app(app, demo, path="/gradio")
