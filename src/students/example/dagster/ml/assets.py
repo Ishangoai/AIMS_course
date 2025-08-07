@@ -13,12 +13,12 @@ from sklearn.linear_model import Ridge  # Changed from LinearRegression for tuni
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split  # For robust splitting
 
-from .resources import Era5RequestConfig, PromotionConfig, TuningConfig
+from .resources import CDSAPIResource, Era5RequestConfig, PromotionConfig, TuningConfig, mlflow_client, mlflow_resource
 
 
 @dg.asset(
     description="Fetches raw ERA5 2m temperature data from the CDS.",
-    required_resource_keys={"mlflow_tracking", "cds_api"},
+    resource_defs={"mlflow_tracking": mlflow_resource, "cds_api": CDSAPIResource()},
     compute_kind="python",
     group_name="ml_ingest"
 )
@@ -86,7 +86,7 @@ def raw_xarray_dataset(
 
 @dg.asset(
     description="Loads the raw xarray data into a pandas DataFrame and logs some metrics.",
-    required_resource_keys={"mlflow_tracking"},
+    resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
     group_name="ml_transform"
 )
@@ -124,7 +124,7 @@ def raw_pandas_df(
 
 @dg.asset(
     description="Takes spatial mean. Converts Kelvin to Celsius. Cleans columns",
-    required_resource_keys={"mlflow_tracking"},
+    resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
     group_name="ml_transform"
 )
@@ -178,7 +178,7 @@ def clean_df(
 
 @dg.asset(
     description="Tunes Ridge regression hyperparameters using Hyperopt and prepares data splits.",
-    required_resource_keys={"mlflow_tracking"},
+    resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
     group_name="ml_model",
 )
@@ -332,7 +332,7 @@ def tune_ridge_hyperparameters(  # noqa: C901
 
 @dg.asset(
     description="Trains a Ridge model using the best hyperparameters found by Hyperopt.",
-    required_resource_keys={"mlflow_tracking"},
+    resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
     group_name="ml_model"
 )
@@ -378,7 +378,7 @@ def train_tuned_model(
 
 @dg.asset(
     description="Evaluates the tuned model and logs model and metrics to MLflow.",
-    required_resource_keys={"mlflow_tracking"},
+    resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
     group_name="ml_evaluate"
 )
@@ -489,7 +489,7 @@ def evaluate_model(
 # for more thorough testing or limited release
 @dg.asset(
     description="Promotes the newly trained model to Staging if it meets performance criteria.",
-    required_resource_keys={"mlflow_tracking", "mlflow_client"},
+    resource_defs={"mlflow_tracking": mlflow_resource, "mlflow_client": mlflow_client},
     compute_kind="python",
     group_name="ml_promote"
 )
@@ -593,7 +593,7 @@ def promote_model_to_staging(
 
 @dg.asset(
     description="Promotes the best model from Staging to Production, usually with manual approval.",
-    required_resource_keys={"mlflow_tracking", "mlflow_client"},
+    resource_defs={"mlflow_tracking": mlflow_resource, "mlflow_client": mlflow_client},
     compute_kind="python",
     group_name="ml_promote"
 )
