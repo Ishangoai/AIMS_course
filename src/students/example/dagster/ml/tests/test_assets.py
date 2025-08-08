@@ -26,14 +26,12 @@ def dummy_raw_pandas_df():
     return df
 
 
+@mock.patch("dagster_mlflow.mlflow_tracking", dg.ResourceDefinition.mock_resource())
 def test_create_pandas_df(dummy_raw_pandas_df):
-
-    # mocked_clean_df = clean_df.with_resources(
-    #     {"mlflow_tracking": mock.MagicMock()}
-    # )
-    mocked_mlflow = mock.MagicMock()
-
-    basic_context = dg.build_asset_context(resources={"mlflow_tracking": mocked_mlflow})
+    # mock_resource = dg.ResourceDefinition.mock_resource()
+    # mock_mlflow.return_value = mock_resource
+    # mock_mlflow.resource_fn.return_value = lambda ctx: mock.MagicMock(), None
+    basic_context = dg.build_asset_context()
     df_actual: typing.Any = clean_df(basic_context, dummy_raw_pandas_df)
 
     df_expected = pd.DataFrame({
