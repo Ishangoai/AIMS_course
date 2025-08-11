@@ -1,3 +1,4 @@
+import os
 import typing
 from unittest.mock import MagicMock, patch
 
@@ -25,11 +26,12 @@ def dummy_clean_data():
     return df
 
 
+@patch.dict(os.environ, {"SLACK_AIMS_COURSE_BOT_TOKEN": "dummy-token"})
 @patch("dagster_slack.SlackResource.get_client")
 def test_agg_data(mock_get_client, dummy_clean_data):
     mock_client = MagicMock()
     mock_get_client.return_value = mock_client
-    mock_client.chat_postMessage.return_value = None  # return_value
+    mock_client.chat_postMessage.return_value = None
 
     basic_context = dg.build_asset_context()
     df_actual: typing.Any = agg_data(basic_context, dummy_clean_data)
