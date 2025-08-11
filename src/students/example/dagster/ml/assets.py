@@ -185,7 +185,6 @@ def tune_ridge_hyperparameters(  # noqa: C901
     config: TuningConfig,
     clean_df: pd.DataFrame
 ) -> dict:
-    
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting hyperparameter tuning for Ridge model.")
 
