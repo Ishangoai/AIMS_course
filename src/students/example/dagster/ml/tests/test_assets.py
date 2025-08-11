@@ -8,7 +8,6 @@ import pytest
 from ..assets import clean_df
 
 
-# Dummy pandas Dataset for testing clean_df
 @pytest.fixture
 def dummy_raw_pandas_df():
     # Create a simple pandas DataFrame directly
@@ -28,11 +27,10 @@ def dummy_raw_pandas_df():
 
 @mock.patch("dagster_mlflow.mlflow_tracking", dg.ResourceDefinition.mock_resource())
 def test_create_pandas_df(dummy_raw_pandas_df):
-    # mock_resource = dg.ResourceDefinition.mock_resource()
-    # mock_mlflow.return_value = mock_resource
-    # mock_mlflow.resource_fn.return_value = lambda ctx: mock.MagicMock(), None
-    basic_context = dg.build_asset_context()
-    df_actual: typing.Any = clean_df(basic_context, dummy_raw_pandas_df)
+    clean_df.resource_defs["mlflow_tracking"]._resource_fn = dg.ResourceDefinition.mock_resource().resource_fn
+
+    ctx = dg.build_asset_context()
+    df_actual: typing.Any = clean_df(ctx, dummy_raw_pandas_df)
 
     df_expected = pd.DataFrame({
         "time": [pd.Timestamp("2023-01-01 00:00")],
