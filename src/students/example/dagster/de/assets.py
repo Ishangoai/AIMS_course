@@ -72,7 +72,7 @@ def clean_data(
 
 @dg.asset(
     description="Aggregates the data by grouping by FoodItem and summing nItems.",
-    required_resource_keys={"slack"},
+    resource_defs={"slack": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))},
     compute_kind="python",
     group_name="de_transform"
 )
