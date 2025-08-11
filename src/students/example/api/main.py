@@ -1,4 +1,5 @@
 import os
+import textwrap
 
 import gradio as gr
 from agents.ai_agent.llm_gradio import llm_chat as agentic_llm_chat
@@ -7,20 +8,23 @@ from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.openapi.utils import get_openapi
 from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
 
 app = FastAPI(
     title="AIMS Course API",
-    description="""
-    This API provides sample endpoints
-    """,
+    description=textwrap.dedent("""
+    ## Mounted Apps
+    ----
+    1. [**General Gradio Demo**](/gradio/)
+    2. [**Heart Disease Prediction App**](/heart-disease/)
+    3. [**Simple LLM Chatbot**](/llm-chat/)
+    4. [**Agentic LLM Chatbot**](/agentic-llm-chat/)
+    -----
+    """),
     version="1.0.0",
-    contact={
-        "name": "Support Team",
-        "email": "vincent@ishango.ai",
-    },
+    contact={"name": "Support Team", "email": "vincent@ishango.ai"},
+    redirect_slashes=False,
 )
 
 # Global variable to store the usernames
@@ -121,67 +125,6 @@ def update_user_details(username: str, request: UpdateUserRequest):
         raise HTTPException(status_code=404, detail="User not found")
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
-
-
-def custom_openapi():
-    # cif already generated, return the cached schema
-    if app.openapi_schema:
-        return app.openapi_schema
-
-    openapi_schema = get_openapi(
-        title=app.title,
-        version=app.version,
-        description=app.description,
-        contact=app.contact,
-        routes=app.routes,
-    )
-
-    html_response = {
-        "200": {
-            "description": "The HTML page for the Gradio application.",
-            "content": {"text/html": {"schema": {"type": "string"}}},
-        }
-    }
-
-    openapi_schema["paths"]["/gradio"] = {
-        "get": {
-            "summary": "Gradio Demo UI",
-            "description": "Opens the interactive Gradio demo application.",
-            "tags": ["Mounted Gradio Apps"],
-            "responses": html_response,
-        }
-    }
-    openapi_schema["paths"]["/heart-disease"] = {
-        "get": {
-            "summary": "Heart Disease Prediction App",
-            "description": "Opens an app to predict heart disease based on patient data",
-            "tags": ["Mounted Gradio Apps"],
-            "responses": html_response,
-        }
-    }
-    openapi_schema["paths"]["/llm-chat"] = {
-        "get": {
-            "summary": "Simple LLM Chatbot",
-            "description": "Opens a simple chat interface with an LLM",
-            "tags": ["Mounted Gradio Apps"],
-            "responses": html_response,
-        }
-    }
-    openapi_schema["paths"]["/agentic-llm-chat"] = {
-        "get": {
-            "summary": "Agentic LLM Chatbot",
-            "description": "Opens an advanced, agentic chat interface with an LLM",
-            "tags": ["Mounted Gradio Apps"],
-            "responses": html_response,
-        }
-    }
-
-    # Cache and return the modified schema
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
-
-
-app.openapi = custom_openapi
 
 
 gr.mount_gradio_app(app, demo, path="/gradio")
