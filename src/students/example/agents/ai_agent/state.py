@@ -26,6 +26,13 @@ class EssayState(typing.TypedDict):
     text for that section. Created and populated by the Writer agent.
     """
 
+    # Research context
+    section_research: typing.Dict[str, str]
+    """
+    Research context for each section, where keys are section titles
+    and values are research findings to inform section writing.
+    """
+
     # Review and critique phase
     critique: typing.List[str]
     """
@@ -61,6 +68,9 @@ class EssayState(typing.TypedDict):
     - 'finalizing': Compiling final essay
     - 'complete': Process finished
     """
+
+    current_section_index: int
+    """Index of the section currently being written (0-based)."""
 
     iteration_count: int
     """Number of revision iterations completed."""
@@ -115,12 +125,14 @@ def create_initial_state(
         topic=topic,
         outline=[],
         draft_sections={},
+        section_research={},
         critique=[],
         revision_notes=[],
         word_count=0,
         target_word_count=target_word_count,
         final_essay=None,
         current_step="planning",
+        current_section_index=0,
         iteration_count=0,
         max_iterations=max_iterations,
         messages=[],
