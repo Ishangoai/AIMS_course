@@ -1,5 +1,6 @@
 import os
 import textwrap
+from pathlib import Path
 
 import gradio as gr
 from agents.ai_agent.llm_gradio import llm_chat as agentic_llm_chat
@@ -11,7 +12,6 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse
 from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
-from pathlib import Path
 
 app = FastAPI(
     title="AIMS Course API",
@@ -87,8 +87,8 @@ def ai_compose(topic: str):
             raise HTTPException(status_code=400, detail="Topic is required")
 
         # Lazy import to avoid heavy deps at import time
-        from agents.ai_agent.state import create_initial_state, get_state_summary
         from agents.ai_agent.agents.planner import PlannerAgent
+        from agents.ai_agent.state import create_initial_state, get_state_summary
 
         # Build initial state
         state = create_initial_state(topic=topic, target_word_count=2000)
