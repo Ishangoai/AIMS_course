@@ -7,6 +7,7 @@ from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse
 from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
@@ -21,6 +22,7 @@ app = FastAPI(
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Agentic LLM Chatbot**](/agentic-llm-chat/)
+    5. [**AI Interface**](/ai/)
     -----
     """),
     version="1.0.0",
@@ -38,19 +40,7 @@ def root():
     """
     Redirect the root path `/` to the Swagger UI documentation.
     """
-    # Provide a simple landing page linking to docs and the Vue UI
-    html = (
-        "<html><head><meta charset='utf-8'><title>AIMS Example API</title></head>"
-        "<body style='font-family: ui-sans-serif, system-ui; padding:16px'>"
-        "<h2>AIMS Course API</h2>"
-        "<ul>"
-        "<li><a href='/openapi.json'>OpenAPI JSON</a></li>"
-        "<li><a href='/docs'>Swagger UI</a></li>"
-        "<li><a href='/ai'>Simple Vue UI</a></li>"
-        "</ul>"
-        "</body></html>"
-    )
-    return HTMLResponse(content=html)
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="AIMS Course API Docs")
 
 
 @app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
@@ -78,10 +68,10 @@ def evaluate(expression: str):
         return {"error": str(e)}
 
 
-@app.get("/ai", include_in_schema=False)
+@app.get("/ai/", include_in_schema=False)
 def ai_interface():
     """Serve the simple Vue UI as a static HTML page."""
-    ui_path = Path(__file__).resolve().parents[1] / "ui" / "ai_interface.html"
+    ui_path = Path(__file__).resolve().parents[1] / "agents" / "ai_agent" / "ui" / "ai_interface.html"
     if not ui_path.exists():
         # Fallback: tiny page with a message
         return HTMLResponse("<h3>ai_interface.html not found</h3>")
