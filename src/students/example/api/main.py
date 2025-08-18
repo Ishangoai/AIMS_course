@@ -78,6 +78,42 @@ def ai_interface():
     return FileResponse(str(ui_path))
 
 
+@app.post("/ai/compose", summary="Compose essay", description="Plan, write, and evaluate an essay based on a topic string.")
+def ai_compose(topic: str):
+    """Trigger planning, writing, and evaluation for an essay given a topic string."""
+    try:
+        topic = (topic or "").strip()
+        if not topic:
+            raise HTTPException(status_code=400, detail="Topic is required")
+
+        # Lazy import to avoid heavy deps at import time
+        from agents.ai_agent.state import create_initial_state, get_state_summary
+        from agents.ai_agent.agents.planner import PlannerAgent
+
+        # Build initial state
+        state = create_initial_state(topic=topic, target_word_count=2000)
+        state["messages"] = [{"role": "user", "content": topic}]
+
+        # Run planner
+        planner = PlannerAgent()
+        result_state = planner.plan_essay(state)
+
+        outline = result_state.get("outline", [])
+        summary = get_state_summary(result_state)
+        return {
+            "outline": outline,
+            "summary": summary,
+            "current_step": result_state.get("current_step"),
+            "final_essay": result_state.get("final_essay"),
+            "errors": result_state.get("errors", []),
+            "warnings": result_state.get("warnings", []),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.post("/register", summary="Register a new user", description="Registers a new user with the given username.")
 def register_user(request: UserRequest):
     """
