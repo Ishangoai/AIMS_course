@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Interface (Vue)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+      :root { --bg:#0b1020; --card:#121933; --muted:#9aa3b2; --text:#e6e9ef; --accent:#6ea8fe; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; background: var(--bg); color: var(--text); }
+      .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+      .card { background: var(--card); border: 1px solid #223; border-radius: 12px; padding: 16px; }
+      h1 { font-size: 22px; margin: 0 0 12px; }
+      .muted { color: var(--muted); font-size: 14px; }
+      .row { display: flex; gap: 8px; margin-top: 12px; }
+      input, textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #2a3150; background: #0e1430; color: var(--text); outline: none; }
+      button { padding: 10px 14px; border-radius: 10px; border: 1px solid #2a3150; background: #0e163a; color: var(--text); cursor: pointer; }
+      button.primary { background: linear-gradient(180deg, #2c4b9b, #243f85); border-color: #3659b3; }
+      button:disabled { opacity: 0.6; cursor: not-allowed; }
+      .messages { display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow: auto; padding: 8px; background: #0c122a; border: 1px solid #222a4a; border-radius: 10px; }
+      .msg { padding: 10px 12px; border-radius: 10px; max-width: 80%; }
+      .user { align-self: flex-end; background: #16336b; }
+      .bot { align-self: flex-start; background: #1a263f; }
+      .small { font-size: 12px; color: var(--muted); }
+      .footer { margin-top: 16px; color: var(--muted); font-size: 13px; }
+      a { color: var(--accent); text-decoration: none; }
+    </style>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  </head>
+  <body>
+    <div id="app" class="container">
+      <div class="card">
+        <h1>🧪 AI Interface (Vue)</h1>
+        <div class="muted">This is a minimal Vue UI served by FastAPI. It calls example endpoints in this service.</div>
+
+        <div style="margin-top:14px;" class="row">
+          <input v-model="expr" placeholder="Try a math expression e.g. 2+2*5" @keyup.enter="evaluate" />
+          <button class="primary" @click="evaluate" :disabled="loadingEval">Evaluate</button>
+        </div>
+        <div v-if="evalResult" class="small" style="margin-top:8px">Result: {{ evalResult }}</div>
+
+        <div style="margin-top:16px;" class="row">
+          <input v-model="username" placeholder="Your username" />
+          <button @click="hello">Hello</button>
+        </div>
+        <div v-if="helloMsg" class="small" style="margin-top:8px">{{ helloMsg }}</div>
+
+        <hr style="border-color:#222a4a; margin:16px 0" />
+
+        <div class="messages" aria-live="polite">
+          <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
+            <div class="small">{{ m.role === 'user' ? 'You' : 'Assistant' }}</div>
+            <div>{{ m.content }}</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <textarea rows="3" v-model="input" placeholder="Type a message (demo posts back to echo)" @keyup.ctrl.enter="send"></textarea>
+          <div style="display:flex; flex-direction: column; gap: 8px;">
+            <button class="primary" @click="send" :disabled="loadingSend">Send</button>
+            <button @click="clearChat">Clear</button>
+          </div>
+        </div>
+
+        <div class="footer">Endpoints used:
+          <code>GET /evaluate?expression=...</code> and <code>GET /hello</code>.
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const { createApp, ref } = Vue
+      createApp({
+        setup() {
+          const expr = ref('2+2*5')
+          const evalResult = ref('')
+          const loadingEval = ref(false)
+          const username = ref('')
+          const helloMsg = ref('')
+          const input = ref('Hello there!')
+          const loadingSend = ref(false)
+          const messages = ref([])
+
+          async function evaluate() {
+            if (!expr.value) return
+            loadingEval.value = true
+            try {
+              const q = encodeURIComponent(expr.value)
+              const res = await fetch(`/evaluate?expression=${q}`)
+              const data = await res.json()
+              evalResult.value = data.result ?? data.error ?? 'No result'
+            } catch (e) {
+              evalResult.value = String(e)
+            } finally {
+              loadingEval.value = false
+            }
+          }
+
+          async function hello() {
+            // This demo ignores username, but you could POST to /register then call /hello
+            try {
+              const res = await fetch('/hello')
+              const data = await res.json()
+              helloMsg.value = data.message || JSON.stringify(data)
+            } catch (e) {
+              helloMsg.value = String(e)
+            }
+          }
+
+          async function send() {
+            if (!input.value) return
+            messages.value.push({ role: 'user', content: input.value })
+            const toEcho = input.value
+            input.value = ''
+            loadingSend.value = true
+            try {
+              // In a real app, POST to your LLM/agent endpoint.
+              // Here we just echo back via /evaluate if it looks like math, else simple string.
+              let bot = ''
+              const maybeMath = /^[\d\s+\-*/().]+$/.test(toEcho)
+              if (maybeMath) {
+                const q = encodeURIComponent(toEcho)
+                const res = await fetch(`/evaluate?expression=${q}`)
+                const data = await res.json()
+                bot = `Result: ${data.result ?? data.error ?? 'n/a'}`
+              } else {
+                bot = `Echo: ${toEcho}`
+              }
+              messages.value.push({ role: 'bot', content: bot })
+            } catch (e) {
+              messages.value.push({ role: 'bot', content: 'Error: ' + String(e) })
+            } finally {
+              loadingSend.value = false
+            }
+          }
+
+          function clearChat() { messages.value = [] }
+
+          return { expr, evaluate, evalResult, loadingEval, username, hello, helloMsg, input, send, loadingSend, messages, clearChat }
+        }
+      }).mount('#app')
+    </script>
+  </body>
+</html>
