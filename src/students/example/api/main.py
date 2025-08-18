@@ -1,4 +1,5 @@
 import os
+import textwrap
 
 import gradio as gr
 from agents.ai_agent.llm_gradio import llm_chat as agentic_llm_chat
@@ -12,14 +13,18 @@ from gradioapp.heart_disease_app import heart_app
 
 app = FastAPI(
     title="AIMS Course API",
-    description="""
-    This API provides sample endpoints
-    """,
+    description=textwrap.dedent("""
+    ## Mounted Apps
+    ----
+    1. [**General Gradio Demo**](/gradio/)
+    2. [**Heart Disease Prediction App**](/heart-disease/)
+    3. [**Simple LLM Chatbot**](/llm-chat/)
+    4. [**Agentic LLM Chatbot**](/agentic-llm-chat/)
+    -----
+    """),
     version="1.0.0",
-    contact={
-        "name": "Support Team",
-        "email": "vincent@ishango.ai",
-    },
+    contact={"name": "Support Team", "email": "vincent@ishango.ai"},
+    redirect_slashes=False,
 )
 
 # Global variable to store the usernames

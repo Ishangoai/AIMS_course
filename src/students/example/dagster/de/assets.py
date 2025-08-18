@@ -1,4 +1,8 @@
+import os
+from collections import abc
+
 import dagster as dg
+import dagster_slack
 import pandas as pd
 
 
@@ -68,6 +72,7 @@ def clean_data(
 
 @dg.asset(
     description="Aggregates the data by grouping by FoodItem and summing nItems.",
+    resource_defs={"slack": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))},
     compute_kind="python",
     group_name="de_transform"
 )
@@ -75,6 +80,11 @@ def agg_data(
     context: dg.AssetExecutionContext,
     clean_data: pd.DataFrame
 ) -> dg.MaterializeResult:
+
+    slack: dagster_slack.SlackResource = context.resources.slack
+    slack.get_client().chat_postMessage(
+        channel='aims_course', text=f":wave: hey there, from {os.environ.get("GITHUB_USER", "default")}!"
+    )
 
     clean_data_no_null: pd.DataFrame = clean_data.loc[clean_data['Date'].notnull()]
     agg_data: pd.DataFrame = clean_data_no_null.groupby('FoodItem').agg({'nItems': 'sum'}).reset_index()
@@ -91,4 +101,40 @@ def agg_data(
             "dagster/row_count": len(agg_data),
             "dagster/column_schema": dg.TableSchema(columns=columns)
         }
+    )
+
+
+# Define a multi-asset check to validate the data quality of the assets
+@dg.multi_asset_check(
+    # Map checks to targeted assets
+    specs=[
+        # blocking=False means that the check will not block the downstream asset materialization
+        # if the check fails, the next downstream asset will still be materialized
+        dg.AssetCheckSpec(name="all_alpha", asset="raw_data", blocking=False),
+        dg.AssetCheckSpec(name="no_null_dates", asset="clean_data", blocking=False),
+        dg.AssetCheckSpec(name="impossible_nitems", asset="clean_data", blocking=False),
+    ]
+)
+def dq_check_de(raw_data, clean_data) -> abc.Iterable[dg.AssetCheckResult]:
+    num_not_alpha = (~raw_data['FoodItem'].str.isalpha()).sum()
+    yield dg.AssetCheckResult(
+            check_name="all_alpha",
+            passed=bool(num_not_alpha == 0),
+            asset_key="raw_data",
+        )
+
+    # Check for null Date values in clean_data
+    num_date_null = clean_data["Date"].isna().sum()
+    yield dg.AssetCheckResult(
+        check_name="no_null_dates",
+        passed=bool(num_date_null == 0),
+        asset_key="clean_data",
+    )
+
+    # Check for impossibe nItem values in clean_data
+    num_impossible_nitems = (clean_data["nItems"] < 0).sum()
+    yield dg.AssetCheckResult(
+        check_name="impossible_nitems",
+        passed=bool(num_impossible_nitems == 0),
+        asset_key="clean_data",
     )
