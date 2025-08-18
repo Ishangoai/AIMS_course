@@ -78,7 +78,7 @@ def ai_interface():
     return FileResponse(str(ui_path))
 
 
-@app.post("/ai/compose", summary="Compose essay", description="Plan, write, and evaluate an essay based on a topic string.")
+@app.post("/ai/compose", summary="Compose essay", description="Plan, and write an essay based on a topic.")
 def ai_compose(topic: str):
     """Trigger planning, writing, and evaluation for an essay given a topic string."""
     try:
