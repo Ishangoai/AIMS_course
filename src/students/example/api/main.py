@@ -78,7 +78,7 @@ def ai_interface():
     return FileResponse(str(ui_path))
 
 
-@app.post("/ai/compose", summary="Compose essay", description="Plan, and write an essay based on a topic.")
+@app.post("/ai/compose", summary="Compose essay", description="Plan and write an essay based on a topic.")
 def ai_compose(topic: str):
     """Trigger planning, writing, and evaluation for an essay given a topic string."""
     try:
@@ -88,6 +88,7 @@ def ai_compose(topic: str):
 
         # Lazy import to avoid heavy deps at import time
         from agents.ai_agent.agents.planner import PlannerAgent
+        from agents.ai_agent.agents.writer import WriterAgent
         from agents.ai_agent.state import create_initial_state, get_state_summary
 
         # Build initial state
@@ -98,6 +99,10 @@ def ai_compose(topic: str):
         planner = PlannerAgent()
         result_state = planner.plan_essay(state)
 
+        # Run writer (use the outline produced by planner)
+        writer = WriterAgent()
+        result_state = writer.write_essay(result_state)
+
         outline = result_state.get("outline", [])
         summary = get_state_summary(result_state)
         return {
@@ -105,6 +110,8 @@ def ai_compose(topic: str):
             "summary": summary,
             "current_step": result_state.get("current_step"),
             "final_essay": result_state.get("final_essay"),
+            "word_count": result_state.get("word_count"),
+            "draft_sections": result_state.get("draft_sections", {}),
             "errors": result_state.get("errors", []),
             "warnings": result_state.get("warnings", []),
         }
