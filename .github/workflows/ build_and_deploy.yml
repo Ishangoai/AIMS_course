@@ -60,7 +60,7 @@ env:
   CLOUD_RUN_REGION: 'europe-west2'
   REPOSITORY: '${{ secrets.GCP_PROJECT_NAME }}-gcr'
   WORKLOAD_IDENTITY_PROVIDER: 'projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github'
-  DEPLOY_EXAMPLE: 'true' # <--- Toggle this to 'true' to deploy the example folder
+  DEPLOY_EXAMPLE: 'fasle' # <--- Toggle this to 'true' to deploy the example folder
 
 jobs:
   setup-build-publish-deploy:
