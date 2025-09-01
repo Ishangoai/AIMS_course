@@ -2,8 +2,8 @@ import gradio as gr
 
 
 def analyze(text: str) -> str:
-    char_count = len(text)
-    word_count = len(text.split(" "))
+    char_count = len(text.replace(" ", ""))
+    word_count = len(text.strip().split(" "))
     avg_word_length = char_count / word_count if word_count > 0 else 0
     display = f"""
     Character Count: {char_count}
@@ -40,6 +40,7 @@ with gr.Blocks() as demo:
         reverse_order = gr.Checkbox(label="Reverse Word Order")
         reverser_chars = gr.Checkbox(label="Reverse All Characters")
         textbox.change(fn=reverse, inputs=[textbox, reverse_order, reverser_chars], outputs=output_box)
+        reverse_order.change(fn=reverse, inputs=[textbox, reverse_order, reverser_chars], outputs=output_box)
     with gr.Accordion("Text analyzer"):
         analyzer = gr.Textbox(label="Word Count, Character Count, Average word length", interactive=True)
         textbox.change(fn=analyze, inputs=textbox, outputs=analyzer)
