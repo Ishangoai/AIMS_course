@@ -28,6 +28,12 @@ def reverse(text: str, reverse_order: bool, reverse_chars: bool) -> str:
     return text
 
 
+def format(text, reverse_order, reverse_chars, case):
+    text = reverse(text, reverse_order, reverse_chars)
+    text = convert(text, case)
+    return text
+
+
 with gr.Blocks() as demo:
 
     textbox = gr.Textbox(label="Enter your name")
@@ -39,12 +45,16 @@ with gr.Blocks() as demo:
     with gr.Accordion("Reverse Text", open=False):
         reverse_order = gr.Checkbox(label="Reverse Word Order")
         reverser_chars = gr.Checkbox(label="Reverse All Characters")
-        textbox.change(fn=reverse, inputs=[textbox, reverse_order, reverser_chars], outputs=output_box)
         reverse_order.change(fn=reverse, inputs=[textbox, reverse_order, reverser_chars], outputs=output_box)
+        reverser_chars.change(fn=reverse, inputs=[textbox, reverse_order, reverser_chars], outputs=output_box)
     with gr.Accordion("Text analyzer"):
         analyzer = gr.Textbox(label="Word Count, Character Count, Average word length", interactive=True)
-        textbox.change(fn=analyze, inputs=textbox, outputs=analyzer)
 
+    textbox.change(
+        fn=format,
+        inputs=[textbox, reverse_order, reverse_order, converter], 
+        outputs=output_box
+    ).then(fn=analyze, inputs=textbox, outputs=analyzer)
 
 if __name__ == "__main__":
     demo.launch()
