@@ -52,7 +52,7 @@ with gr.Blocks() as demo:
 
     textbox.change(
         fn=format,
-        inputs=[textbox, reverse_order, reverse_order, converter], 
+        inputs=[textbox, reverse_order, reverse_order, converter],
         outputs=output_box
     ).then(fn=analyze, inputs=textbox, outputs=analyzer)
 
