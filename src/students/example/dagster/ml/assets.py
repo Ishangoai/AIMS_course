@@ -380,7 +380,7 @@ def train_tuned_model(
     compute_kind="python",
     group_name="ml_evaluate"
 )
-def evaluate_model(
+def test_model(
     context: dg.AssetExecutionContext,
     train_tuned_model: dict
 ) -> dg.MaterializeResult:
@@ -494,22 +494,22 @@ def evaluate_model(
 def promote_model_to_staging(
     context: dg.AssetExecutionContext,
     config: PromotionConfig,
-    evaluate_model: dict
+    test_model: dict
 ) -> dg.MaterializeResult:
     # Get the MLflow client from the context to interact with the model registry
     mlflow_client = context.resources.mlflow_client
     context.log.info("Starting model promotion to Staging.")
 
     # If the evaluation step was skipped, we also skip promotion
-    if evaluate_model.get("status") == "skipped_evaluation":
+    if test_model.get("status") == "skipped_evaluation":
         context.log.info("Evaluation was skipped in the previous step. Skipping staging promotion.")
         return dg.MaterializeResult(
             value={"status": "skipped_promotion", "reason": "evaluation_skipped_upstream"},
             metadata={"status": "skipped_promotion_due_to_upstream_skip"}
         )
     # Extract metrics and model version info from evaluation result
-    eval_metrics = evaluate_model.get("eval_metrics", {})
-    model_version_info = evaluate_model.get("model_version_info")
+    eval_metrics = test_model.get("eval_metrics", {})
+    model_version_info = test_model.get("model_version_info")
 
     # If no model version info was returned, skip promotion.
     # model_version_info might be None due to an upstream failure
