@@ -6,12 +6,16 @@ FROM python:3.12.9-slim
 # copy the uv and uvx executables from the uv image into the /bin/ directory of the current image
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# Install System Packages i.e nginx server
+RUN apt-get update && apt-get install -y --no-install-recommends nginx procps && rm -rf /var/lib/apt/lists/*
+
 # sets the working directory inside the container to /app
 # any subsequent RUN, CMD, ENTRYPOINT, COPY, ADD instructions will be executed relative to this directory.
 WORKDIR /app
 
 # copies all files and directories from the build context (your local project directory, the first .) 
 COPY . .
+RUN mv /app/nginx.conf /etc/nginx/nginx.conf \
 
 # this command will install the project itself (e.g., in editable mode if configured that way in pyproject.toml), 
 # making it importable or executable within the container environment.
