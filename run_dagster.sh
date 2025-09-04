@@ -8,7 +8,7 @@ MLFLOW_PID=$!
 # Ensure MLflow UI is stopped when the script exits
 trap "kill $MLFLOW_PID 2>/dev/null" EXIT
 
-if [[ "$GITHUB_USER" == "oliverangelil" || "$GITHUB_USER" == "aduuna" || "$GITHUB_USER" == "cyrille-feu" ]]; then
+if [[ ("$GITHUB_USER" == "oliverangelil" || "$GITHUB_USER" == "aduuna" || "$GITHUB_USER" == "cyrille-feu") && "$DEPLOYMENT_TARGET" != "STUDENT" ]]; then
     echo "Running Dagster for user: example"
     uv run dagster dev -m "src.students.example.dagster.definitions"
 else
