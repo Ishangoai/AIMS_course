@@ -15,7 +15,7 @@ WORKDIR /app
 
 # copies all files and directories from the build context (your local project directory, the first .) 
 COPY . .
-RUN mv /app/nginx.conf /etc/nginx/nginx.conf
+RUN mv /app/nginx.conf /etc/nginx/nginx.conf \
 
 # this command will install the project itself (e.g., in editable mode if configured that way in pyproject.toml), 
 # making it importable or executable within the container environment.
