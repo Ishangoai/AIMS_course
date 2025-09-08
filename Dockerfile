@@ -7,7 +7,7 @@ FROM python:3.12.9-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Install System Packages i.e nginx server
-RUN apt-get update && apt-get install -y --no-install-recommends nginx procps netcat-openbsd && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends nginx procps && rm -rf /var/lib/apt/lists/*
 
 # sets the working directory inside the container to /app
 # any subsequent RUN, CMD, ENTRYPOINT, COPY, ADD instructions will be executed relative to this directory.

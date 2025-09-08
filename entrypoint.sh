@@ -25,12 +25,6 @@ echo "Starting FastAPI on port 8000..."
 uv run uvicorn "api.main:app" --host 0.0.0.0 --port 8000 &
 FASTAPI_PID=$!
 
-echo "Waiting for all services to be ready..."
-while ! nc -z 127.0.0.1 8000 || ! nc -z 127.0.0.1 3000 || ! nc -z 127.0.0.1 5000; do
-  sleep 1
-done
-echo "All services are up!"
-
 echo "Starting nginx (will run in foreground)..."
 # exec nginx in the foreground so it becomes PID 1 in the container
 exec nginx -g 'daemon off;'
