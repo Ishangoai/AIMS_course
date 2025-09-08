@@ -1,12 +1,6 @@
 #!/bin/bash
 set -e
 
-# Start dagster and mlflow (if present) from project root (/app)
-echo "Launching /app/run_dagster.sh in background..."
-/app/run_dagster.sh &
-RUNDAGSTER_PID=$!
-echo "run_dagster.sh pid=$RUNDAGSTER_PID"
-
 if [ "$DEPLOYMENT_TARGET" = "STUDENT" ]; then
     # Assume you pass in the student identifier, e.g., student1.
     if [ -z "$GITHUB_USER" ]; then
@@ -19,6 +13,12 @@ else
     echo "Starting root API..."
     cd src/students/example
 fi
+
+# Start dagster and mlflow (if present) from project root (/app)
+echo "Launching /app/run_dagster.sh in background..."
+/app/run_dagster.sh &
+RUNDAGSTER_PID=$!
+echo "run_dagster.sh pid=$RUNDAGSTER_PID"
 
 # Start the FastAPI app in background on port 8000
 echo "Starting FastAPI on port 8000..."
