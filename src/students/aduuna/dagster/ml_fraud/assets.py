@@ -358,7 +358,7 @@ def notify_fraud_pipeline(
     slack: dagster_slack.SlackResource = context.resources.slack_notifier
     github_user = "adduna"
 
-    include the f1 score from the evaluation in the message
+    # Optional: include the f1 score from the evaluation in the message
     f1 = evaluate_fraud_model.get("f1_score") if isinstance(evaluate_fraud_model, dict) else None
     f1_text = f" with F1={f1:.3f}" if isinstance(f1, (int, float)) else ""
 
