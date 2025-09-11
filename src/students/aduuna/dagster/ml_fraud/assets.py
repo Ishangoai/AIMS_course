@@ -46,7 +46,6 @@ def raw_fraud_data(
     normal_df = df[df['Class'] == 0].sample(n=1000 - len(fraud_df), random_state=42)
     df = pd.concat([fraud_df, normal_df]).sample(frac=1, random_state=42).reset_index(drop=True)
 
-
     context.log.info(f"Loaded dataset with shape: {df.shape}")
 
     # Log basic dataset information to MLflow
