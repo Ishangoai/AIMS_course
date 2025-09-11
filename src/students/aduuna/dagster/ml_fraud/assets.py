@@ -2,6 +2,7 @@ import os
 from collections import abc
 
 import dagster as dg
+import dagster_slack
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -338,6 +339,40 @@ def evaluate_fraud_model(
             "test_accuracy": dg.MetadataValue.float(float(accuracy)),
             "model_name": dg.MetadataValue.text(model_name)
         }
+    )
+
+
+@dg.asset(
+    description="Sends a Slack notification after the fraud model pipeline finishes.",
+    resource_defs={
+        "slack_notifier": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN")),
+    },
+    compute_kind="python",
+    group_name="fraud_model"
+)
+def notify_fraud_pipeline(
+    context: dg.AssetExecutionContext,
+    evaluate_fraud_model: dict
+) -> dg.MaterializeResult:
+    """Notify the Slack channel that the pipeline completed, including the GitHub handle and an emoji."""
+    slack: dagster_slack.SlackResource = context.resources.slack_notifier
+    github_user = "adduna"
+
+    include the f1 score from the evaluation in the message
+    f1 = evaluate_fraud_model.get("f1_score") if isinstance(evaluate_fraud_model, dict) else None
+    f1_text = f" with F1={f1:.3f}" if isinstance(f1, (int, float)) else ""
+
+    text = f":sunglasses: {github_user}'s fraud Dagster pipeline successfully ran{f1_text}"
+    slack.get_client().chat_postMessage(
+        channel='aims_course_october2025',
+        text=text,
+    )
+
+    context.log.info("Slack notification sent.")
+
+    return dg.MaterializeResult(
+        value={"message": text},
+        metadata={"message": dg.MetadataValue.text(text)}
     )
 
 

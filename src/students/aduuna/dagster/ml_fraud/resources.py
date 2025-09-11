@@ -31,9 +31,6 @@ class RandomForestConfig(dg.Config):
     param_grid: dict = pyd.Field(
         default={
             'n_estimators': [50, 100, 200],
-            'max_depth': [3, 5, 10, None],
-            'min_samples_split': [2, 5, 10],
-            'min_samples_leaf': [1, 2, 4]
         },
         description="Parameter grid for RandomForest hyperparameter tuning"
     )
