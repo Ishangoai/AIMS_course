@@ -41,11 +41,11 @@ def raw_fraud_data(
     context.log.info(f"Loading fraud detection data from: {fraud_data_resource.data_url}")
 
     # Load the dataset
-    df = pd.read_csv(fraud_data_resource.data_url)
+    df: pd.DataFrame = pd.read_csv(fraud_data_resource.data_url)
     # Sample the data while preserving the fraud cases
     fraud_df = df[df['Class'] == 1]
     normal_df = df[df['Class'] == 0].sample(n=1000 - len(fraud_df), random_state=42)
-    df = pd.concat([fraud_df, normal_df]).sample(frac=1, random_state=42).reset_index(drop=True)
+    df = pd.DataFrame(pd.concat([fraud_df, normal_df]).sample(frac=1, random_state=42).reset_index(drop=True))
 
     context.log.info(f"Loaded dataset with shape: {df.shape}")
 
@@ -62,7 +62,7 @@ def raw_fraud_data(
     dataset = mlflow_client.data.from_pandas(df, name="raw_fraud_detection_data")
     mlflow_client.log_input(dataset=dataset, context="training")
 
-    columns = [dg.TableColumn(k, str(v)) for k, v in df.dtypes.to_dict().items()]
+    columns = [dg.TableColumn(str(col), str(dtype)) for col, dtype in df.dtypes.items()]
 
     return dg.MaterializeResult(
         value=df,
@@ -78,7 +78,7 @@ def raw_fraud_data(
 
 
 @dg.asset(
-    description="Preprocesses fraud data and splits into training and test sets.",
+    description="Preprocesses fraud data and split into training and test sets.",
     resource_defs={
         "mlflow_tracking": mlflow_resource,
         "fraud_data": fraud_data_resource
@@ -91,7 +91,7 @@ def preprocessed_fraud_data(
     raw_fraud_data: pd.DataFrame
 ) -> dg.MaterializeResult:
     """
-    Preprocesses the fraud data and splits into training and test sets.
+    Preprocesses the fraud data and split into training and test sets.
     """
     mlflow_client = context.resources.mlflow_tracking
     fraud_data_resource = context.resources.fraud_data
@@ -109,6 +109,11 @@ def preprocessed_fraud_data(
         random_state=fraud_data_resource.random_state,
         stratify=y  # Maintain class distribution
     )
+
+    X_train = pd.DataFrame(X_train)
+    X_test = pd.DataFrame(X_test)
+    y_train = pd.Series(y_train)
+    y_test = pd.Series(y_test)
 
     context.log.info(f"Training set size: {len(X_train)}")
     context.log.info(f"Test set size: {len(X_test)}")
@@ -384,7 +389,10 @@ def notify_fraud_pipeline(
         dg.AssetCheckSpec(name="balanced_splits", asset="preprocessed_fraud_data", blocking=False),
     ]
 )
-def fraud_data_quality_checks(raw_fraud_data, preprocessed_fraud_data) -> abc.Iterable[dg.AssetCheckResult]:
+def fraud_data_quality_checks(
+    raw_fraud_data: pd.DataFrame,
+    preprocessed_fraud_data: dict,
+) -> abc.Iterable[dg.AssetCheckResult]:
     """
     Data quality checks for fraud detection pipeline.
     """
