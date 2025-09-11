@@ -1,44 +1,54 @@
-from dagster import ConfigurableResource
+import dagster as dg
+import pydantic as pyd
 
 
-class FraudDatabaseResource(ConfigurableResource):
-    """Resource for fraud detection database connections."""
-
-    connection_string: str = "sqlite:///fraud_detection.db"
-
-    def get_connection(self):
-        """Get database connection for fraud detection."""
-        print(f"Connecting to fraud database: {self.connection_string}")
-        return self.connection_string
-
-
-class FraudModelResource(ConfigurableResource):
-    """Resource for fraud detection model configuration."""
-
-    model_type: str = "random_forest"
-    max_depth: int = 10
-    n_estimators: int = 100
-
-    def get_model_config(self):
-        """Get model configuration for fraud detection."""
-        return {
-            "model_type": self.model_type,
-            "max_depth": self.max_depth,
-            "n_estimators": self.n_estimators
-        }
+class FraudDataResource(dg.ConfigurableResource):
+    """Resource for fraud data configuration"""
+    data_url: str = pyd.Field(
+        default="https://raw.githubusercontent.com/nsethi31/Kaggle-Data-Credit-Card-Fraud-Detection/master/creditcard.csv",
+        description="URL to the credit card fraud dataset"
+    )
+    test_size: float = pyd.Field(
+        default=0.2,
+        description="Proportion of data to use for testing"
+    )
+    random_state: int = pyd.Field(
+        default=42,
+        description="Random state for reproducibility in data splitting"
+    )
 
 
-class FraudDataResource(ConfigurableResource):
-    """Resource for fraud detection data configuration."""
+class FraudDatabaseResource(dg.ConfigurableResource):
+    """Resource for fraud database configuration"""
+    base_dir: str = pyd.Field(
+        default="./tmp_fraud_storage",
+        description="Base directory for storing fraud detection data"
+    )
 
-    dataset_url: str = "https://storage.googleapis.com/download.tensorflow.org/data/creditcard.csv"
-    test_size: float = 0.2
-    random_state: int = 42
 
-    def get_data_config(self):
-        """Get data configuration for fraud detection."""
-        return {
-            "dataset_url": self.dataset_url,
-            "test_size": self.test_size,
-            "random_state": self.random_state
-        }
+class RandomForestConfig(dg.Config):
+    """Configuration for RandomForest hyperparameter tuning"""
+    param_grid: dict = pyd.Field(
+        default={
+            'n_estimators': [50, 100, 200],
+            'max_depth': [3, 5, 10, None],
+            'min_samples_split': [2, 5, 10],
+            'min_samples_leaf': [1, 2, 4]
+        },
+        description="Parameter grid for RandomForest hyperparameter tuning"
+    )
+    cv_folds: int = pyd.Field(
+        default=3,
+        description="Number of cross-validation folds for hyperparameter tuning"
+    )
+    scoring: str = pyd.Field(
+        default='f1',
+        description="Scoring metric for cross-validation"
+    )
+    random_state: int = pyd.Field(
+        default=42,
+        description="Random state for reproducibility in model training"
+    )
+
+
+fraud_data_resource = FraudDataResource()

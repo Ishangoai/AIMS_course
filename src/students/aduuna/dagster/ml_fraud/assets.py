@@ -1,228 +1,389 @@
-import mlflow
+import os
+from collections import abc
+
+import dagster as dg
+import matplotlib.pyplot as plt
 import pandas as pd
-from dagster import AssetExecutionContext, asset
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+)
+from sklearn.model_selection import GridSearchCV, train_test_split
 
 from ..ml.resources import mlflow_resource
+from .resources import RandomForestConfig, fraud_data_resource
 
 
-@asset(
-    description="Load raw fraud detection data from the credit card fraud dataset.",
-    resource_defs={"mlflow_tracking": mlflow_resource},
+@dg.asset(
+    description="Loads credit card fraud detection dataset from URL.",
+    resource_defs={
+        "mlflow_tracking": mlflow_resource,
+        "fraud_data": fraud_data_resource
+    },
     compute_kind="python",
     group_name="fraud_ingest"
 )
-def fraud_raw_data(context: AssetExecutionContext) -> pd.DataFrame:
-    """Load raw fraud detection data from the credit card fraud dataset."""
+def raw_fraud_data(
+    context: dg.AssetExecutionContext,
+) -> dg.MaterializeResult:
+    """
+    Loads the credit card fraud detection dataset and logs basic information to MLflow.
+    """
     mlflow_client = context.resources.mlflow_tracking
-    
-    url = "https://storage.googleapis.com/download.tensorflow.org/data/creditcard.csv"
+    fraud_data_resource = context.resources.fraud_data
 
-    try:
-        # Download the dataset
-        context.log.info("Downloading credit card fraud dataset...")
-        df = pd.read_csv(url)
-        context.log.info(f"Loaded {len(df)} credit card transactions")
-        context.log.info(f"Dataset shape: {df.shape}")
-        context.log.info(f"Fraud cases: {df['Class'].sum()}")
-        context.log.info(f"Normal cases: {len(df) - df['Class'].sum()}")
+    context.log.info(f"Loading fraud detection data from: {fraud_data_resource.data_url}")
 
-        # Log dataset info to MLflow
-        mlflow_client.log_param("dataset_url", url)
-        mlflow_client.log_metric("total_transactions", len(df))
-        mlflow_client.log_metric("fraud_cases", int(df['Class'].sum()))
-        mlflow_client.log_metric("normal_cases", int(len(df) - df['Class'].sum()))
-        mlflow_client.log_metric("fraud_rate", float(df['Class'].mean()))
+    # Load the dataset
+    df = pd.read_csv(fraud_data_resource.data_url)
+    # Sample the data while preserving the fraud cases
+    fraud_df = df[df['Class'] == 1]
+    normal_df = df[df['Class'] == 0].sample(n=1000 - len(fraud_df), random_state=42)
+    df = pd.concat([fraud_df, normal_df]).sample(frac=1, random_state=42).reset_index(drop=True)
 
-        return df
-    except Exception as e:
-        context.log.error(f"Error downloading dataset: {e}")
-        # Fallback to a small synthetic dataset
-        context.log.info("Using synthetic fallback dataset...")
-        data = {
-            'V1': [1.0, -1.5, 2.1, 0.8, -0.3] * 20,
-            'V2': [0.5, 1.2, -0.8, 1.5, 0.9] * 20,
-            'Amount': [100.0, 50.0, 1000.0, 25.0, 200.0] * 20,
-            'Class': [0, 0, 1, 0, 0] * 20
+
+    context.log.info(f"Loaded dataset with shape: {df.shape}")
+
+    # Log basic dataset information to MLflow
+    mlflow_client.log_params({
+        "dataset_rows": len(df),
+        "dataset_columns": len(df.columns),
+        "fraud_cases": int(df['Class'].sum()),
+        "normal_cases": int(len(df) - df['Class'].sum()),
+        "fraud_percentage": float(df['Class'].mean() * 100)
+    })
+
+    # Log the dataset to MLflow
+    dataset = mlflow_client.data.from_pandas(df, name="raw_fraud_detection_data")
+    mlflow_client.log_input(dataset=dataset, context="training")
+
+    columns = [dg.TableColumn(k, str(v)) for k, v in df.dtypes.to_dict().items()]
+
+    return dg.MaterializeResult(
+        value=df,
+        metadata={
+            "preview": dg.MetadataValue.md(df.head().to_markdown() or ""),
+            "dagster/row_count": len(df),
+            "dagster/column_schema": dg.TableSchema(columns=columns),
+            "fraud_cases": dg.MetadataValue.int(int(df['Class'].sum())),
+            "normal_cases": dg.MetadataValue.int(int(len(df) - df['Class'].sum())),
+            "fraud_percentage": dg.MetadataValue.float(float(df['Class'].mean() * 100))
         }
-        df = pd.DataFrame(data)
-        mlflow_client.log_param("dataset_url", "synthetic_fallback")
-        mlflow_client.log_metric("total_transactions", len(df))
-        return df
+    )
 
 
-@asset(
-    description="Process the raw fraud data for model training.",
-    resource_defs={"mlflow_tracking": mlflow_resource},
+@dg.asset(
+    description="Preprocesses fraud data and splits into training and test sets.",
+    resource_defs={
+        "mlflow_tracking": mlflow_resource,
+        "fraud_data": fraud_data_resource
+    },
     compute_kind="python",
     group_name="fraud_transform"
 )
-def fraud_processed_data(context: AssetExecutionContext, fraud_raw_data: pd.DataFrame) -> pd.DataFrame:
-    """Process the raw fraud data for model training."""
+def preprocessed_fraud_data(
+    context: dg.AssetExecutionContext,
+    raw_fraud_data: pd.DataFrame
+) -> dg.MaterializeResult:
+    """
+    Preprocesses the fraud data and splits into training and test sets.
+    """
     mlflow_client = context.resources.mlflow_tracking
-    df = fraud_raw_data.copy()
+    fraud_data_resource = context.resources.fraud_data
 
-    # Basic preprocessing
-    context.log.info("Processing fraud detection data...")
+    context.log.info("Starting data preprocessing and splitting")
 
-    # Handle any missing values
-    df = df.dropna()
-
-    # Log basic statistics
-    context.log.info(f"Processed dataset shape: {df.shape}")
-    if 'Class' in df.columns:
-        context.log.info(f"Fraud rate: {df['Class'].mean():.4f}")
-        mlflow_client.log_metric("processed_fraud_rate", float(df['Class'].mean()))
-
-    mlflow_client.log_metric("processed_dataset_size", len(df))
-    mlflow_client.log_metric("processed_num_features", df.shape[1] - 1)  # -1 for target column
-
-    return df
-
-
-@asset(
-    description="Split data into training (80%) and test (20%) sets.",
-    resource_defs={"mlflow_tracking": mlflow_resource},
-    compute_kind="python",
-    group_name="fraud_transform"
-)
-def fraud_train_test_split(context: AssetExecutionContext, fraud_processed_data: pd.DataFrame) -> dict:
-    """Split the fraud data into training and test sets."""
-    mlflow_client = context.resources.mlflow_tracking
-    
     # Separate features and target
-    X = fraud_processed_data.drop('Class', axis=1)
-    y = fraud_processed_data['Class']
-    
-    # Split into train (80%) and test (20%)
+    X = raw_fraud_data.drop('Class', axis=1)
+    y = raw_fraud_data['Class']
+
+    # Split data into train (80%) and test (20%)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y,
-        test_size=0.2,
-        random_state=42,
+        test_size=fraud_data_resource.test_size,
+        random_state=fraud_data_resource.random_state,
         stratify=y  # Maintain class distribution
     )
-    
-    context.log.info(f"Training set: {X_train.shape[0]} samples")
-    context.log.info(f"Test set: {X_test.shape[0]} samples")
+
+    context.log.info(f"Training set size: {len(X_train)}")
+    context.log.info(f"Test set size: {len(X_test)}")
     context.log.info(f"Training fraud rate: {y_train.mean():.4f}")
     context.log.info(f"Test fraud rate: {y_test.mean():.4f}")
-    
-    # Log split statistics to MLflow
-    mlflow_client.log_param("test_size", 0.2)
-    mlflow_client.log_param("random_state", 42)
-    mlflow_client.log_metric("train_size", len(X_train))
-    mlflow_client.log_metric("test_size", len(X_test))
-    mlflow_client.log_metric("train_fraud_rate", float(y_train.mean()))
-    mlflow_client.log_metric("test_fraud_rate", float(y_test.mean()))
-    
+
+    # Log split information to MLflow
+    mlflow_client.log_params({
+        "test_size": fraud_data_resource.test_size,
+        "random_state": fraud_data_resource.random_state,
+        "train_samples": len(X_train),
+        "test_samples": len(X_test),
+        "train_fraud_rate": float(y_train.mean()),
+        "test_fraud_rate": float(y_test.mean())
+    })
+
+    # Create the split data dictionary
+    split_data = {
+        "X_train": X_train,
+        "X_test": X_test,
+        "y_train": y_train,
+        "y_test": y_test
+    }
+
+    return dg.MaterializeResult(
+        value=split_data,
+        metadata={
+            "train_samples": dg.MetadataValue.int(len(X_train)),
+            "test_samples": dg.MetadataValue.int(len(X_test)),
+            "train_fraud_rate": dg.MetadataValue.float(float(y_train.mean())),
+            "test_fraud_rate": dg.MetadataValue.float(float(y_test.mean())),
+            "feature_count": dg.MetadataValue.int(len(X.columns))
+        }
+    )
+
+
+@dg.asset(
+    description="Tunes RandomForest hyperparameters using GridSearchCV with 3-fold cross-validation.",
+    resource_defs={
+        "mlflow_tracking": mlflow_resource,
+    },
+    compute_kind="python",
+    group_name="fraud_model"
+)
+def tune_random_forest(
+    context: dg.AssetExecutionContext,
+    config: RandomForestConfig,
+    preprocessed_fraud_data: dict
+) -> dict:
+    """
+    Performs hyperparameter tuning using GridSearchCV and logs all trials as nested MLflow runs.
+    """
+    mlflow_client = context.resources.mlflow_tracking
+
+    context.log.info("Starting RandomForest hyperparameter tuning with GridSearchCV")
+
+    X_train = preprocessed_fraud_data["X_train"]
+    y_train = preprocessed_fraud_data["y_train"]
+
+    # Ensure the experiment exists
+    try:
+        experiment = mlflow_client.get_experiment_by_name("fraud_detection_analysis")
+        if experiment is None:
+            mlflow_client.create_experiment("fraud_detection_analysis")
+    except Exception:
+        mlflow_client.create_experiment("fraud_detection_analysis")
+
+    # Create RandomForest classifier
+    rf = RandomForestClassifier(
+        random_state=config.random_state,
+        n_jobs=-1  # Use all available cores
+    )
+
+    # Set up GridSearchCV
+    grid_search = GridSearchCV(
+        estimator=rf,
+        param_grid=config.param_grid,
+        cv=config.cv_folds,
+        scoring=config.scoring,
+        n_jobs=-1,
+        verbose=2
+    )
+
+    # Log hyperparameter tuning configuration
+    mlflow_client.log_params({
+        "cv_folds": config.cv_folds,
+        "scoring_metric": config.scoring,
+        "param_grid_keys": list(config.param_grid.keys())
+    })
+
+    # Perform grid search
+    context.log.info("Performing grid search...")
+    grid_search.fit(X_train, y_train)
+
+    # Log best parameters and score
+    mlflow_client.log_params({f"best_{k}": v for k, v in grid_search.best_params_.items()})
+    mlflow_client.log_metric("best_cv_score", grid_search.best_score_)
+
+    context.log.info(f"Best parameters: {grid_search.best_params_}")
+    context.log.info(f"Best CV score: {grid_search.best_score_:.4f}")
+
+    # Log all CV results metrics (without nested runs for simplicity)
+    cv_results = grid_search.cv_results_
+    for i in range(len(cv_results['params'])):
+        trial_params = cv_results['params'][i]
+        # Log individual trial metrics with prefixes
+        mlflow_client.log_metric(f"trial_{i}_mean_test_score", cv_results['mean_test_score'][i])
+        mlflow_client.log_metric(f"trial_{i}_std_test_score", cv_results['std_test_score'][i])
+        context.log.info(f"Trial {i}: {trial_params}, Score: {cv_results['mean_test_score'][i]:.4f}")
+
     return {
-        'X_train': X_train,
-        'X_test': X_test,
-        'y_train': y_train,
-        'y_test': y_test
+        "best_model": grid_search.best_estimator_,
+        "best_params": grid_search.best_params_,
+        "best_score": grid_search.best_score_,
+        "cv_results": cv_results
     }
 
 
-@asset(
-    description="Tune RandomForest hyperparameters using 3-fold cross-validation with GridSearch.",
+@dg.asset(
+    description="Evaluates the tuned model on test data and generates evaluation plots.",
     resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
     group_name="fraud_model"
 )
-def fraud_hyperparameter_tuning(context: AssetExecutionContext, fraud_train_test_split: dict) -> dict:
-    """Perform hyperparameter tuning using GridSearchCV with MLflow nested runs."""
+def evaluate_fraud_model(
+    context: dg.AssetExecutionContext,
+    tune_random_forest: dict,
+    preprocessed_fraud_data: dict
+) -> dg.MaterializeResult:
+    """
+    Evaluates the best model on test data and logs confusion matrix and other metrics to MLflow.
+    """
     mlflow_client = context.resources.mlflow_tracking
-    
-    X_train = fraud_train_test_split['X_train']
-    y_train = fraud_train_test_split['y_train']
-    
-    # Define hyperparameter grid
-    param_grid = {
-        'n_estimators': [50, 100, 200],
-        'max_depth': [10, 20, None],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 4]
-    }
-    
-    context.log.info("Starting hyperparameter tuning with 3-fold cross-validation...")
-    context.log.info(f"Parameter grid: {param_grid}")
 
-    # Ensure experiment exists
-    try:
-        experiment = mlflow_client.get_experiment_by_name("fraud_detection_analysis")
-        if experiment is None:
-            experiment_id = mlflow_client.create_experiment("fraud_detection_analysis")
-        else:
-            experiment_id = experiment.experiment_id
-    except Exception:
-        experiment_id = mlflow_client.create_experiment("fraud_detection_analysis")
+    context.log.info("Starting model evaluation on test data")
 
-    # Track individual trials as nested runs
-    trial_results = []
-    best_score = 0
-    best_params = {}
-    
-    # Manual grid search to log each trial as nested run
-    trial_num = 0
-    for n_estimators in param_grid['n_estimators']:
-        for max_depth in param_grid['max_depth']:
-            for min_samples_split in param_grid['min_samples_split']:
-                for min_samples_leaf in param_grid['min_samples_leaf']:
-                    trial_num += 1
-                    params = {
-                        'n_estimators': n_estimators,
-                        'max_depth': max_depth,
-                        'min_samples_split': min_samples_split,
-                        'min_samples_leaf': min_samples_leaf
-                    }
-                    
-                    run_name = f"trial_{trial_num}_n{n_estimators}_d{max_depth}_split{min_samples_split}_leaf{min_samples_leaf}"
-                    
-                    with mlflow.start_run(
-                        experiment_id=experiment_id,
-                        run_name=run_name,
-                        nested=True
-                    ):
-                        try:
-                            # Create and evaluate model
-                            rf_trial = RandomForestClassifier(random_state=42, **params)
-                            cv_scores = cross_val_score(rf_trial, X_train, y_train, cv=3, scoring='roc_auc')
-                            mean_score = cv_scores.mean()
-                            std_score = cv_scores.std()
-                            
-                            # Log parameters and metrics
-                            mlflow_client.log_params(params)
-                            mlflow_client.log_metric("cv_roc_auc_mean", mean_score)
-                            mlflow_client.log_metric("cv_roc_auc_std", std_score)
-                            
-                            context.log.info(f"Trial {trial_num}: {params} -> AUC: {mean_score:.4f} (+/- {std_score:.4f})")
-                            
-                            trial_results.append({
-                                'trial': trial_num,
-                                'params': params,
-                                'cv_score': mean_score,
-                                'cv_std': std_score
-                            })
-                            
-                            if mean_score > best_score:
-                                best_score = mean_score
-                                best_params = params
-                                
-                        except Exception as e:
-                            context.log.error(f"Trial {trial_num} failed: {e}")
-                            mlflow_client.log_param("error", str(e))
-    
-    context.log.info(f"Hyperparameter tuning completed. Best score: {best_score:.4f}")
-    context.log.info(f"Best parameters: {best_params}")
-    
-    # Log best results to parent run
-    mlflow_client.log_params(best_params)
-    mlflow_client.log_metric("best_cv_roc_auc", best_score)
-    mlflow_client.log_param("total_trials", trial_num)
-    
-    return {
-        'best_params': best_params,
-        'best_score': best_score,
-        'trial_results': trial_results
+    # Get data and model
+    best_model = tune_random_forest["best_model"]
+    X_test = preprocessed_fraud_data["X_test"]
+    y_test = preprocessed_fraud_data["y_test"]
+
+    # Make predictions
+    y_pred = best_model.predict(X_test)
+
+    # Calculate metrics
+    f1 = f1_score(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred)
+    classification_rep = classification_report(y_test, y_pred, output_dict=True)
+
+    context.log.info(f"Test F1-score: {f1:.4f}")
+
+    # Log test metrics directly (no manual run context needed)
+    mlflow_client.log_metric("test_f1_score", f1)
+    # We'll use individual metrics calculations
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    accuracy = accuracy_score(y_test, y_pred)
+
+    mlflow_client.log_metric("test_precision", precision)
+    mlflow_client.log_metric("test_recall", recall)
+    mlflow_client.log_metric("test_accuracy", accuracy)
+
+    # Create and log confusion matrix plot
+    plt.figure(figsize=(8, 6))
+
+    # Create confusion matrix heatmap using matplotlib only
+    plt.imshow(cm, interpolation='nearest', cmap='Blues')
+    plt.colorbar()
+
+    # Add text annotations
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            plt.text(j, i, str(cm[i, j]), ha='center', va='center', fontsize=14)
+
+    plt.xticks([0, 1], ['Normal', 'Fraud'])
+    plt.yticks([0, 1], ['Normal', 'Fraud'])
+    plt.title('Confusion Matrix - Fraud Detection')
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted Label')
+
+    # Save and log the plot
+    plot_path = "confusion_matrix.png"
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    mlflow_client.log_artifact(plot_path)
+    plt.close()
+
+    # Create feature importance plot
+    feature_importance = best_model.feature_importances_
+    feature_names = preprocessed_fraud_data["X_test"].columns
+
+    # Get top 20 most important features
+    indices = feature_importance.argsort()[::-1][:20]
+
+    plt.figure(figsize=(12, 8))
+    plt.title("Top 20 Feature Importances")
+    plt.bar(range(20), feature_importance[indices])
+    plt.xticks(range(20), [feature_names[i] for i in indices], rotation=45, ha='right')
+    plt.tight_layout()
+
+    # Save and log feature importance plot
+    importance_path = "feature_importance.png"
+    plt.savefig(importance_path, dpi=300, bbox_inches='tight')
+    mlflow_client.log_artifact(importance_path)
+    plt.close()
+
+    # Register the model using the pattern from ml/assets.py
+    model_name = "fraud_detection_random_forest"
+
+    # Clean up temporary files
+    if os.path.exists(plot_path):
+        os.remove(plot_path)
+    if os.path.exists(importance_path):
+        os.remove(importance_path)
+
+    evaluation_results = {
+        "f1_score": f1,
+        "confusion_matrix": cm.tolist(),
+        "classification_report": classification_rep,
+        "model_name": model_name
     }
+
+    return dg.MaterializeResult(
+        value=evaluation_results,
+        metadata={
+            "test_f1_score": dg.MetadataValue.float(float(f1)),
+            "test_precision": dg.MetadataValue.float(float(precision)),
+            "test_recall": dg.MetadataValue.float(float(recall)),
+            "test_accuracy": dg.MetadataValue.float(float(accuracy)),
+            "model_name": dg.MetadataValue.text(model_name)
+        }
+    )
+
+
+# Define data quality checks for fraud detection pipeline
+@dg.multi_asset_check(
+    specs=[
+        dg.AssetCheckSpec(name="no_missing_values", asset="raw_fraud_data", blocking=False),
+        dg.AssetCheckSpec(name="valid_class_labels", asset="raw_fraud_data", blocking=False),
+        dg.AssetCheckSpec(name="balanced_splits", asset="preprocessed_fraud_data", blocking=False),
+    ]
+)
+def fraud_data_quality_checks(raw_fraud_data, preprocessed_fraud_data) -> abc.Iterable[dg.AssetCheckResult]:
+    """
+    Data quality checks for fraud detection pipeline.
+    """
+    # Check for missing values
+    missing_values = raw_fraud_data.isnull().sum().sum()
+    yield dg.AssetCheckResult(
+        check_name="no_missing_values",
+        passed=bool(missing_values == 0),
+        asset_key="raw_fraud_data",
+        metadata={"missing_count": dg.MetadataValue.int(int(missing_values))}
+    )
+
+    # Check for valid class labels (should be 0 or 1)
+    valid_classes = raw_fraud_data['Class'].isin([0, 1]).all()
+    yield dg.AssetCheckResult(
+        check_name="valid_class_labels",
+        passed=bool(valid_classes),
+        asset_key="raw_fraud_data",
+        metadata={"unique_classes": raw_fraud_data['Class'].unique().tolist()}
+    )
+
+    # Check if train/test splits maintain similar class distributions
+    train_fraud_rate = preprocessed_fraud_data["y_train"].mean()
+    test_fraud_rate = preprocessed_fraud_data["y_test"].mean()
+    rate_difference = abs(train_fraud_rate - test_fraud_rate)
+
+    yield dg.AssetCheckResult(
+        check_name="balanced_splits",
+        passed=bool(rate_difference < 0.01),  # Allow 1% difference
+        asset_key="preprocessed_fraud_data",
+        metadata={
+            "train_fraud_rate": float(train_fraud_rate),
+            "test_fraud_rate": float(test_fraud_rate),
+            "rate_difference": float(rate_difference)
+        }
+    )
