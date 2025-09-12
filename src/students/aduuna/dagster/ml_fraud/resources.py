@@ -5,7 +5,7 @@ import pydantic as pyd
 class FraudDataResource(dg.ConfigurableResource):
     """Resource for fraud data configuration"""
     data_url: str = pyd.Field(
-        default="https://raw.githubusercontent.com/nsethi31/Kaggle-Data-Credit-Card-Fraud-Detection/master/creditcard.csv",
+        default="https://raw.githubusercontent.com/aduuna/Kaggle-Data-Credit-Card-Fraud-Detection/master/samplecreditcard.csv",
         description="URL to the credit card fraud dataset"
     )
     test_size: float = pyd.Field(
@@ -15,14 +15,6 @@ class FraudDataResource(dg.ConfigurableResource):
     random_state: int = pyd.Field(
         default=42,
         description="Random state for reproducibility in data splitting"
-    )
-
-
-class FraudDatabaseResource(dg.ConfigurableResource):
-    """Resource for fraud database configuration"""
-    base_dir: str = pyd.Field(
-        default="./tmp_fraud_storage",
-        description="Base directory for storing fraud detection data"
     )
 
 

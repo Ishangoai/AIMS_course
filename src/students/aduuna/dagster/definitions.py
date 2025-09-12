@@ -9,7 +9,6 @@ from .ml.resources import (
 )
 from .ml_fraud import assets as ml_fraud_assets
 from .ml_fraud.resources import (
-    FraudDatabaseResource,
     RandomForestConfig,
 )
 
@@ -78,7 +77,6 @@ defs = dg.Definitions(
     assets=[*all_ml_assets, *all_de_assets, *all_ml_fraud_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
-        "fraud_database": FraudDatabaseResource(),
     },
     jobs=[de_job, ml_job, fraud_detection_job],
     schedules=[era5_daily_schedule],

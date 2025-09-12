@@ -162,7 +162,7 @@ def tune_random_forest(
     context: dg.AssetExecutionContext,
     config: RandomForestConfig,
     preprocessed_fraud_data: dict
-) -> dict:
+) -> dg.MaterializeResult:
     """
     Performs hyperparameter tuning using GridSearchCV and logs all trials as nested MLflow runs.
     """
@@ -184,7 +184,8 @@ def tune_random_forest(
     # Create RandomForest classifier
     rf = RandomForestClassifier(
         random_state=config.random_state,
-        n_jobs=-1  # Use all available cores
+        n_jobs=-1,  # Use all available cores
+        class_weight="balanced"
     )
 
     # Set up GridSearchCV
@@ -224,12 +225,19 @@ def tune_random_forest(
         mlflow_client.log_metric(f"trial_{i}_std_test_score", cv_results['std_test_score'][i])
         context.log.info(f"Trial {i}: {trial_params}, Score: {cv_results['mean_test_score'][i]:.4f}")
 
-    return {
-        "best_model": grid_search.best_estimator_,
-        "best_params": grid_search.best_params_,
-        "best_score": grid_search.best_score_,
-        "cv_results": cv_results
-    }
+    return dg.MaterializeResult(
+        value={
+            "best_model": grid_search.best_estimator_,
+            "best_params": grid_search.best_params_,
+            "best_score": grid_search.best_score_,
+            "cv_results": cv_results
+        },
+        metadata={
+            "best_params": dg.MetadataValue.json(grid_search.best_params_),
+            "best_score": dg.MetadataValue.float(float(grid_search.best_score_)),
+            "cv_trials": dg.MetadataValue.int(len(cv_results['params']))
+        }
+    )
 
 
 @dg.asset(
