@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import typing
 from typing import Any, Dict
 
@@ -29,7 +30,7 @@ class EssayOrchestrator:
         Args:
             model_name: The LLM model to use for coordination
         """
-        self.llm = ChatGoogleGenerativeAI(model=model_name, temperature=0.0)
+        self.llm = ChatGoogleGenerativeAI(model=model_name, temperature=0.0, google_api_key=os.getenv("GOOGLE_API_KEY"))
         self.graph = self._build_graph()
         self.app = self.graph.compile()
 
