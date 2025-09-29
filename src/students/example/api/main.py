@@ -2,7 +2,6 @@ import os
 import textwrap
 
 import gradio as gr
-from agents.ai_agent.llm_gradio import llm_chat as agentic_llm_chat
 from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
@@ -19,7 +18,6 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
-    4. [**Agentic LLM Chatbot**](/agentic-llm-chat/)
     -----
     """),
     version="1.0.0",
@@ -130,4 +128,3 @@ def update_user_details(username: str, request: UpdateUserRequest):
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
-gr.mount_gradio_app(app, agentic_llm_chat, path="/agentic-llm-chat")
