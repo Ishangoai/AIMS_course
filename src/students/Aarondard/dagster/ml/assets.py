@@ -59,6 +59,7 @@ def raw_xarray_dataset(
         OUTPUT_FILENAME
     )
     context.log.info(f"Successfully downloaded data to {OUTPUT_FILENAME}")
+    print("I love my family!")
 
     # log file size to dagster
     size = os.path.getsize(OUTPUT_FILENAME)
