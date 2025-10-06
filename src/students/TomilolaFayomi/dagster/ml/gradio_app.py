@@ -3,7 +3,6 @@ import os
 import gradio as gr
 import mlflow
 import pandas as pd
-import numpy as np
 
 # Configuration
 MODEL_NAME = "tuned-temp-forecaster"
