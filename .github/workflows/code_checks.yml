@@ -46,7 +46,7 @@ jobs:
           echo "User $PR_AUTHOR is exempt from directory check."
           exit 0
         fi;
-        if git diff --name-only origin/development | grep -q -v "^src/students/$PR_AUTHOR/"; then
+        if git diff --name-only origin/development | grep -q -v -i "^src/students/$PR_AUTHOR/"; then
           echo "Error: All changes in this PR must be made in the src/students/$PR_AUTHOR directory."
           exit 1
         fi
