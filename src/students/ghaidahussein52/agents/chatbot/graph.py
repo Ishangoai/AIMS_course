@@ -14,7 +14,6 @@ GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID", "")
 # Set up logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-# check me out
 
 # Initialize the Gemini model, adjust temperature as needed, 0.0 is deterministic and 2.0 is more creative
 gemini_model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.0, google_api_key=GOOGLE_API_KEY)
