@@ -126,7 +126,7 @@ def update_user_details(username: str, request: UpdateUserRequest):
     return {"message": f"User {username} updated successfully"}
 
 @app.get("/get-data",summary="get user data",description="lets get user data")
-def get_data(username:str):
+def get_data(username: str):
     return {"message": f"User {username} data"}
 
 
