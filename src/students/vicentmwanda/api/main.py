@@ -125,8 +125,8 @@ def update_user_details(username: str, request: UpdateUserRequest):
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
 
-@app.get("/get-data",summary="get user data",description="lets get user data")
-def get_data(username : str):
+@app.get("/get-data/{username}",summary="get user data",description="lets get user data")
+def get_data(username: str):
     return {"message": f"User {username} data"}
 
 
