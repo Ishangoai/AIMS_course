@@ -62,7 +62,7 @@ def evaluate(expression: str):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get('/healthz', summary="Ping to show that servwe is live 🙂.")
+@app.get('/healthz', summary="Ping to show that server is live 🙂.")
 def check_health():
     return {"message": "Yay our server is live 🫣"}
 
