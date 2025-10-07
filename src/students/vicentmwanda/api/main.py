@@ -62,7 +62,7 @@ def evaluate(expression: str):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/get_data",summary="get user data")
+@app.get("/get-data",summary="get user data",description="lets get user data")
 def get_data():
      return {"message": f"User data"}
 
