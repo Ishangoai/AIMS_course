@@ -38,7 +38,7 @@ def root():
     return get_swagger_ui_html(openapi_url="/openapi.json", title="AIMS Course API Docs")
 
 
-@app.get("/hello", summary="Greet the user", description= "Returns a greeting message.")
+@app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
 def hello():
     return {"message": f"Hello from {current_user}!"}
 
