@@ -127,7 +127,7 @@ def update_user_details(username: str, request: UpdateUserRequest):
 
 @app.get("/get-data",summary="get user data",description="lets get user data")
 def get_data(username:str):
-     return {"message": f"User {username} data"}
+    return {"message": f"User {username} data"}
 
 
 gr.mount_gradio_app(app, demo, path="/gradio")
