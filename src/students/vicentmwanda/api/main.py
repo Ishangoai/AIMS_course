@@ -11,7 +11,7 @@ from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
 
 app = FastAPI(
-    title="AIMS Course API",
+    title="Vicent's AIMS Course API",
     description=textwrap.dedent("""
     ## Mounted Apps
     ----
@@ -62,6 +62,9 @@ def evaluate(expression: str):
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/get_data",summary="get user data")
+def get_data():
+     return {"message": f"User data"}
 
 @app.post("/register", summary="Register a new user", description="Registers a new user with the given username.")
 def register_user(request: UserRequest):
