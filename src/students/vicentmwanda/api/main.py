@@ -62,9 +62,7 @@ def evaluate(expression: str):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/get-data",summary="get user data",description="lets get user data")
-def get_data():
-     return {"message": f"User data"}
+
 
 @app.post("/register", summary="Register a new user", description="Registers a new user with the given username.")
 def register_user(request: UserRequest):
@@ -126,6 +124,10 @@ def update_user_details(username: str, request: UpdateUserRequest):
         raise HTTPException(status_code=404, detail="User not found")
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
+
+@app.get("/get-data",summary="get user data",description="lets get user data")
+def get_data(username:str):
+     return {"message": f"User {username} data"}
 
 
 gr.mount_gradio_app(app, demo, path="/gradio")
