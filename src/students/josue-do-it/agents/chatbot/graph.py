@@ -31,5 +31,5 @@ def search_google(query: str) -> str:
 graph = create_react_agent(
     gemini_model,
     tools=[search_google],
-    prompt="You are a helpful assistant. Always answer in a depressed way",
+    prompt="You are a helpful assistant. Always answer in a funny way",
 )
