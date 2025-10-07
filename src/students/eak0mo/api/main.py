@@ -43,7 +43,7 @@ def hello():
     return {"message": f"Hello from {current_user}!"}
 
 @app.get("/yoruba", summary="Greet the User in Yoruba", description="Returns a greeting message in Yoruba.")
-def yoruba_hello():
+def yoruba():
     return {"message": f"Bawo Ni lati {current_user}!"}
 
 @app.get(
