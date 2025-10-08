@@ -35,23 +35,17 @@ ml_job = dg.define_asset_job(
     hooks={mlflow_failure_hook},
     config={
         "ops": {
-            "raw_xarray_dataset": {
-                "config": Era5RequestConfig().model_dump()
-            },
-            "promote_model_to_production": {
-                "config": PromotionConfig().model_dump()
-            },
-            "tune_ridge_hyperparameters": {
-                "config": TuningConfig().model_dump()
-            }
+            "raw_xarray_dataset": {"config": Era5RequestConfig().model_dump()},
+            "promote_model_to_production": {"config": PromotionConfig().model_dump()},
+            "tune_ridge_hyperparameters": {"config": TuningConfig().model_dump()},
         }
-    }
+    },
 )
 
 era5_daily_schedule = dg.ScheduleDefinition(
     job=ml_job,
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
-    name="era5_daily_schedule"
+    name="era5_daily_schedule",
 )
 
 # Define all assets and resources for Dagster to discover
@@ -62,5 +56,5 @@ defs = dg.Definitions(
     },
     jobs=[de_job, ml_job],
     schedules=[era5_daily_schedule],
-    asset_checks=[*all_de_checks, *all_ml_checks]
+    asset_checks=[*all_de_checks, *all_ml_checks],
 )
