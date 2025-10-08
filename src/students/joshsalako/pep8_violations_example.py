@@ -84,14 +84,14 @@ def average(numbers):
 
 # multiple statements on same line, no docstring, inconsistent spacing
 def count_characters(string):
-    """ Returns the count of charaters in a string """
+    """ Returns the count of characters in a string """
     result = {}
     for c in string:
         if c in result:
             result[c] += 1
         else:
             result[c] = 1
-            return result
+        return result
 
 
 # multiple statements, improper exception handling
