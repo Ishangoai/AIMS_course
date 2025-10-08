@@ -154,23 +154,27 @@ def main():
 if __name__=="__main__":main()
 
 
-def badly_written_function_0( arg1,arg2 ):
-  result=arg1+arg2
-  print("result is: "+ str( result ))
-  return result
+def badly_written_function_0(arg1, arg2):
+    result=arg1+arg2
+    print("result is:" + str(result))
+    return result
 
-class  BadClass0:
- def __init__( self,value ):
-  self.Value=value
- def Display(self):
-        print(   "Value: ",self.Value  )
 
-def long_line_func_0():print("this line is also overly long and"
+class BadClass0:
+    def __init__(self, value):
+        self.Value = value
+
+    def Display(self):
+        print("Value:", self.Value)
+
+
+def long_line_func_0():
+    print("this line is also overly long and"
     " should not be written this way but it's here to test"
     " the PEP 8 checker like ruff or flake8 in our teaching example")
 
-def complicated_expression_0():
 
+def complicated_expression_0():
     x = (((((((7 * 4)))))))
     y = x * 2
     print("Complicated: ", y)
