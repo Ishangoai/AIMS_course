@@ -11,7 +11,7 @@ from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
 
 app = FastAPI(
-    title="AIMS Course API",
+    title="2025 AIMS Course API",
     description=textwrap.dedent("""
     ## Mounted Apps
     ----
@@ -40,7 +40,7 @@ def root():
 
 @app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
 def hello():
-    return {"message": f"Hello from {current_user}! Ready!!"}
+    return {"message": f"Hello from {current_user}!"}
 
 
 @app.get(
