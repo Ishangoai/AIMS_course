@@ -11,7 +11,7 @@ from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
 
 app = FastAPI(
-    title="AIMS Course API",
+    title="AIMS Course API 2025",
     description=textwrap.dedent("""
     ## Mounted Apps
     ----
