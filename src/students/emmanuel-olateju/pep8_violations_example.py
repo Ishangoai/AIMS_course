@@ -137,7 +137,7 @@ def main():
     print(divide(10, 2))
 
     s = Sample(100)
-    s.Show()
+    s.show()
     s.updateValue(200)
     readfile('example.txt')
     compute_fibonacci(50)
