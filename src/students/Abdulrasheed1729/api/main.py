@@ -62,9 +62,11 @@ def evaluate(expression: str):
     except Exception as e:
         return {"error": str(e)}
 
+
 @app.get('/healthz', summary="Ping to show that server is live 🙂.")
 def check_health():
     return {"message": "Yay our server is live 🫣"}
+
 
 @app.post("/register", summary="Register a new user", description="Registers a new user with the given username.")
 def register_user(request: UserRequest):
