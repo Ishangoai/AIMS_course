@@ -91,7 +91,7 @@ def count_characters(string):
             result[c] += 1
         else:
             result[c] = 1
-        return result
+    return result
 
 
 # multiple statements, improper exception handling
