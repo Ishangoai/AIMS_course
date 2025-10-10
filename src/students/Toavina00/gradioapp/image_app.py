@@ -8,10 +8,8 @@ def check_bound(x: int, y: int, x_max: int, y_max: int):
 
 
 def img_to_grayscale(image: np.ndarray, to_grayscale: bool):
-    if to_grayscale:
-        image = np.dot(image[...,:3], [0.2989, 0.5870, 0.1140])
-        image = np.clip(image, 0, 255)
-        image = image.astype(int)
+    if to_grayscale and (len(image.shape) == 3):
+        image = image.dot([0.2989, 0.5870, 0.1140])
     return image
 
 
@@ -19,15 +17,15 @@ def dithering(image: np.ndarray, dither: bool):
     if not dither:
         return image
 
-    image = image.astype(float)
-
     m, n = image.shape[:2]
+    
+    thresh = np.max(image, axis=(0, 1))
 
     # Floyd–Steinberg dithering Algorithm
     for x in range(m):
         for y in range(n):
             oldpixel = image[x, y]
-            newpixel = np.round(oldpixel / 255) * 255
+            newpixel = (oldpixel > 0.5).astype(np.float64)
             image[x, y] = newpixel
             quant_error = oldpixel - newpixel
 
@@ -40,14 +38,14 @@ def dithering(image: np.ndarray, dither: bool):
             if check_bound(x - 1, y + 1, m, n):
                 image[x - 1, y + 1] += quant_error * 3 / 16
 
-    return image.astype(int)
+    return image
 
 
 def invert_color(image: np.ndarray, invert: bool):
     if invert:
-        image -= 255 // 2
+        image -= 0.5
         image *= -1
-        image += 255 // 2
+        image += 0.5
     return image
 
 
@@ -72,18 +70,15 @@ def flip_horizontal(image: np.ndarray, flip: bool):
 
 
 def change_brightness(image: np.ndarray, value: float):
-    image = image.astype(np.float32)
     image *= value
-    image = np.clip(image, 0, 255)
-    image = image.astype(int)
+    image = np.clip(image, 0.0, 1.0)
     return image
 
 
 def change_contrast(image: np.ndarray, value: float):
     mean = np.mean(image, axis=(0, 1), keepdims=True)
     image = (image - mean) * value + mean
-    image = np.clip(image, 0, 255)
-    image = image.astype(int)
+    image = np.clip(image, 0.0, 1.0)
     return image
 
 
@@ -98,7 +93,15 @@ def blur_image(image: np.ndarray, sigma: float):
     else:
         return ndimage.gaussian_filter(image, (sigma, sigma, 0))
 
+def normalize_image(image: np.ndarray):
+    image = image.astype(np.float64)
+    image = image / 255.0
+    return image
 
+def denormalize_image(image: np.ndarray):
+    image = image * 255.0
+    image = image.astype(int)
+    return image
 def transform_image(
     image: np.ndarray | None,
     to_grayscale: bool,
@@ -113,6 +116,7 @@ def transform_image(
 ):
     if image is None:
         return None
+    image = normalize_image(image)
     image = change_brightness(image, brightness)
     image = change_contrast(image, contrast)
     image = img_to_grayscale(image, to_grayscale)
@@ -122,6 +126,7 @@ def transform_image(
     image = invert_color(image, invert)
     image = dithering(image, dither)
     image = rotate_image(image, rotate)
+    image = denormalize_image(image)
     return image
 
 
