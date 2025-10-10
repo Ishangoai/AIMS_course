@@ -17,7 +17,11 @@ model_uri = f"models:/{MODEL_NAME}/{MODEL_STAGE}"
 mlflow.set_tracking_uri(f"sqlite:///{os.path.abspath(DB_PATH)}")
 
 # Prepare Input Data
-input_data = pd.DataFrame(data={"t2m_celsius_lag1": [5.0, 10.0, 15.5, 20.2]})
+input_data = pd.DataFrame(
+    data={
+        "t2m_celsius_lag1": [5.0, 10.0, 15.5, 20.2]
+    }
+)
 
 # Run Prediction
 results = mlflow.models.predict(  # type: ignore

@@ -33,8 +33,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as heart_app:
     predict_btn = gr.Button("Predict")
     result = gr.Textbox(label="Result")
 
-    predict_btn.click(
-        fn=wrapped_predict,
-        inputs=[age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal],
-        outputs=result,
-    )
+    predict_btn.click(fn=wrapped_predict,
+                      inputs=[age, sex, cp, trestbps, chol, fbs, restecg,
+                              thalach, exang, oldpeak, slope, ca, thal],
+                      outputs=result)
