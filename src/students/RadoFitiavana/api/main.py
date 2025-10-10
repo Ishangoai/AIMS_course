@@ -72,6 +72,7 @@ def evaluate(expression: str):
     except Exception as e:
         return {"error": str(e)}
 
+
 @app.post("/register", summary="Register a new user", description="Registers a new user with the given username.")
 def register_user(request: UserRequest):
     """
