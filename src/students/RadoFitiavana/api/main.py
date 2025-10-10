@@ -2,13 +2,13 @@ import os
 import textwrap
 
 import gradio as gr
-from agents.chatbot.llm_gradio import llm_chat
+# from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
-from fastapi.openapi.docs import get_swagger_ui_html
+# from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
-from gradioapp.heart_disease_app import heart_app
+# from gradioapp.heart_disease_app import heart_app
 
 app = FastAPI(
     title="AIMS Course API",
@@ -29,13 +29,13 @@ app = FastAPI(
 current_user = os.environ.get("GITHUB_USER", "default")
 users = {}
 
-
-@app.get("/", include_in_schema=False)
-def root():
-    """
-    Redirect the root path `/` to the Swagger UI documentation.
-    """
-    return get_swagger_ui_html(openapi_url="/openapi.json", title="AIMS Course API Docs")
+####################### Do not redirect root to swagger ui ##############################
+# @app.get("/", include_in_schema=False)
+# def root():
+#     """
+#     Redirect the root path `/` to the Swagger UI documentation.
+#     """
+#     return get_swagger_ui_html(openapi_url="/openapi.json", title="AIMS Course API Docs")
 
 
 @app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
@@ -125,6 +125,8 @@ def update_user_details(username: str, request: UpdateUserRequest):
     return {"message": f"User {username} updated successfully"}
 
 
-gr.mount_gradio_app(app, demo, path="/gradio")
-gr.mount_gradio_app(app, heart_app, path="/heart-disease")
-gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
+gr.mount_gradio_app(app, demo, path="/") # Mount the targeted app at the root
+
+################### ##########Used for later not now ##########################################
+# gr.mount_gradio_app(app, heart_app, path="/heart-disease")
+# gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
