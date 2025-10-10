@@ -2,7 +2,6 @@ import os
 import tempfile
 
 import gradio as gr
-from gradioapp.utils.image_app_utils import edit_image
 from PIL import Image, ImageEnhance
 
 
@@ -58,8 +57,9 @@ def to_grayscale(img: Image.Image) -> Image.Image:
     return img.convert("L")
 
 
-def combined_effects(img: Image.Image, brightness: float, contrast: float,
-                    angle: float, is_grayscale: bool = False) -> Image.Image:
+def combined_effects(
+    img: Image.Image, brightness: float, contrast: float, angle: float, is_grayscale: bool = False
+) -> Image.Image:
     """
     Transform image
     Args:
@@ -102,7 +102,9 @@ def save_image(img: Image.Image, path: str = None) -> str:
 # --- Gradio interface ---
 
 with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
-    gr.Markdown("## Image Operations\nUpload an image, apply effects (brightness, contrast, rotation, grayscale), or reset to the original image.")
+    gr.Markdown(
+        "## Image Operations\nUpload an image, apply effects (brightness, contrast, rotation, grayscale), or reset to the original image."
+    )
 
     with gr.Row():
         image_input = gr.Image(type="pil", label="Upload Image")
@@ -119,7 +121,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
     apply_combined.click(
         combined_effects,
         inputs=[image_input, combined_brightness, combined_contrast, combined_rotation, combined_grayscale],
-        outputs=combined_output
+        outputs=combined_output,
     )
 
     gr.Markdown("### 🔄 Reset to Original Image")
@@ -134,8 +136,5 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
     gr.Markdown("### Download Image")
     save_button = gr.Button("Save Image")
     file_output = gr.File(label="Download your edited image")
-    save_button.click(
-        save_image,
-        inputs=[combined_output],
-        outputs=file_output
-    )
+    save_button.click(save_image, inputs=[combined_output], outputs=file_output)
+    
