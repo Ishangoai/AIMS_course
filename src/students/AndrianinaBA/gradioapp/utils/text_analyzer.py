@@ -8,9 +8,9 @@ def case_converter(text, option=None):
     Returns :
         - The converted text with the specified option
     """
-    if option == "Uppercase":
+    if option == "Upper Case":
         return text.upper()
-    elif option == "Lower":
+    elif option == "Lower Case":
         return text.lower()
     elif option == "Title Case":
         return text.title()
