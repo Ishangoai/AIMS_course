@@ -40,6 +40,9 @@ def transform_image(image: np.array, to_grayscale: bool, brightness: float, cont
 
     return image
 
+def reset_all():
+    return None, False, 1.0, 1.0, 0.0
+
 
 with gr.Blocks() as app:
     gr.Markdown("# Image Editor")
@@ -51,10 +54,16 @@ with gr.Blocks() as app:
         with gr.Column():
             dst = gr.Image()
 
+
     grayscale = gr.Checkbox(False, label="Grayscale")
     brightness = gr.Slider(0.5, 1.5, value=1.0, label="Brightness")
     contrast = gr.Slider(0.5, 1.5, value=1.0, label="Contrast")
     rotate = gr.Slider(-180.0, 180.0, value=0.0, label="Rotate")
+
+    with gr.Row():
+        reset_btn = gr.Button("🔄 Reset")
+        download_btn = gr.DownloadButton("⬇️ Download", label="Download Edited Image")
+
 
     src.upload(lambda x: x, src, dst)  # Initialize the output to be the uploaded image
 
@@ -62,3 +71,10 @@ with gr.Blocks() as app:
 
     for transform in transforms:
         transform.change(transform_image, [src, *transforms], dst)
+
+    # Reset button 
+    reset_btn.click(reset_all, outputs=[src, grayscale, brightness, contrast, rotate])
+
+    # Download button 
+    download_btn.click(fn=lambda img: img, inputs=dst, outputs=gr.File())
+
