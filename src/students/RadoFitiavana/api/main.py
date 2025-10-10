@@ -1,4 +1,5 @@
 import io
+import os
 import textwrap
 
 import gradio as gr
@@ -24,7 +25,7 @@ app = FastAPI(
 )
 
 # Global variable to store the usernames
-# current_user = os.environ.get("GITHUB_USER", "default")
+current_user = os.environ.get("GITHUB_USER", "default")
 # users = {}
 
 
