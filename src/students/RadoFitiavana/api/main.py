@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 # from fastapi.openapi.docs import get_swagger_ui_html
 # from gradioapp.app import app as demo
 # from gradioapp.heart_disease_app import heart_app
-from gradioapp.app import app as demo
+from gradioapp import image_processor_app as processor
 
 app = FastAPI(
     title="AIMS Course API",
@@ -125,7 +125,7 @@ def update_user_details(username: str, request: UpdateUserRequest):
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
 
-
+demo = processor.create_app()
 gr.mount_gradio_app(app, demo, path="/") # Mount the targeted app at the root
 
 ################### ##########Used for later not now ##########################################
