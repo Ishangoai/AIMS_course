@@ -137,12 +137,14 @@ async def to_grayscale(image: UploadFile = File(...)):
 @app.post("/brightness")
 async def adjust_brightness(request: Request, image: UploadFile = File(...)):
     params = await get_params_from_request(request)
-    brightness = float(params["brightness"])
+    brightness_val = params.get("brightness", 1.0)
+    try:
+        brightness = float(brightness_val)
+    except (TypeError, ValueError):
+        brightness = 1.0  # or raise an HTTPException
     img = await get_image_from_file(image)
-
     enhancer = ImageEnhance.Brightness(img)
     enhanced_img = enhancer.enhance(brightness)
-
     buffer = convert_image_to_buffer(enhanced_img)
     return Response(content=buffer.getvalue(), media_type="image/png")
 
@@ -150,12 +152,14 @@ async def adjust_brightness(request: Request, image: UploadFile = File(...)):
 @app.post("/contrast")
 async def adjust_contrast(request: Request, image: UploadFile = File(...)):
     params = await get_params_from_request(request)
-    contrast = float(params["contrast"])
+    contrast_val = params.get("contrast", 1.0)
+    try:
+        contrast = float(contrast_val)
+    except (TypeError, ValueError):
+        contrast = 1.0
     img = await get_image_from_file(image)
-
     enhancer = ImageEnhance.Contrast(img)
     enhanced_img = enhancer.enhance(contrast)
-
     buffer = convert_image_to_buffer(enhanced_img)
     return Response(content=buffer.getvalue(), media_type="image/png")
 
@@ -163,9 +167,12 @@ async def adjust_contrast(request: Request, image: UploadFile = File(...)):
 @app.post("/rotate")
 async def rotate(request: Request, image: UploadFile = File(...)):
     params = await get_params_from_request(request)
-    angle = float(params["rotation"])
+    angle_val = params.get("rotation", 0)
+    try:
+        angle = float(angle_val)
+    except (TypeError, ValueError):
+        angle = 0
     img = await get_image_from_file(image)
-
     rotated_img = img.rotate(angle, expand=True)
     buffer = convert_image_to_buffer(rotated_img)
     return Response(content=buffer.getvalue(), media_type="image/png")
