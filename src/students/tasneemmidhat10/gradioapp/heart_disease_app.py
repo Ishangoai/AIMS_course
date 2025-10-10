@@ -13,7 +13,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as heart_app:
     with gr.Row():
         # Input Column 1
         with gr.Column():
-            age = gr.Slider(20, 80, value=50, label="Age")
+            age = gr.Slider(20, 80, value=50, label="Ages")
             sex = gr.Radio(choices=[0, 1], value=1, label="Sex", info="0 = Female, 1 = Male")
             cp = gr.Radio(choices=[0, 1, 2, 3], value=1, label="Chest Pain Type")
             trestbps = gr.Slider(90, 200, value=120, label="Resting BP")
