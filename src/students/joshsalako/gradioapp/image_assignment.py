@@ -119,7 +119,7 @@ def upload_fn(path: Optional[str]) -> Tuple[Optional[Image.Image], Optional[Imag
     return image, image, False, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, dl_path
 
 
-with gr.Blocks(theme=gr.themes.Default()) as image_app:
+with gr.Blocks() as image_app:
     gr.Markdown("# Image Editor")
 
     state_original = gr.State()
@@ -204,7 +204,7 @@ with gr.Blocks(theme=gr.themes.Default()) as image_app:
     # Reset: show original image and reset controls
     reset_button.click(
         fn=_reset,
-        inputs=state_original,
+        inputs=[state_original],
         outputs=[output_image, grayscale, brightness, contrast, hue, saturation, sharpness, rotate, download_button],
     )
 
