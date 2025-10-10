@@ -1,5 +1,4 @@
 import gradio as gr
-
 from gradioapp.utils.heart_disease_utils import predict_heart_disease
 
 

@@ -4,7 +4,7 @@ import gradio as gr
 import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 
-# import requests
+# import requests#
 
 API_URL = "http://0.0.0.0:8080"
 
