@@ -1,7 +1,9 @@
 # image.py
-import gradio as gr
-from PIL import Image, ImageEnhance, ImageOps
 import tempfile
+
+import gradio as gr
+from PIL import ImageEnhance, ImageOps
+
 
 def process_image(image, brightness=1.0, grayscale=False):
     if image is None:
@@ -12,6 +14,7 @@ def process_image(image, brightness=1.0, grayscale=False):
     if grayscale:
         img = ImageOps.grayscale(img)
     return img
+
 
 def build_gradio_app():
     with gr.Blocks() as demo:
@@ -38,8 +41,22 @@ def build_gradio_app():
 
             return img, temp_file.name
 
-        img_input.change(update_and_return, [img_input, brightness_slider, grayscale_toggle], [img_output, download_btn])
-        brightness_slider.change(update_and_return, [img_input, brightness_slider, grayscale_toggle], [img_output, download_btn])
-        grayscale_toggle.change(update_and_return, [img_input, brightness_slider, grayscale_toggle], [img_output, download_btn])
+        img_input.change(
+            update_and_return, 
+            [img_input, brightness_slider, grayscale_toggle], 
+            [img_output, download_btn]
+            )
+
+        brightness_slider.change(
+            update_and_return, 
+            [img_input, brightness_slider, grayscale_toggle], 
+            [img_output, download_btn]
+            )
+
+        grayscale_toggle.change(
+            update_and_return, 
+            [img_input, brightness_slider, grayscale_toggle], 
+            [img_output, download_btn]
+            )
 
     return demo

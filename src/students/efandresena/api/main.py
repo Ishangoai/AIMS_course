@@ -1,3 +1,4 @@
+import io
 import os
 import textwrap
 
@@ -5,17 +6,15 @@ import gradio as gr
 from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
-from fastapi import FastAPI, HTTPException
-from fastapi.openapi.docs import get_swagger_ui_html
-from gradioapp.app import app as demo
-from gradioapp.heart_disease_app import heart_app
 
 # For the image treatment
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import StreamingResponse
+from gradioapp.app import app as demo
+from gradioapp.heart_disease_app import heart_app
 from gradioapp.image import build_gradio_app, process_image
 from PIL import Image
-import io
 
 app = FastAPI(
     title="AIMS Course API",
@@ -133,7 +132,7 @@ def update_user_details(username: str, request: UpdateUserRequest):
     return {"message": f"User {username} updated successfully"}
 
 
-# processing image 
+# processing image
 @app.post("/process-image")
 async def process_image_api(
     image: UploadFile = File(...),
@@ -162,5 +161,3 @@ gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 # ✅ Mount Gradio app at root
 gradio_app = build_gradio_app()
 gr.mount_gradio_app(app, gradio_app, path="/image-app")
-
-
