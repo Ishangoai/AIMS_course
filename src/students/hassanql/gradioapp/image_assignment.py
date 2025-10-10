@@ -41,4 +41,3 @@ with gr.Blocks(title="Image Editor") as image_app:
     # Automatically update on input changes
     for inp in inputs:
         inp.change(fn=edit_image, inputs=inputs, outputs=image_output)
-
