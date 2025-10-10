@@ -30,6 +30,20 @@ current_user = os.environ.get("GITHUB_USER", "default")
 users = {}
 
 
+def extract_float(x):
+    # Accept float, int, or string
+    if isinstance(x, (float, int, str)):
+        return float(x)
+    # Accept UploadFile (Starlette or FastAPI)
+    elif hasattr(x, 'file'):
+        content = x.file.read()
+        if isinstance(content, bytes):
+            content = content.decode()
+        return float(content.strip())
+    else:
+        raise TypeError("Unsupported type for conversion to float")
+
+
 @app.get("/", include_in_schema=False)
 def root():
     """
