@@ -154,6 +154,7 @@ async def process_image_api(
     except Exception as e:
         return {"error": str(e)}
 
+
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
