@@ -50,7 +50,7 @@ def save_temp_image(img):
     img.save(temp_file.name)
     return temp_file.name
 
-# Gradio App Definition
+# Gradio App Definition i
 
     
 with gr.Blocks() as app:
