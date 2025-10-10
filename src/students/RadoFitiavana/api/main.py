@@ -29,6 +29,7 @@ app = FastAPI(
 current_user = os.environ.get("GITHUB_USER", "default")
 users = {}
 
+
 def extract_float(x):
     # Accept float, int, or string
     if isinstance(x, (float, int, str)):
@@ -42,6 +43,7 @@ def extract_float(x):
     else:
         raise TypeError("Unsupported type for conversion to float")
 
+
 @app.get("/", include_in_schema=False)
 def root():
     """
@@ -49,9 +51,11 @@ def root():
     """
     return get_swagger_ui_html(openapi_url="/openapi.json", title="AIMS Course API Docs")
 
+
 @app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
 def hello():
     return {"message": f"Hello from {current_user}!"}
+
 
 @app.get(
     "/evaluate",
@@ -86,6 +90,7 @@ def register_user(request: UserRequest):
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} registered successfully"}
 
+
 @app.get("/register", summary="Get registered users", description="Returns a list of registered users.")
 def get_registered_users():
     """
@@ -93,6 +98,7 @@ def get_registered_users():
     """
     # Here you would typically fetch the users from a database
     return {"users": users}
+
 
 @app.get("/register/{username}", summary="Get user details", description="Returns details of a specific user.")
 def get_user_details(username: str):
@@ -103,6 +109,7 @@ def get_user_details(username: str):
     if username not in users:
         raise HTTPException(status_code=404, detail="User not found")
     return {"username": username, "name": users[username]}
+
 
 @app.delete(
     "/register/{username}/delete",
@@ -119,6 +126,7 @@ def delete_user(username: str):
     del users[username]
     return {"message": f"User {username} deleted successfully"}
 
+
 @app.put("/register/{username}", summary="Update user details", description="Updates the details of a specific user.")
 def update_user_details(username: str, request: UpdateUserRequest):
     """
@@ -129,6 +137,7 @@ def update_user_details(username: str, request: UpdateUserRequest):
         raise HTTPException(status_code=404, detail="User not found")
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
+
 
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
