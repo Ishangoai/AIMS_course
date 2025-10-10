@@ -5,20 +5,50 @@ from typing import Optional, Tuple
 
 import gradio as gr
 from PIL import Image, ImageEnhance
-
+import numpy as np
 
 def adjust_hue(image: Image.Image, hue_shift: float) -> Image.Image:
     image = image.convert("RGB")
-    pixels = image.load()
-    width, height = image.size
-    for x in range(width):
-        for y in range(height):
-            r, g, b = pixels[x, y]
-            h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
-            h = (h + hue_shift / 360) % 1
-            r, g, b = colorsys.hsv_to_rgb(h, s, v)
-            pixels[x, y] = (int(r * 255), int(g * 255), int(b * 255))
-    return image
+    arr = np.asarray(image).astype(np.float32) / 255.0  # shape (H, W, 3), values in [0,1]
+    r, g, b = arr[..., 0], arr[..., 1], arr[..., 2]
+    # Vectorized RGB to HSV
+    maxc = np.maximum(np.maximum(r, g), b)
+    minc = np.minimum(np.minimum(r, g), b)
+    v = maxc
+    deltac = maxc - minc
+    s = np.where(maxc == 0, 0, deltac / maxc)
+    # Hue calculation
+    rc = (maxc - r) / (deltac + 1e-10)
+    gc = (maxc - g) / (deltac + 1e-10)
+    bc = (maxc - b) / (deltac + 1e-10)
+    h = np.zeros_like(maxc)
+    h[(maxc == r) & (deltac != 0)] = (bc - gc)[(maxc == r) & (deltac != 0)]
+    h[(maxc == g) & (deltac != 0)] = 2.0 + (rc - bc)[(maxc == g) & (deltac != 0)]
+    h[(maxc == b) & (deltac != 0)] = 4.0 + (gc - rc)[(maxc == b) & (deltac != 0)]
+    h = (h / 6.0) % 1.0
+    # Adjust hue
+    h = (h + hue_shift / 360.0) % 1.0
+    # Vectorized HSV to RGB
+    i = np.floor(h * 6.0).astype(int)
+    f = (h * 6.0) - i
+    p = v * (1.0 - s)
+    q = v * (1.0 - f * s)
+    t = v * (1.0 - (1.0 - f) * s)
+    i = i % 6
+    conditions = [
+        (i == 0),
+        (i == 1),
+        (i == 2),
+        (i == 3),
+        (i == 4),
+        (i == 5),
+    ]
+    rgb = np.zeros(arr.shape)
+    rgb[..., 0] = np.select(conditions, [v, q, p, p, t, v])
+    rgb[..., 1] = np.select(conditions, [t, v, v, q, p, p])
+    rgb[..., 2] = np.select(conditions, [p, p, t, v, v, q])
+    rgb = (rgb * 255).clip(0, 255).astype(np.uint8)
+    return Image.fromarray(rgb, "RGB")
 
 
 def _apply_edits(
