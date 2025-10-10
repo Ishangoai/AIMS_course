@@ -14,4 +14,4 @@ else
     cd src/students/example
 fi
 
-exec uv run uvicorn "api.main:app" --host 0.0.0.0 --port 8080
+exec uv run uvicorn "api.main:app" --host 0.0.0.0 --port 8080 --reload
