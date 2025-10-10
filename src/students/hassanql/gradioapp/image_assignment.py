@@ -1,5 +1,5 @@
 import gradio as gr
-from PIL import Image, ImageEnhance
+from PIL import ImageEnhance
 
 
 def edit_image(image, grayscale, brightness, contrast, rotation):
