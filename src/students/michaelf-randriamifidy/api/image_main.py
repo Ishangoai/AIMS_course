@@ -2,9 +2,8 @@ import os
 import textwrap
 
 import gradio as gr
-
-from fastapi import FastAPI, HTTPException
-from fastapi.openapi.docs import get_swagger_ui_html 
+from fastapi import FastAPI
+from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.image_app import image_transformation
 
 app = FastAPI(
@@ -30,11 +29,5 @@ def root():
     Redirect the root path `/` to the Swagger UI documentation.
     """
     return get_swagger_ui_html(openapi_url="/openapi.json", title="AIMS Course API Docs")
-
-
-@app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
-
-def hello():
-    return {"message": f"Hello from {current_user}! Ready!!"}
 
 gr.mount_gradio_app(app, image_transformation, path="/image-transformation")
