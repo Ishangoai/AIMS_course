@@ -1,5 +1,6 @@
 import gradio as gr
 import numpy as np
+from scipy.ndimage import rotate
 
 
 def img_to_grayscale(image: np.array, to_grayscale: bool):
@@ -27,8 +28,7 @@ def change_contrast(image: np.array, value: float):
 
 
 def rotate_image(image: np.array, radius: float):
-    k = radius // 90
-    image = np.rot90(image, k=k)
+    image= rotate(image, radius, reshape=True)
     return image
 
 
