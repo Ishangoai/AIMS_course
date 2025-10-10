@@ -1,7 +1,8 @@
+import io
+
 import gradio as gr
 import requests as req
 from PIL import Image
-import io
 
 API_BASE_URL = "http://0.0.0.0:8080"
 
@@ -39,7 +40,15 @@ def rotate_image(image: Image.Image, rotation: float) -> Image.Image:
 
 
 # Unified apply function: handles both image & parameter histories
-def apply_modification(img, img_hist, param_hist, endpoint_fn, current_params, updated_param_name=None, updated_value=None):
+def apply_modification(
+    img,
+    img_hist,
+    param_hist,
+    endpoint_fn,
+    current_params,
+    updated_param_name=None,
+    updated_value=None,
+):
     if img is None:
         return None, img_hist, param_hist
 
@@ -99,7 +108,7 @@ def create_app():
                 input_image = gr.Image(label="Upload Image", type="pil")
                 revert_btn = gr.Button("Revert")
                 restore_btn = gr.Button("Revert all changes")
-                download_btn = gr.DownloadButton(label="DOWNLOAD IMAGE")
+                gr.DownloadButton(label="DOWNLOAD IMAGE")
             with gr.Column():
                 grayscale = gr.Checkbox(label="Convert to Grayscale")
                 brightness = gr.Slider(0.5, 1.5, value=1.0, label="Brightness")
