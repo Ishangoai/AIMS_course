@@ -43,7 +43,7 @@ def clear_all():
 
 
 # ------------------- BUILD MAIN APP -------------------
-with gr.Blocks(theme=gr.themes.Soft()) as text_app:
+with gr.Blocks() as text_app:
     gr.Markdown("# 🨁 Text Formatting Application and Scrabble-ish gamemode 🨃 \n"
                 "### 🨂 Perform text operations and test your might against the computer 😎 🨀")
 
