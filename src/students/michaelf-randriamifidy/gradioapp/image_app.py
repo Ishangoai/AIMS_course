@@ -1,5 +1,7 @@
 import gradio as gr
+from gradioapp.utils.image_app_utils import edit_image
 from PIL import Image, ImageEnhance
+import tempfile, os
 
 
 def adjust_brightness(img: Image.Image, brightness: float) -> Image.Image:
@@ -69,3 +71,60 @@ def combined_effects(img: Image.Image, brightness:float, contrast:float, angle:f
     if is_grayscale:
         img = to_grayscale(img)
     return img
+
+# --- Fonction Reset ---
+def reset_image(original_img):
+    """Retourne simplement l'image originale."""
+    return original_img
+
+def save_image(img):
+    temp_dir = tempfile.mkdtemp()
+    save_path = os.path.join(temp_dir,"modified_image.png")
+    img.save(save_path)
+    return save_path
+
+
+# --- Gradio interface ---
+
+with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
+    gr.Markdown("## Image Operations\nUpload an image, apply effects (brightness, contrast, rotation, grayscale), or reset to the original image.")
+
+    
+    with gr.Row():
+        image_input = gr.Image(type="pil", label="Upload Image")
+
+
+    with gr.Row():
+        combined_grayscale = gr.Checkbox(False, label="Apply Grayscale")
+        combined_brightness = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Brightness")
+        combined_contrast = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Contrast")
+        combined_rotation = gr.Slider(-180, 180, value=0, step=1, label="Rotation (degrees)")
+        
+
+    combined_output = gr.Image(type="pil", label="Final Combined Output")
+    apply_combined = gr.Button("Apply Combined Effects")
+
+    apply_combined.click(
+        combined_effects,
+        inputs=[image_input, combined_brightness, combined_contrast, combined_rotation, combined_grayscale],
+        outputs=combined_output
+    )
+
+    # --- Bouton Reset ---
+    gr.Markdown("### 🔄 Reset to Original Image")
+    reset_button = gr.Button("Reset to Original")
+    reset_button.click(
+        reset_image,
+        inputs=image_input,
+        outputs=[combined_output],
+    )
+
+    #Save button 
+    gr.Markdown("### Download Image")
+    save_button = gr.Button("Save Image")
+    file_output = gr.File(label="Download your edited image")
+    save_button.click(
+        save_image,
+        inputs=combined_output,
+        outputs=file_output
+    )
