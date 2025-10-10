@@ -1,12 +1,10 @@
 import io
-import os
 import textwrap
 
 import gradio as gr
-from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
-from PIL import Image, ImageEnhance
-
+from fastapi import FastAPI, File, Request, Response, UploadFile
 from gradioapp import image_processor_app as processor
+from PIL import Image, ImageEnhance
 
 app = FastAPI(
     title="AIMS Course API",
@@ -176,7 +174,3 @@ async def rotate(request: Request, image: UploadFile = File(...)):
 # Mount Gradio app
 demo = processor.create_app()
 gr.mount_gradio_app(app, demo, path="/")  # Mount the targeted app at the root
-
-# Used for later (not now)
-# gr.mount_gradio_app(app, heart_app, path="/heart-disease")
-# gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
