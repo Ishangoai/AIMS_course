@@ -5,7 +5,7 @@ import gradio as gr
 
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html 
-from gradioapp.image_app import image_app
+from gradioapp.image_app import image_transformation
 
 app = FastAPI(
     title="AIMS Course API",
@@ -37,4 +37,4 @@ def root():
 def hello():
     return {"message": f"Hello from {current_user}! Ready!!"}
 
-gr.mount_gradio_app(app, image_app, path="/image-transformation")
+gr.mount_gradio_app(app, image_transformation, path="/image-transformation")
