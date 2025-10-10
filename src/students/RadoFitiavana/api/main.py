@@ -2,13 +2,14 @@ import os
 import textwrap
 
 import gradio as gr
-from agents.chatbot.llm_gradio import llm_chat
+# from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
-from fastapi.openapi.docs import get_swagger_ui_html
-from gradioapp.app import app as demo
-from gradioapp.heart_disease_app import heart_app
+# from fastapi.openapi.docs import get_swagger_ui_html
+# from gradioapp.app import app as demo
+# from gradioapp.heart_disease_app import heart_app
+from gradioapp import image_processor_app as processor
 
 app = FastAPI(
     title="AIMS Course API",
@@ -29,13 +30,13 @@ app = FastAPI(
 current_user = os.environ.get("GITHUB_USER", "default")
 users = {}
 
-
-@app.get("/", include_in_schema=False)
-def root():
-    """
-    Redirect the root path `/` to the Swagger UI documentation.
-    """
-    return get_swagger_ui_html(openapi_url="/openapi.json", title="AIMS Course API Docs")
+####################### Do not redirect root to swagger ui ##############################
+# @app.get("/", include_in_schema=False)
+# def root():
+#     """
+#     Redirect the root path `/` to the Swagger UI documentation.
+#     """
+#     return get_swagger_ui_html(openapi_url="/openapi.json", title="AIMS Course API Docs")
 
 
 @app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
@@ -124,7 +125,9 @@ def update_user_details(username: str, request: UpdateUserRequest):
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
 
+demo = processor.create_app()
+gr.mount_gradio_app(app, demo, path="/") # Mount the targeted app at the root
 
-gr.mount_gradio_app(app, demo, path="/gradio")
-gr.mount_gradio_app(app, heart_app, path="/heart-disease")
-gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
+################### ##########Used for later not now ##########################################
+# gr.mount_gradio_app(app, heart_app, path="/heart-disease")
+# gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
