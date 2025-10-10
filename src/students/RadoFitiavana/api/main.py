@@ -3,11 +3,10 @@ import os
 import textwrap
 
 import gradio as gr
-from api.models import UpdateUserRequest, UserRequest
-from api.safe_eval import safe_eval
 from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
-from gradioapp import image_processor_app as processor
 from PIL import Image, ImageEnhance
+
+from gradioapp import image_processor_app as processor
 
 app = FastAPI(
     title="AIMS Course API",
@@ -27,83 +26,83 @@ app = FastAPI(
 )
 
 # Global variable to store the usernames
-current_user = os.environ.get("GITHUB_USER", "default")
-users = {}
+# current_user = os.environ.get("GITHUB_USER", "default")
+# users = {}
 
 
-@app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
-def hello():
-    return {"message": f"Hello from {current_user}!"}
+# @app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
+# def hello():
+#     return {"message": f"Hello from {current_user}!"}
 
 
-@app.get(
-    "/evaluate",
-    summary="Evaluate an expression",
-    description="Evaluates a Math expression provided in the request body.",
-    response_description="The result of the evaluated expression.",
-)
-def evaluate(expression: str):
-    """Evaluate the given arguments and return the result."""
-    try:
-        result = safe_eval(expression)
-        return {"result": result}
-    except Exception as e:
-        return {"error": str(e)}
+# @app.get(
+#     "/evaluate",
+#     summary="Evaluate an expression",
+#     description="Evaluates a Math expression provided in the request body.",
+#     response_description="The result of the evaluated expression.",
+# )
+# def evaluate(expression: str):
+#     """Evaluate the given arguments and return the result."""
+#     try:
+#         result = safe_eval(expression)
+#         return {"result": result}
+#     except Exception as e:
+#         return {"error": str(e)}
 
 
-@app.post(
-    "/register",
-    summary="Register a new user",
-    description="Registers a new user with the given username.",
-)
-def register_user(request: UserRequest):
-    """Register a new user with the given username."""
-    username = request.username
-    if not username:
-        raise HTTPException(status_code=400, detail="Username is required")
+# @app.post(
+#     "/register",
+#     summary="Register a new user",
+#     description="Registers a new user with the given username.",
+# )
+# def register_user(request: UserRequest):
+#     """Register a new user with the given username."""
+#     username = request.username
+#     if not username:
+#         raise HTTPException(status_code=400, detail="Username is required")
 
-    users[username] = request.model_dump().get("name", None)
-    return {"message": f"User {username} registered successfully"}
-
-
-@app.get("/register", summary="Get registered users", description="Returns a list of registered users.")
-def get_registered_users():
-    """Get the list of registered users."""
-    return {"users": users}
+#     users[username] = request.model_dump().get("name", None)
+#     return {"message": f"User {username} registered successfully"}
 
 
-@app.get("/register/{username}", summary="Get user details", description="Returns details of a specific user.")
-def get_user_details(username: str):
-    """Get the details of a specific user."""
-    if username not in users:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {"username": username, "name": users[username]}
+# @app.get("/register", summary="Get registered users", description="Returns a list of registered users.")
+# def get_registered_users():
+#     """Get the list of registered users."""
+#     return {"users": users}
 
 
-@app.delete(
-    "/register/{username}/delete",
-    summary="Delete a user",
-    description="Deletes a user with the given username.",
-)
-def delete_user(username: str):
-    """Delete a user with the given username."""
-    if username not in users:
-        raise HTTPException(status_code=404, detail="User not found")
-    del users[username]
-    return {"message": f"User {username} deleted successfully"}
+# @app.get("/register/{username}", summary="Get user details", description="Returns details of a specific user.")
+# def get_user_details(username: str):
+#     """Get the details of a specific user."""
+#     if username not in users:
+#         raise HTTPException(status_code=404, detail="User not found")
+#     return {"username": username, "name": users[username]}
 
 
-@app.put(
-    "/register/{username}",
-    summary="Update user details",
-    description="Updates the details of a specific user.",
-)
-def update_user_details(username: str, request: UpdateUserRequest):
-    """Update the details of a specific user."""
-    if username not in users:
-        raise HTTPException(status_code=404, detail="User not found")
-    users[username] = request.model_dump().get("name", None)
-    return {"message": f"User {username} updated successfully"}
+# @app.delete(
+#     "/register/{username}/delete",
+#     summary="Delete a user",
+#     description="Deletes a user with the given username.",
+# )
+# def delete_user(username: str):
+#     """Delete a user with the given username."""
+#     if username not in users:
+#         raise HTTPException(status_code=404, detail="User not found")
+#     del users[username]
+#     return {"message": f"User {username} deleted successfully"}
+
+
+# @app.put(
+#     "/register/{username}",
+#     summary="Update user details",
+#     description="Updates the details of a specific user.",
+# )
+# def update_user_details(username: str, request: UpdateUserRequest):
+#     """Update the details of a specific user."""
+#     if username not in users:
+#         raise HTTPException(status_code=404, detail="User not found")
+#     users[username] = request.model_dump().get("name", None)
+#     return {"message": f"User {username} updated successfully"}
 
 
 ###################################################################################################
