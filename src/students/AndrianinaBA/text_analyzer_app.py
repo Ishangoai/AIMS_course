@@ -7,7 +7,7 @@ text = "Beams of fire sweep thorough my hearst, thrust of pain increasingly enga
 res = case_converter(text=text, option="Title Case")
 print(res)
 
-with gr.Blocks(css="body {background: #f2f7ff;}") as text_analyzer_app:
+with gr.Blocks(css="body {background: #f2f7ff;}") as text_analyzer_app_instance:
     gr.Markdown("# AIMS Course: Text Analyzer")
     gr.Markdown("This app provides various text analysis functionalities.")
 
