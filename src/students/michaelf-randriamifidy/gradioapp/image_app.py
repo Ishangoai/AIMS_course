@@ -1,7 +1,9 @@
+import os
+import tempfile
+
 import gradio as gr
 from gradioapp.utils.image_app_utils import edit_image
 from PIL import Image, ImageEnhance
-import tempfile, os
 
 
 def adjust_brightness(img: Image.Image, brightness: float) -> Image.Image:
@@ -17,6 +19,7 @@ def adjust_brightness(img: Image.Image, brightness: float) -> Image.Image:
     enhancer = ImageEnhance.Brightness(img)
     return enhancer.enhance(brightness)
 
+
 def adjust_contrast(img: Image.Image, contrast: float) -> Image.Image:
     """
     Adjust contrast
@@ -28,6 +31,7 @@ def adjust_contrast(img: Image.Image, contrast: float) -> Image.Image:
     """
     enhancer = ImageEnhance.Contrast(img)
     return enhancer.enhance(contrast)
+
 
 def rotate_image(img: Image.Image, angle: float) -> Image.Image:
     """
@@ -42,6 +46,7 @@ def rotate_image(img: Image.Image, angle: float) -> Image.Image:
     """
     return img.rotate(angle, expand=True)
 
+
 def to_grayscale(img: Image.Image) -> Image.Image:
     """
     Transform image to grayscale
@@ -52,7 +57,9 @@ def to_grayscale(img: Image.Image) -> Image.Image:
     """
     return img.convert("L")
 
-def combined_effects(img: Image.Image, brightness:float, contrast:float, angle:float, is_grayscale:bool=False) -> Image.Image:
+
+def combined_effects(img: Image.Image, brightness: float, contrast: float,
+                    angle: float, is_grayscale: bool = False) -> Image.Image:
     """
     Transform image
     Args:
@@ -72,14 +79,22 @@ def combined_effects(img: Image.Image, brightness:float, contrast:float, angle:f
         img = to_grayscale(img)
     return img
 
-# --- Fonction Reset ---
-def reset_image(original_img):
-    """Retourne simplement l'image originale."""
-    return original_img
 
-def save_image(img):
-    temp_dir = tempfile.mkdtemp()
-    save_path = os.path.join(temp_dir,"modified_image.png")
+def save_image(img: Image.Image, path: str = None) -> str:
+    """Download Image
+
+    Args:
+        img (Image.Image): Image to be downloaded. Defaults to None.
+
+        path (str): Download path
+    Returns:
+        str: Download path
+    """
+    if path is not None:
+        save_path = os.path.join(path, "modified_image.png")
+    else:
+        temp_dir = tempfile.mkdtemp()
+        save_path = os.path.join(temp_dir, "modified_image.png")
     img.save(save_path)
     return save_path
 
@@ -89,19 +104,16 @@ def save_image(img):
 with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
     gr.Markdown("## Image Operations\nUpload an image, apply effects (brightness, contrast, rotation, grayscale), or reset to the original image.")
 
-    
     with gr.Row():
         image_input = gr.Image(type="pil", label="Upload Image")
-
 
     with gr.Row():
         combined_grayscale = gr.Checkbox(False, label="Apply Grayscale")
         combined_brightness = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Brightness")
         combined_contrast = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Contrast")
         combined_rotation = gr.Slider(-180, 180, value=0, step=1, label="Rotation (degrees)")
-        
 
-    combined_output = gr.Image(type="pil", label="Final Combined Output")
+    combined_output = gr.Image(type="pil", label="Final Combined Output", interactive=False)
     apply_combined = gr.Button("Apply Combined Effects")
 
     apply_combined.click(
@@ -110,21 +122,20 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
         outputs=combined_output
     )
 
-    # --- Bouton Reset ---
     gr.Markdown("### 🔄 Reset to Original Image")
     reset_button = gr.Button("Reset to Original")
+
     reset_button.click(
-        reset_image,
-        inputs=image_input,
+        fn=lambda x: x,
+        inputs=[image_input],
         outputs=[combined_output],
     )
 
-    #Save button 
     gr.Markdown("### Download Image")
     save_button = gr.Button("Save Image")
     file_output = gr.File(label="Download your edited image")
     save_button.click(
         save_image,
-        inputs=combined_output,
+        inputs=[combined_output],
         outputs=file_output
     )
