@@ -10,6 +10,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as heart_app:
     gr.Markdown("# AIMS Course: Heart Disease Risk Predictor")
     gr.Markdown("Fill in the patient info below to predict heart disease risk.")
 
+    # Input Row 1
     with gr.Row():
         # Input Column 1
         with gr.Column():
@@ -29,9 +30,12 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as heart_app:
             slope = gr.Slider(0, 2, value=1, label="Slope")
             ca = gr.Slider(0, 4, value=0, label="Major Vessels")
             thal = gr.Slider(0, 7, value=3, label="Thal")
-
-    predict_btn = gr.Button("Predict")
-    result = gr.Textbox(label="Result")
+    # Input Row 2
+    with gr.Row():
+        with gr.Column():
+            predict_btn = gr.Button("Predict")
+        with gr.Column():
+            result = gr.Textbox(label="Result")
 
     predict_btn.click(fn=wrapped_predict,
                       inputs=[age, sex, cp, trestbps, chol, fbs, restecg,
