@@ -37,5 +37,10 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as text_analyzer_app_instance:
         analyze_button = gr.Button("Analyze")
         word_count_output = gr.Textbox(label="Word Count")
         char_count_output = gr.Textbox(label="Character Count")
+        average_count_output = gr.Textbox(label="Average Characters per Word")
 
-        analyze_button.click(fn=text_analyzer, inputs=analyze_input, outputs=[word_count_output, char_count_output])
+        analyze_button.click(fn=text_analyzer, inputs=analyze_input, outputs=[word_count_output,
+                                                                             char_count_output,
+                                                                             average_count_output])
+if __name__ == "__main__":
+    text_analyzer_app_instance.launch()
