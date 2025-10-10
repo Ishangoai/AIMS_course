@@ -33,6 +33,7 @@ with gr.Blocks(title="Image Editor") as image_app:
             brightness = gr.Slider(0.5, 1.5, 1.0, label="Brightness")
             contrast = gr.Slider(0.5, 1.5, 1.0, label="Contrast")
             rotation = gr.Slider(-180, 180, 0, label="Rotate (degrees)")
+            reset_btn = gr.Button("Reset to Original")
         with gr.Column():
             image_output = gr.Image(label="Edited Image")
 
@@ -41,3 +42,13 @@ with gr.Blocks(title="Image Editor") as image_app:
     # Automatically update on input changes
     for inp in inputs:
         inp.change(fn=edit_image, inputs=inputs, outputs=image_output)
+
+    # Reset button restores original image and resets settings
+    def reset_to_original(image):
+        return image, False, 1.0, 1.0, 0, image
+
+    reset_btn.click(
+        fn=reset_to_original,
+        inputs=[image_input],
+        outputs=inputs + [image_output],
+    )
