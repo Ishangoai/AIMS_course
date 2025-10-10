@@ -30,12 +30,12 @@ current_user = os.environ.get("GITHUB_USER", "default")
 users = {}
 
 
-@app.get("/", include_in_schema=False)
-def root():
-    """
-    Redirect the root path `/` to the Swagger UI documentation.
-    """
-    return get_swagger_ui_html(openapi_url="/openapi.json", title="AIMS Course API Docs")
+# @app.get("/", include_in_schema=False)
+# def root():
+#     """
+#     Redirect the root path `/` to the Swagger UI documentation.
+#     """
+#    return get_swagger_ui_html(openapi_url="/openapi.json", title="AIMS Course API Docs")
 
 
 @app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
@@ -125,6 +125,6 @@ def update_user_details(username: str, request: UpdateUserRequest):
     return {"message": f"User {username} updated successfully"}
 
 
-gr.mount_gradio_app(app, demo, path="/gradio")
+gr.mount_gradio_app(app, demo, path="/")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
