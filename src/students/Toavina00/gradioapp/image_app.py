@@ -9,15 +9,26 @@ def img_to_grayscale(image: np.array, to_grayscale: bool):
     return image
 
 
-def change_brightness(image: np.array, value: float):
+def change_brightness(image: np.array, value: float): 
+    image = image.astype(np.float32)
+    image *= value
+    image = np.clip(image,0,255)
+    image = image.astype(np.uint8)
     return image
 
 
 def change_contrast(image: np.array, value: float):
+    image_float = image.astype(np.float32)
+    mean = np.mean(image, axis = (0,1), keepdims = True)
+    image = (image - mean) * value + mean
+    image = np.clip(image,0,255)
+    image = image.astype(np.uint8)
     return image
 
 
 def rotate_image(image: np.array, radius: float):
+    k = radius  // 90
+    image = np.rot90(img, k=k)
     return image
 
 
