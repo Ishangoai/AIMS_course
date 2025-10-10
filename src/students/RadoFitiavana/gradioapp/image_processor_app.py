@@ -7,7 +7,7 @@ from PIL import Image
 API_BASE_URL = "http://0.0.0.0:8080"
 
 
-def _send_image_to_api(endpoint: str, image: Image.Image, params: dict = None) -> Image.Image:
+def _send_image_to_api(endpoint: str, image: Image.Image, params: Optional[dict] = None) -> Image.Image:
     buffered = io.BytesIO()
     image.save(buffered, format="PNG")
     buffered.seek(0)
