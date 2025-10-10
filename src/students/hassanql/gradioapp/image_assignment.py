@@ -1,10 +1,16 @@
 import gradio as gr
-from PIL import ImageEnhance
+from PIL import Image, ImageEnhance
+import numpy as np
+import tempfile
 
 
 def edit_image(image, grayscale, brightness, contrast, rotation):
     if image is None:
         return None
+
+    # Convert numpy array to PIL if needed
+    if isinstance(image, np.ndarray):
+        image = Image.fromarray(image)
 
     img = image.convert("RGB")
 
@@ -22,6 +28,19 @@ def edit_image(image, grayscale, brightness, contrast, rotation):
     return img
 
 
+def save_temp_image(img):
+    if img is None:
+        return None
+
+    # Convert numpy array to PIL if needed
+    if isinstance(img, np.ndarray):
+        img = Image.fromarray(img)
+
+    temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+    img.save(temp_file.name)
+    return temp_file.name
+
+
 # Gradio app definition
 with gr.Blocks(title="Image Editor") as image_app:
     gr.Markdown("## 🖼️ Image Editor\nUpload an image and apply basic edits.")
@@ -36,6 +55,7 @@ with gr.Blocks(title="Image Editor") as image_app:
             reset_btn = gr.Button("Reset to Original")
         with gr.Column():
             image_output = gr.Image(label="Edited Image")
+            download_btn = gr.DownloadButton(label="Download Edited Image")
 
     inputs = [image_input, grayscale, brightness, contrast, rotation]
 
@@ -52,3 +72,6 @@ with gr.Blocks(title="Image Editor") as image_app:
         inputs=[image_input],
         outputs=inputs + [image_output],
     )
+
+    # Download button saves edited image to temp file
+    download_btn.click(fn=save_temp_image, inputs=image_output, outputs=download_btn)
