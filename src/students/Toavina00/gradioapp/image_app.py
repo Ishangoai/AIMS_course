@@ -1,11 +1,73 @@
 import gradio as gr
 import numpy as np
-import scipy.ndimage as si
+from scipy import ndimage
+
+
+def check_bound(x: int, y: int, x_max: int, y_max: int):
+    return (0 <= x < x_max) and (0 <= y < y_max)
 
 
 def img_to_grayscale(image: np.ndarray, to_grayscale: bool):
     if to_grayscale:
-        return image.mean(axis=2).astype(int)
+        image = np.dot(image[...,:3], [0.2989, 0.5870, 0.1140])
+        image = np.clip(image, 0, 255)
+        image = image.astype(int)
+    return image
+
+
+def dithering(image: np.ndarray, dither: bool):
+    if not dither:
+        return image
+
+    image = image.astype(float)
+
+    m, n = image.shape[:2]
+
+    # Floyd–Steinberg dithering Algorithm
+    for x in range(m):
+        for y in range(n):
+            oldpixel = image[x, y]
+            newpixel = np.round(oldpixel / 255) * 255
+            image[x, y] = newpixel
+            quant_error = oldpixel - newpixel
+
+            if check_bound(x, y + 1, m, n):
+                image[x, y + 1] += quant_error * 5 / 16
+            if check_bound(x + 1, y, m, n):
+                image[x + 1, y] += quant_error * 7 / 16
+            if check_bound(x + 1, y + 1, m, n):
+                image[x + 1, y + 1] += quant_error * 1 / 16
+            if check_bound(x - 1, y + 1, m, n):
+                image[x - 1, y + 1] += quant_error * 3 / 16
+
+    return image.astype(int)
+
+
+def invert_color(image: np.ndarray, invert: bool):
+    if invert:
+        image -= 255 // 2
+        image *= -1
+        image += 255 // 2
+    return image
+
+
+def flip_vertical(image: np.ndarray, flip: bool):
+    if flip:
+        n = image.shape[1]
+        if len(image.shape) == 2:
+            image = image[:, n::-1]
+        else:
+            image = image[:, n::-1, :]
+    return image
+
+
+def flip_horizontal(image: np.ndarray, flip: bool):
+    if flip:
+        n = image.shape[0]
+        if len(image.shape) == 2:
+            image = image[n::-1, :]
+        else:
+            image = image[n::-1, :, :]
     return image
 
 
@@ -13,7 +75,7 @@ def change_brightness(image: np.ndarray, value: float):
     image = image.astype(np.float32)
     image *= value
     image = np.clip(image, 0, 255)
-    image = image.astype(np.uint8)
+    image = image.astype(int)
     return image
 
 
@@ -21,36 +83,45 @@ def change_contrast(image: np.ndarray, value: float):
     mean = np.mean(image, axis=(0, 1), keepdims=True)
     image = (image - mean) * value + mean
     image = np.clip(image, 0, 255)
-    image = image.astype(np.uint8)
+    image = image.astype(int)
     return image
 
 
 def rotate_image(image: np.ndarray, radius: float):
-    image = si.rotate(image, radius, reshape=True)
+    image = ndimage.rotate(image, radius, reshape=True)
     return image
 
 
 def blur_image(image: np.ndarray, sigma: float):
     if len(image.shape) == 2:
-        return si.gaussian_filter(image, sigma)
+        return ndimage.gaussian_filter(image, sigma)
     else:
-        return si.gaussian_filter(image, (sigma, sigma, 0))
+        return ndimage.gaussian_filter(image, (sigma, sigma, 0))
+
 
 def transform_image(
     image: np.ndarray | None,
-    to_grayscale: bool, 
-    brightness: float, 
-    contrast: float, 
+    to_grayscale: bool,
+    invert: bool,
+    flip_h: bool,
+    flip_v: bool,
+    dither: bool,
+    brightness: float,
+    contrast: float,
     rotate: float,
     blur_sigma: float,
 ):
     if image is None:
         return None
-    image = img_to_grayscale(image, to_grayscale)
     image = change_brightness(image, brightness)
     image = change_contrast(image, contrast)
-    image = rotate_image(image, rotate)
+    image = img_to_grayscale(image, to_grayscale)
     image = blur_image(image, blur_sigma)
+    image = flip_horizontal(image, flip_h)
+    image = flip_vertical(image, flip_v)
+    image = invert_color(image, invert)
+    image = dithering(image, dither)
+    image = rotate_image(image, rotate)
     return image
 
 
@@ -60,21 +131,29 @@ with gr.Blocks() as app:
     with gr.Row():
         with gr.Column():
             src = gr.Image()
-            #src = gr.Image(sources="webcam")
 
         with gr.Column():
             dst = gr.Image()
 
-    grayscale = gr.Checkbox(False, label="Grayscale")
+    with gr.Row():
+        grayscale = gr.Checkbox(False, label="Grayscale")
+        invert = gr.Checkbox(False, label="Invert Color")
+        flip_h = gr.Checkbox(False, label="Flip Horizontal")
+        flip_v = gr.Checkbox(False, label="Flip Vertical")
+        dither = gr.Checkbox(False, label="Dithering")
+
     brightness = gr.Slider(0.5, 1.5, value=1.0, label="Brightness")
     contrast = gr.Slider(0.5, 1.5, value=1.0, label="Contrast")
     rotate = gr.Slider(-180.0, 180.0, value=0.0, label="Rotate")
     blur = gr.Slider(0, 5, value=0, step=1, label="Blur")
 
-    transforms = [grayscale, brightness, contrast, rotate, blur]
+    with gr.Row():
+        reset_btn = gr.Button("Reset")
+        download_btn = gr.Button("Download")
+
+    transforms = [grayscale, invert, flip_h, flip_v, dither, brightness, contrast, rotate, blur]
+    initial_value = [trans.value for trans in transforms]
 
     gr.on(fn=transform_image, inputs=[src, *transforms], outputs=dst)
-    #for transform in transforms:
-    #    transform.change(transform_image, [src, *transforms], dst)
 
-    #src.stream(transform_image, [src, *transforms], dst, stream_every=0.001)
+    reset_btn.click(lambda: initial_value, outputs=[*transforms])
