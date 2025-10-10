@@ -11,11 +11,7 @@ if [ "$DEPLOYMENT_TARGET" = "STUDENT" ]; then
     cd src/students/$GITHUB_USER
 else
     echo "Starting root API..."
-    cd src/students/$1
+    cd src/students/RadoFitiavana
 fi
 
-######################### Use only during local test ###########################
-exec uvicorn "api.main:app" --host 0.0.0.0 --port 8080
-
-################################ Use in depployement ###############################
-# exec uv run uvicorn "api.main:app" --host 0.0.0.0 --port 8080
+exec uv run uvicorn "api.main:app" --host 0.0.0.0 --port 8080

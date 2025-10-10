@@ -2,10 +2,12 @@ import os
 import textwrap
 
 import gradio as gr
+from PIL import Image, ImageEnhance
+import io
 # from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response, Request, File, UploadFile
 # from fastapi.openapi.docs import get_swagger_ui_html
 # from gradioapp.app import app as demo
 # from gradioapp.heart_disease_app import heart_app
@@ -124,6 +126,76 @@ def update_user_details(username: str, request: UpdateUserRequest):
         raise HTTPException(status_code=404, detail="User not found")
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
+
+################################################################################################################################################################################
+
+async def get_image_from_file(image_file):
+    img = await image_file.read()
+    img_bytes = io.BytesIO(img)
+    return Image.open(img_bytes)
+
+async def get_params_from_request(request: Request):
+    form = await request.form()
+    params = {key: value for key, value in form.items() if key != "image"}
+    return params
+
+def convert_image_to_buffer(image):
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return buffer        
+
+@app.post("/grayscale")
+async def to_grayscale(image: UploadFile = File(...)):
+    img = await get_image_from_file(image)
+
+    gray_scale_img = img.convert("L") # convert image into grayscale
+
+    buffer = convert_image_to_buffer(gray_scale_img)
+
+    return Response(content=buffer.getvalue(), media_type="image/png")
+
+@app.post("/brightness")
+async def adjust_brightness(request: Request, image: UploadFile = File(...)):
+    params = await get_params_from_request(request)
+    brightness = float(params["brightness"])
+    img = await get_image_from_file(image)
+
+    enhancer = ImageEnhance.Brightness(img)
+    enhanced_img = enhancer.enhance(brightness)
+
+    buffer = convert_image_to_buffer(enhanced_img)
+
+    return Response(content=buffer.getvalue(), media_type="image/png")
+
+@app.post("/contrast")
+async def adjust_contrast(request: Request, image: UploadFile = File(...)):
+    params = await get_params_from_request(request)
+    contrast = float(params["contrast"])
+    img = await get_image_from_file(image)
+
+    enhancer = ImageEnhance.Contrast(img)
+    enhanced_img = enhancer.enhance(contrast)
+
+    buffer = convert_image_to_buffer(enhanced_img)
+
+    return Response(content=buffer.getvalue(), media_type="image/png")
+
+@app.post("/rotate")
+async def rotate(request: Request, image: UploadFile = File(...)):
+    params = await get_params_from_request(request)
+    angle = float(params["rotation"])
+    img = await get_image_from_file(image)
+
+    rotated_img = img.rotate(angle, expand=True)
+
+    buffer = convert_image_to_buffer(rotated_img)
+
+    return Response(content=buffer.getvalue(), media_type="image/png")
+
+
+
 
 demo = processor.create_app()
 gr.mount_gradio_app(app, demo, path="/") # Mount the targeted app at the root
