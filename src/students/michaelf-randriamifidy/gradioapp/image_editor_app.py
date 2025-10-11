@@ -102,7 +102,7 @@ def save_image(img: Image.Image, path: str = "") -> str:
 # --- Gradio interface ---
 
 with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
-    gr.Markdown("## Image Operations\nUpload an image, apply effects"
+    gr.Markdown("# Image Operations\nUpload an image, apply effects"
                 "(brightness, contrast, rotation, grayscale), or reset to the original image."
                 )
 
@@ -124,7 +124,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
         outputs=output_image
     )
 
-    # --- Bouton Reset ---
+    # --- Reset button ---
     gr.Markdown("### Reset to Original Image")
     reset_button = gr.Button("Reset to Original")
     reset_button.click(
