@@ -69,7 +69,7 @@ def save_temp_image(image):
 
 
 # Building the Gradio Interface
-with gr.Blocks(theme=gr.themes.Soft()) as image_app:
+with gr.Blocks(theme=gr.Theme()) as image_app:
     gr.Markdown("## Image Editor")
     gr.Markdown("Upload an image and use the controls to edit it. The edited image will be displayed on the right.")
 
