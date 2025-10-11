@@ -8,14 +8,15 @@ Author: [Your Name]
 Date: 2025-10-11
 """
 
-import random
 from pathlib import Path
 from random import shuffle
+
 import gradio as gr
 
 # ============================================================
 # 🧰 Utility Functions and Constants
 # ============================================================
+
 
 def load_dictionary() -> set[str]:
     """
@@ -51,6 +52,7 @@ LETTER_VALUES: dict[str, int] = {
 # ============================================================
 # 🎲 Game Components
 # ============================================================
+
 
 class Tile:
     """Represents a single letter tile with its corresponding score."""
@@ -99,30 +101,27 @@ class Bag:
 class Rack:
     """Represents a player's rack of up to 7 tiles."""
 
-    def __init__(self, bag: Bag):
-        """
-        Initialize a rack by drawing 7 tiles from the bag.
+    def __init__(self, bag: Bag) -> None:
+            """
+            Initialize a rack by drawing up to 7 tiles from the bag.
 
-        Args:
-            bag (Bag): The bag to draw tiles from.
-        """
-        self.bag: Bag = bag
-        self.tiles: list[Tile] = [bag.draw() for _ in range(7) if bag.draw()]
+            Args:
+                bag (Bag): The bag to draw tiles from.
+            """
+            self.bag: Bag = bag
+            self.tiles: list[Tile] = []
+            self.refill()  # Fill the rack initially
 
     def refill(self) -> None:
         """Draw tiles until the rack has 7 letters (if possible)."""
         while len(self.tiles) < 7 and self.bag.tiles:
-            self.tiles.append(self.bag.draw())
+            tile = self.bag.draw()
+            if tile is not None:
+                self.tiles.append(tile)
 
     def letters(self) -> str:
-        """
-        Return a string of all letters currently on the rack.
-
-        Returns:
-            str: Letters in the rack concatenated.
-        """
-        return "".join(t.letter for t in self.tiles)
-
+        """Return a string of all letters currently on the rack."""
+        return "".join(tile.letter for tile in self.tiles)
 
 class Player:
     """Represents a player (human or AI) in the Scrabble game."""
@@ -249,8 +248,9 @@ class Game:
         if self.game_over:
             return "🎮 Game over! Please start a new game."
 
-        self.player.rack.tiles = []          
-        self.player.rack.refill()              
+        # Clear the rack safely without reassigning
+        self.player.rack.tiles.clear()
+        self.player.rack.refill()
 
         player_result = "You skipped your turn."
         ai_result = self._execute_turn(self.computer)
@@ -274,13 +274,18 @@ class Game:
         Returns:
             str: Scores of both players and current round.
         """
-        return f"You: {self.player.score} | Computer: {self.computer.score} | Round: {min(self.round, self.max_rounds)}/{self.max_rounds}"
+        return (
+            f"You: {self.player.score} | Computer: {self.computer.score} | "
+            f"Round: {min(self.round, self.max_rounds)}/{self.max_rounds}"
+        )
 
 # ============================================================
 # 🎮 Gradio Interface Wrappers
 # ============================================================
 
+
 game = Game()
+
 
 def gr_play_turn(word: str) -> tuple[str, str, str, str]:
     """
@@ -294,6 +299,7 @@ def gr_play_turn(word: str) -> tuple[str, str, str, str]:
     """
     result = game.play_turn(word)
     return result, game.scores(), " ".join(game.player.rack.letters()), ""
+
 
 def new_game() -> tuple[str, str, str, str]:
     """
@@ -310,13 +316,15 @@ def new_game() -> tuple[str, str, str, str]:
 # 🧩 Gradio Interface
 # ============================================================
 
+
 with gr.Blocks() as scrabble_demo:
 
     gr.Markdown("## Game Rules")
 
     gr.Markdown(
         """
-        **Objective:** Form valid dictionary words to score points. The player with the highest score after 5 rounds wins.
+        **Objective:** Form valid dictionary words to score points.
+        The player with the highest score after 5 rounds wins.
 
         **Gameplay:**
         1. Each player gets **5 turns**.
@@ -325,15 +333,14 @@ with gr.Blocks() as scrabble_demo:
         4. Your Game log will appear as you play.
 
         **Buttons:**
-        - **Submit:** Play the word you entered. If valid, your score updates and your rack refills with new tiles. If invalid, your rack stays the same.
+        - **Submit:** Play the word you entered. If valid, your score updates and your rack refills with new tiles.
+            If invalid, your rack stays the same.
         - **Skip Turn:** Skip your turn. Your rack refreshes with a new set of tiles, and the computer plays its turn.
         - **New Game:** Start a fresh game with empty scores and a new rack of tiles.
 
         **End of Game:** The game ends after **5 rounds** per player. The player with the highest score wins!
         """
     )
-
-
 
     with gr.Row():
         scores_box = gr.Textbox(label="Scores", value=game.scores(), interactive=False)
