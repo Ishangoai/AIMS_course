@@ -119,15 +119,16 @@ theme = gr.Theme(
 # Building the Gradio Interface
 with gr.Blocks(theme=theme) as image_app:
     gr.Markdown('<h1 style="text-align: center;"> Image Editor</h1>')
-    gr.Markdown('<h4 style="text-align: center;"> Upload an image and use the controls to edit it. The edited image will be displayed on the right.</h4>')
+    gr.Markdown('<h4 style="text-align: center;"> Upload an image and use the controls to edit it.\
+        The edited image will be displayed on the right.</h4>')
 
     # Create a main row to hold the input controls and the output image
     with gr.Row():
         # Create a column for the input controls
         with gr.Column():
-        
+
             input_image = gr.Image(type="pil", label="Input Image", sources=["upload", "clipboard"])
-            with gr.Group(): 
+            with gr.Group():
                 grayscale_check = gr.Checkbox(label="Convert to Grayscale", value=False)
                 flip_h_check = gr.Checkbox(label="Flip Horizontal", value=False)
                 flip_v_check = gr.Checkbox(label="Flip Vertically", value=False)
