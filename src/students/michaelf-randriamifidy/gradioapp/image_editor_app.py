@@ -142,3 +142,6 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
         inputs=output_image,
         outputs=file_output
     )
+
+if __name__ == "__main__":
+    image_transformation.launch()
