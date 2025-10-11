@@ -1,8 +1,9 @@
 import random
-from collections import Counter
-from typing import Tuple, List
-import gradio as gr
 import re
+from collections import Counter
+from typing import List, Tuple
+
+import gradio as gr
 
 
 def case_converter(text: str, case_type: str) -> str:
@@ -68,13 +69,13 @@ def text_cleanup(text: str) -> str:
     words = text.split()
     text = ' '.join(words)
     text = text.strip()
-    
+
     if not text:
         return text
-    
+
     result = []
     new_sentence = True
-    
+
     for char in text:
         if new_sentence and char.isalpha():
             result.append(char.upper())
@@ -83,7 +84,7 @@ def text_cleanup(text: str) -> str:
             result.append(char)
             if char in '.!?':
                 new_sentence = True
-    
+
     return ''.join(result)
 
 
@@ -99,29 +100,29 @@ def word_frequency_analyzer(text: str) -> str:
     """
     if not text.strip():
         return "No text to analyze."
-    
+
     words = []
     current_word = []
-    
+
     for char in text.lower():
         if char.isalnum():
             current_word.append(char)
         elif current_word:
             words.append(''.join(current_word))
             current_word = []
-    
+
     if current_word:
         words.append(''.join(current_word))
-    
+
     if not words:
         return "No words found."
-    
+
     word_counts = Counter(words)
-    
+
     result = []
     for word, count in word_counts.most_common():
         result.append(f"{word}: {count}")
-    
+
     return '\n'.join(result)
 
 
@@ -138,35 +139,35 @@ def top_words_analyzer(text: str, top_n: int = 5) -> str:
     """
     if not text.strip():
         return "No text to analyze."
-    
+
     # Convert to lowercase and split into words
     words = []
     current_word = []
-    
+
     for char in text.lower():
         if char.isalnum():
             current_word.append(char)
         elif current_word:
             words.append(''.join(current_word))
             current_word = []
-    
+
     if current_word:
         words.append(''.join(current_word))
-    
+
     if not words:
         return "No words found."
-    
+
     # Count word frequencies
     word_counts = Counter(words)
-    
+
     # Get top N words
     top_words = word_counts.most_common(top_n)
-    
+
     # Format output
     result = []
     for i, (word, count) in enumerate(top_words, 1):
         result.append(f"{i}. {word}: {count}")
-    
+
     return '\n'.join(result)
 
 
@@ -182,20 +183,20 @@ def unique_words_count(text: str) -> int:
     """
     if not text.strip():
         return 0
-    
+
     words = []
     current_word = []
-    
+
     for char in text.lower():
         if char.isalnum():
             current_word.append(char)
         elif current_word:
             words.append(''.join(current_word))
             current_word = []
-    
+
     if current_word:
         words.append(''.join(current_word))
-    
+
     return len(set(words))
 
 
@@ -229,7 +230,7 @@ def extract_emails(text: str) -> str:
     """
     email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     emails = re.findall(email_pattern, text)
-    
+
     if emails:
         return '\n'.join(emails)
     return "No email addresses found."
@@ -251,12 +252,12 @@ def text_analyzer(text: str) -> Tuple[int, int, int, float]:
     """
     num_chars = len(text.replace(" ", ""))
     num_words = len(text.split())
-    
+
     num_sentences = 0
     for char in text:
         if char in '.!?':
             num_sentences += 1
-    
+
     avg_len = num_chars / num_words if num_words > 0 else 0
     return num_chars, num_words, num_sentences, round(avg_len, 2)
 
@@ -272,21 +273,21 @@ def clear_all() -> List:
 
 
 CUSTOM_CSS = """
-    #main-container { 
+    #main-container {
         padding: 20px;
         max-width: 1200px;
         margin: 0 auto;
     }
-    #tabs { 
-        margin-top: 20px; 
+    #tabs {
+        margin-top: 20px;
     }
-    #output-box { 
-        margin-top: 20px; 
+    #output-box {
+        margin-top: 20px;
     }
-    #analyzer-section { 
-        margin-top: 30px; 
-        border-top: 2px solid #ddd; 
-        padding-top: 25px; 
+    #analyzer-section {
+        margin-top: 30px;
+        border-top: 2px solid #ddd;
+        padding-top: 25px;
         text-align: center;
     }
     .analyzer-metric {
@@ -309,10 +310,10 @@ CUSTOM_CSS = """
         color: #666;
         margin-bottom: 10px;
     }
-    .gr-button { 
-        border-radius: 10px !important; 
+    .gr-button {
+        border-radius: 10px !important;
     }
-    
+
 """
 
 with gr.Blocks(theme="soft", css=CUSTOM_CSS) as text_manipulation_app:
