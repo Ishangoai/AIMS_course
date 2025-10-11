@@ -19,7 +19,7 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
-    4. [**Image Transformation (Adimanana Notahinjanahary Ange, Michael Fitiavana Randriamifidy**](/image-transformation/)
+    4. [**Image Transformation (Ange, Michael Fitiavana**](/image-transformation/)
     -----
     """),
     version="1.0.0",
@@ -131,3 +131,4 @@ gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, image_transformation, path="/image-transformation")
+
