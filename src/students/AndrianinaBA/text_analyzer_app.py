@@ -18,7 +18,12 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as text_analyzer_app_instance:
                                 , value="Upper Case"
                                 , label="Select Case"
                                )
+        def delete_text():
+            input_text.value = ""
+
         convert_button = gr.Button("Convert")
+        delete_button = gr.Button("Clear Text")
+        delete_button.click(fn=delete_text, inputs=None, outputs=input_text)
         output_text = gr.Textbox(label="Converted Text", lines=4)
 
         convert_button.click(fn=case_converter, inputs=[input_text, case_option], outputs=output_text)
