@@ -119,29 +119,29 @@ theme = gr.Theme(
 # Building the Gradio Interface
 with gr.Blocks(theme=theme) as image_app:
     gr.Markdown('<h1 style="text-align: center;"> Image Editor</h1>')
-    gr.Markdown("Upload an image and use the controls to edit it. The edited image will be displayed on the right.")
+    gr.Markdown('<h4 style="text-align: center;"> Upload an image and use the controls to edit it.\
+        The edited image will be displayed on the right.</h4>')
 
     # Create a main row to hold the input controls and the output image
     with gr.Row():
         # Create a column for the input controls
-        with gr.Column(scale=1):
-            input_image = gr.Image(type="pil", label="Input Image", sources=["upload", "clipboard"])
-            grayscale_check = gr.Checkbox(label="Convert to Grayscale", value=False)
-            flip_h_check = gr.Checkbox(label="Flip Horizontal", value=False)
-            flip_v_check = gr.Checkbox(label="Flip Vertically", value=False)
-            brightness_slider = gr.Slider(minimum=0.5, maximum=1.5, value=1.0, label="Brightness")
-            contrast_slider = gr.Slider(minimum=0.5, maximum=1.5, value=1.0, label="Contrast")
-            rotation_slider = gr.Slider(minimum=-180, maximum=180, value=0, label="Rotation")
-            blur_slider = gr.Slider(0, 10, value=0, step=1, label="Blur")
+        with gr.Column():
 
-            # Create a nested row for buttons
-            with gr.Row():
+            input_image = gr.Image(type="pil", label="Input Image", sources=["upload", "clipboard"])
+            with gr.Group():
+                grayscale_check = gr.Checkbox(label="Convert to Grayscale", value=False)
+                flip_h_check = gr.Checkbox(label="Flip Horizontal", value=False)
+                flip_v_check = gr.Checkbox(label="Flip Vertically", value=False)
+                brightness_slider = gr.Slider(minimum=0.5, maximum=1.5, value=1.0, label="Brightness")
+                contrast_slider = gr.Slider(minimum=0.5, maximum=1.5, value=1.0, label="Contrast")
+                rotation_slider = gr.Slider(minimum=-180, maximum=180, value=0, label="Rotation")
+                blur_slider = gr.Slider(0, 10, value=0, step=1, label="Blur")
                 reset_btn = gr.Button("Reset")
 
         # Create a second column for the output image and download button
-        with gr.Column(scale=2):
-            output_image = gr.Image(type="pil", label="Output Image", interactive=False)
-            download_btn = gr.DownloadButton(label="Download Edited Image")
+        with gr.Column():
+            output_image = gr.Image(type="pil", label="Output Image", interactive=False, height=700)
+            download_btn = gr.DownloadButton(label="Download Edited Image", scale=1)
 
     # Define the components that will act as inputs to the edit_image function
     inputs = [input_image, grayscale_check, brightness_slider, contrast_slider, rotation_slider,
