@@ -17,20 +17,34 @@ def case_converter(text, option=None):
         return text.title()
 
 
-def text_reverser(text, option=None):
+def text_reverser_word(text, reverse=False) -> str:
     """
     Do we want to reverse the text or not?
     Args :
         - text (str): the text that we want to convert to a certain style
-        - option (str) : the mode that we want to convert the text to
+        - option (Bool) : the mode that we want to convert the text to
 
     Returns :
         - The converted text with the specified option
     """
     treated = text
-    if option == "Reverse Word Order":
+    if reverse:
         return " ".join(treated.split()[::-1])
-    elif option == "Reverse all characters":
+    else:
+        return treated
+
+
+def text_reverser_all_character(text, reverse=False) -> str:
+    """"
+    Do we want to reverse all the charachters in the text or not?
+    Args :
+        - text (str): the text that we want to convert to a certain style
+        - option (Bool) : the mode that we want to convert the text to
+    Returns :
+        - The converted text with the specified option
+    """
+    treated = text
+    if reverse:
         return treated[::-1]
     else:
         return treated
@@ -53,6 +67,8 @@ def text_analyzer(text):
     for word in splitted:
         count += 1
         avg += len(word)
+    if count == 0:
+        count = 1  # to avoid division by zero error
 
     # we will not count the blank lines
     stripped = text.strip()
@@ -70,11 +86,6 @@ def text_analyzer(text):
 
 if __name__ == "__main__":
     import gradio as gr
-    # text = "Your name and email addres were configured automatically based on your username and hostname"
-    # print(case_converter(text, "Title Case"))
-    # print('\n', text_reverser(text=text, option="Reverse Word Order"))
-    # print('\n', text_reverser(text=text, option="Reverse all characters"))
-    # print('\n', text_analyzer(text=text))
 
     with gr.Blocks() as app:
         gr.Markdown("## Text analyzer")
