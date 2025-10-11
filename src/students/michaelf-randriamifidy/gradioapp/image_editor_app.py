@@ -102,12 +102,12 @@ def save_image(img: Image.Image, path: str = None) -> str:
 # --- Gradio interface ---
 
 with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
-    gr.Markdown("## Image Operations\nUpload an image, apply effects (brightness, contrast, rotation, grayscale), or reset to the original image.")
+    gr.Markdown("## Image Operations\nUpload an image, apply effects"
+                "(brightness, contrast, rotation, grayscale), or reset to the original image."
+                )
 
-    
     with gr.Row():
         image_input = gr.Image(type="pil", label="Upload Image")
-
 
     with gr.Row():
         brightness = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Brightness")
@@ -133,7 +133,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
         outputs=[combined_output],
     )
 
-    #Save button 
+    # Save button
     gr.Markdown("### Download Image")
     save_button = gr.Button("Save Image")
     file_output = gr.File(label="Download your edited image")
