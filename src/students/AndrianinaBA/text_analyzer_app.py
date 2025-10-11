@@ -8,16 +8,41 @@ from gradioapp.utils.text_analyzer import case_converter, text_analyzer, text_re
 # print(res)
 
 with gr.Blocks(css="body {background: #f2f7ff;}") as text_analyzer_app_instance:
-    gr.Markdown("# AIMS Course: Text Analyzer")
+    gr.Markdown("# AIMS Course: Text Analyzer by Vicent and Andrianina")
     gr.Markdown("This app provides various text analysis functionalities.")
+    input_text = gr.Textbox(label="Input Text", lines=4, placeholder="Enter text here...")
 
     with gr.Tab("Case Converter"):
         gr.Markdown("Convert text to different cases.")
-        input_text = gr.Textbox(label="Input Text", lines=4, placeholder="Enter text here...")
         case_option = gr.Radio(choices=["Upper Case", "Lower Case", "Title Case"]
                                 , value="Upper Case"
                                 , label="Select Case"
                                )
+
+    with gr.Tab("Text Reverser"):
+        gr.Markdown("Reverse the input text.")
+        reverse_button = gr.Button("Reverse")
+        choice_reverse = gr.Radio(choices=["Reverse all characters", "Reverse Word Order"]
+                                   , value="Reverse all characters"
+                                   , label="Select Reverse Option"
+                                   )
+        reversed_output = gr.Textbox(label="Reversed Text", lines=4)
+
+        reverse_button.click(fn=text_reverser, inputs=[input_text, choice_reverse], outputs=reversed_output)
+
+    with gr.Tab("Text Analyzer"):
+        gr.Markdown("Analyze the input text for word and character count.")
+        analyze_button = gr.Button("Analyze")
+        word_count_output = gr.Textbox(label="Word Count")
+        char_count_output = gr.Textbox(label="Character Count")
+        average_count_output = gr.Textbox(label="Average Characters per Word")
+
+        analyze_button.click(fn=text_analyzer, inputs=input_text, outputs=[word_count_output,
+                                                                             char_count_output,
+                                                                             average_count_output])
+
+    with gr.Blocks():
+        gr.Markdown("## Your actions here")
         def delete_text():
             input_text.value = ""
 
@@ -28,24 +53,5 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as text_analyzer_app_instance:
 
         convert_button.click(fn=case_converter, inputs=[input_text, case_option], outputs=output_text)
 
-    with gr.Tab("Text Reverser"):
-        gr.Markdown("Reverse the input text.")
-        reverse_input = gr.Textbox(label="Input Text", lines=4, placeholder="Enter text here...")
-        reverse_button = gr.Button("Reverse")
-        reversed_output = gr.Textbox(label="Reversed Text", lines=4)
-
-        reverse_button.click(fn=text_reverser, inputs=reverse_input, outputs=reversed_output)
-
-    with gr.Tab("Text Analyzer"):
-        gr.Markdown("Analyze the input text for word and character count.")
-        analyze_input = gr.Textbox(label="Input Text", lines=4, placeholder="Enter text here...")
-        analyze_button = gr.Button("Analyze")
-        word_count_output = gr.Textbox(label="Word Count")
-        char_count_output = gr.Textbox(label="Character Count")
-        average_count_output = gr.Textbox(label="Average Characters per Word")
-
-        analyze_button.click(fn=text_analyzer, inputs=analyze_input, outputs=[word_count_output,
-                                                                             char_count_output,
-                                                                             average_count_output])
 if __name__ == "__main__":
     text_analyzer_app_instance.launch()
