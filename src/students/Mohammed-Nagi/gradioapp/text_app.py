@@ -33,59 +33,73 @@ def text_reverser(text, reverse_word, reverse_char):
 
 def text_analyser(text):
     if not text:
-        return "Words: 0\nCharacters: 0\nAverage Word Length: 0"
+        return [0, 0, 0]
 
     char_count = len(text.replace(" ", ""))
     words = text.split()
     word_count = len(words)
-    avg_word_len = round(sum(len(w) for w in words) / word_count, 2)
+    avg_len = round(sum(len(w) for w in words) / word_count, 2)
 
-    return f"Words: {word_count}\nCharacters: {char_count}\nAverage Word Length: {avg_word_len}"
+    return word_count, char_count, avg_len
 
 
-def process_text(text, case_option, reverse_word, reverse_char):
+def process_and_analyse(text, case_option, reverse_word, reverse_char):
     text = case_converter(text, case_option)
     text = text_reverser(text, reverse_word, reverse_char)
+    words, chars, length = text_analyser(text)
 
-    return text
-
-
-def clear():
-    empty = ""
-    return [empty, empty]
+    return text, words, chars, length
 
 
+def clear_all():
+    return ["", "", 0, 0, 0]
+
+
+# Text Editor App
 with gr.Blocks() as text_app:
     gr.Markdown("# Text Editor App")
 
+    # Input Box
     input_text = gr.Textbox(label="Enter Your Text", lines=5, placeholder="type or paste text here...")
 
+    # Control Tabs
     with gr.Tabs():
         with gr.Tab("Case Converter"):
             case_option = gr.Radio(["Uppercase", "Lowercase", "Titlecase"], label="Choose Case", value="Uppercase")
 
         with gr.Tab("Text Reverser"):
             reverse_word = gr.Checkbox(label="Reverse Word Order")
-            reverse_char = gr.Checkbox(label="Reverse All Characters")
+            reverse_char = gr.Checkbox(label="Reverse Character Order")
 
-    analysis_box = gr.Textbox(label="Analysis", interactive=False, lines=3)
+    # Analysis Display
+    with gr.Group():
+        gr.Markdown(" **Text Analysis:**")
 
-    input_text.input(fn=text_analyser, inputs=input_text, outputs=analysis_box)
+        with gr.Row():
+            word_count = gr.Label(label="Word Count", value=0)
+            char_count = gr.Label(label="Character Count", value=0)
+            avg_len = gr.Label(label="Average Word Length", value=0)
 
+    # Dynamic Analysis
+    input_text.input(fn=text_analyser, inputs=input_text, outputs=[word_count, char_count, avg_len])
+
+    # Output Box
     output_text = gr.Textbox(label="Output Text", lines=5)
 
+    # Run Button
     run_button = gr.Button("Apply Changes")
 
     run_button.click(
-        fn=process_text,
+        fn=process_and_analyse,
         inputs=[input_text, case_option, reverse_word, reverse_char],
-        outputs=output_text
+        outputs=[output_text, word_count, char_count, avg_len]
     )
 
-    clear_button = gr.Button("Clear Output")
+    # Clear Button
+    clear_button = gr.Button("Clear")
 
     clear_button.click(
-        fn=clear,
+        fn=clear_all,
         inputs=None,
-        outputs=[output_text, analysis_box]
+        outputs=[input_text, output_text, word_count, char_count, avg_len]
     )
