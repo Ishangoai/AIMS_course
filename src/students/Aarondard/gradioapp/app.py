@@ -66,9 +66,7 @@ with gr.Blocks() as app:
         register_button = gr.Button("Register User")
         register_output = gr.Textbox(label="Registration Status", interactive=False)
         register_button.click(
-            fn=register_user,
-            inputs=[register_input_username, register_input_name],
-            outputs=register_output
+            fn=register_user, inputs=[register_input_username, register_input_name], outputs=register_output
         )
 
     with gr.Tab("Update User"):
