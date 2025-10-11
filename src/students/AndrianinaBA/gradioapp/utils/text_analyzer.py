@@ -4,13 +4,14 @@ def case_converter(text, option=None):
     Args :
         - text (str): the text that we want to convert to a certain style
         - option (str) : the mode that we want to convert the text to
+        those choices are : "Upper Case", "Lower Case", "Title Case"
 
     Returns :
         - The converted text with the specified option
     """
-    if option == "Uppercase":
+    if option == "Upper Case":
         return text.upper()
-    elif option == "Lower":
+    elif option == "Lower Case":
         return text.lower()
     elif option == "Title Case":
         return text.title()
