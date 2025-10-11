@@ -96,9 +96,9 @@ with gr.Blocks(css=style) as our_gradio_instance:
         with gr.Row():
             default_text = "Click button to generate word art."
             placeholder_url = make_url()
-            image = None
+            image = gr.Image(height=300)
             try:
-                image = gr.Image(value=placeholder_url, height=300)
+                image.value = placeholder_url
             except Exception:
                 print("Image loading failed!")
 
@@ -120,8 +120,7 @@ with gr.Blocks(css=style) as our_gradio_instance:
              reverse_word
         ]
 
-        if image:
-            generate_button.click(fn=update_image, inputs=output_text_box, outputs=image)
+        generate_button.click(fn=update_image, inputs=output_text_box, outputs=image)
 
         apply_events(input_widgets, input_options, output_text_box)
         input_text.change(fn=update_statistics, inputs=input_text, outputs=[word_count_output,
