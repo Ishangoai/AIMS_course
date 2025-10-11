@@ -171,6 +171,7 @@ def top_words_analyzer(text: str, top_n: int = 5) -> str:
     return '\n'.join(result)
 
 
+#comment for change
 def unique_words_count(text: str) -> int:
     """
     Count the number of unique words in the text.
