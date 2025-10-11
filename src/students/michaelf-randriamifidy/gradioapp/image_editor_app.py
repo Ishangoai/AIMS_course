@@ -102,7 +102,7 @@ def save_image(img: Image.Image, path: str = "") -> str:
 # --- Gradio interface ---
 
 with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
-    gr.Markdown("## Image Operations\nUpload an image, apply effects"
+    gr.Markdown("# Image Operations\nUpload an image, apply effects"
                 "(brightness, contrast, rotation, grayscale), or reset to the original image."
                 )
 
@@ -110,27 +110,27 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
         image_input = gr.Image(type="pil", label="Upload Image")
 
     with gr.Row():
+        grayscale = gr.Checkbox(False, label="Apply Grayscale")
         brightness = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Brightness")
         contrast = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Contrast")
         rotate = gr.Slider(-180, 180, value=0, step=1, label="Rotation (degrees)")
-        grayscale = gr.Checkbox(False, label="Apply Grayscale")
 
-    combined_output = gr.Image(type="pil", label="Final Combined Output", interactive=False)
-    Modify = gr.Button("Apply Combined Effects")
+    output_image = gr.Image(type="pil", label="Final Combined Output", interactive=False)
+    Modify = gr.Button("Modify Image")
 
     Modify.click(
         combined_effects,
         inputs=[image_input, brightness, contrast, rotate, grayscale],
-        outputs=combined_output
+        outputs=output_image
     )
 
-    # --- Bouton Reset ---
-    gr.Markdown("### 🔄 Reset to Original Image")
+    # --- Reset button ---
+    gr.Markdown("### Reset to Original Image")
     reset_button = gr.Button("Reset to Original")
     reset_button.click(
         fn=lambda x: x,
         inputs=image_input,
-        outputs=[combined_output],
+        outputs=[output_image],
     )
 
     # Save button
@@ -139,6 +139,6 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
     file_output = gr.File(label="Download your edited image")
     save_button.click(
         save_image,
-        inputs=combined_output,
+        inputs=output_image,
         outputs=file_output
     )
