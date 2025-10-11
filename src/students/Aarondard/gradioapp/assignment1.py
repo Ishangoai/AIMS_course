@@ -259,26 +259,26 @@ def create_word_frequency_chart(text: str) -> Figure:
     # Count word frequencies and get top 15 words
     word_freq = Counter(filtered_tokens)
     common_words = word_freq.most_common(15)
-   
+
     words, counts = zip(*common_words)
-   
+
     # Create horizontal bar chart
     fig, ax = plt.subplots(figsize=(12, 8))
     y_pos = range(len(words))
-   
+
     bars = ax.barh(y_pos, counts, color='skyblue', alpha=0.7)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(words)
     ax.invert_yaxis()  # Highest frequency at top
     ax.set_xlabel('Frequency')
     ax.set_title('Top 15 Most Frequent Words (Excluding Common Words)', pad=20, fontsize=14)
-   
+
     # Add value labels on bars
     for bar in bars:
         width = bar.get_width()
-        ax.text(width, bar.get_y() + bar.get_height()/2,
+        ax.text(width, bar.get_y() + bar.get_height() / 2,
                 f' {width}', ha='left', va='center', fontsize=9)
-   
+
     plt.tight_layout()
     return fig
 
@@ -340,17 +340,17 @@ def create_statistics_visualizations(text: str) -> tuple[Figure, Figure]:
     metrics = ["Words", "Characters", "Paragraphs", "Sentences"]
     values = [wc, cc, pc, sc]
     colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A"]
-   
+
     bars = stats_ax.bar(metrics, values, color=colors, alpha=0.7)
     stats_ax.set_title("Basic Text Statistics", fontsize=14, pad=20)
     stats_ax.set_ylabel("Count")
-   
+
     # Add value labels on bars
     for bar in bars:
         height = bar.get_height()
-        stats_ax.text(bar.get_x() + bar.get_width()/2., height,
+        stats_ax.text(bar.get_x() + bar.get_width() / 2., height,
                      f'{int(height)}', ha='center', va='bottom')
-   
+
     plt.setp(stats_ax.xaxis.get_majorticklabels(), rotation=45)
     stats_fig.tight_layout()
 
@@ -359,32 +359,32 @@ def create_statistics_visualizations(text: str) -> tuple[Figure, Figure]:
     sentiment = sentiment_analysis(text)
 
     gauge_fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-   
+
     # Reading ease gauge (simplified as bar)
     ax1.barh([0], [fre], color='lightblue', alpha=0.7, height=0.5)
     ax1.set_xlim(0, 100)
     ax1.set_xlabel('Score')
     ax1.set_title('Reading Ease Score')
-    ax1.text(fre/2, 0, f'{fre}', ha='center', va='center', fontweight='bold')
-   
+    ax1.text(fre / 2, 0, f'{fre}', ha='center', va='center', fontweight='bold')
+
     # Add readability indicators
     ax1.axvline(x=30, color='red', linestyle='--', alpha=0.5)
     ax1.axvline(x=60, color='yellow', linestyle='--', alpha=0.5)
     ax1.axvline(x=90, color='green', linestyle='--', alpha=0.5)
-   
+
     # Sentiment gauge (simplified as bar)
     sentiment_score = (sentiment["polarity"] + 1) * 50  # Convert -1 to +1 to 0-100 scale
     ax2.barh([0], [sentiment_score], color='lightcoral', alpha=0.7, height=0.5)
     ax2.set_xlim(0, 100)
     ax2.set_xlabel('Score')
     ax2.set_title('Sentiment Score')
-    ax2.text(sentiment_score/2, 0, f'{sentiment_score:.1f}', ha='center', va='center', fontweight='bold')
-   
+    ax2.text(sentiment_score / 2, 0, f'{sentiment_score:.1f}', ha='center', va='center', fontweight='bold')
+
     # Add sentiment indicators
     ax2.axvline(x=40, color='red', linestyle='--', alpha=0.5)
     ax2.axvline(x=60, color='yellow', linestyle='--', alpha=0.5)
     ax2.axvline(x=80, color='green', linestyle='--', alpha=0.5)
-   
+
     gauge_fig.suptitle('Readability & Sentiment Scores', fontsize=14)
     gauge_fig.tight_layout()
 
@@ -421,13 +421,13 @@ def create_advanced_visualizations(text: str) -> Figure:
     ax.set_title("Most Frequent Meaningful Words", fontsize=14, pad=20)
     ax.set_xlabel("Words")
     ax.set_ylabel("Frequency")
-   
+
     # Add value labels on bars
     for bar in bars:
         height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height,
+        ax.text(bar.get_x() + bar.get_width() / 2., height,
                 f'{int(height)}', ha='center', va='bottom')
-   
+
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
     advanced_fig.tight_layout()
 
