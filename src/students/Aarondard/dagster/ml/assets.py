@@ -18,7 +18,7 @@ from .resources import CDSAPIResource, Era5RequestConfig, PromotionConfig, Tunin
     description="Fetches raw ERA5 2m temperature data from the CDS.",
     resource_defs={"mlflow_tracking": mlflow_resource, "cds_api": CDSAPIResource()},
     compute_kind="python",
-    group_name="ml_ingest"
+    group_name="ml_ingest",
 )
 def raw_xarray_dataset(
     context: dg.AssetExecutionContext,
@@ -53,11 +53,7 @@ def raw_xarray_dataset(
     c = context.resources.cds_api.client
     context.log.info("Download data from CSD API")
 
-    c.retrieve(
-        'reanalysis-era5-single-levels',
-        era5_request_params_dict,
-        OUTPUT_FILENAME
-    )
+    c.retrieve("reanalysis-era5-single-levels", era5_request_params_dict, OUTPUT_FILENAME)
     context.log.info(f"Successfully downloaded data to {OUTPUT_FILENAME}")
     print("I love my family!")
 
@@ -78,8 +74,8 @@ def raw_xarray_dataset(
             "parameters": dg.MetadataValue.json(flat_params),
             "description": dg.MetadataValue.text(
                 "Raw ERA5 2m temperature data for January 2023, fetched from the CDS."
-            )
-        }
+            ),
+        },
     )
 
 
@@ -87,24 +83,20 @@ def raw_xarray_dataset(
     description="Loads the raw xarray data into a pandas DataFrame and logs some metrics.",
     resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
-    group_name="ml_transform"
+    group_name="ml_transform",
 )
-def raw_pandas_df(
-    context: dg.AssetExecutionContext,
-    raw_xarray_dataset: xr.Dataset
-) -> dg.MaterializeResult:
-
+def raw_pandas_df(context: dg.AssetExecutionContext, raw_xarray_dataset: xr.Dataset) -> dg.MaterializeResult:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info(f"Processing file:\n {raw_xarray_dataset}")
 
     # Convert to pandas DataFrame
     # t2m is 2m air temperature
-    df: pd.DataFrame = raw_xarray_dataset['t2m'].to_dataframe().reset_index()
+    df: pd.DataFrame = raw_xarray_dataset["t2m"].to_dataframe().reset_index()
     context.log.info(f"Pandas DataFrame:\n {df}")
 
     # Select and order columns
-    df = pd.DataFrame(df[['valid_time', 'latitude', 'longitude', 't2m']])
-    df = df.rename(columns={'valid_time': 'time'})
+    df = pd.DataFrame(df[["valid_time", "latitude", "longitude", "t2m"]])
+    df = df.rename(columns={"valid_time": "time"})
 
     dataset = mlflow_client.data.from_pandas(df, name="era5_raw_temperature_data")
     mlflow_client.log_input(dataset=dataset, context="training")
@@ -116,8 +108,8 @@ def raw_pandas_df(
         metadata={
             "preview": dg.MetadataValue.md(df.head().to_markdown() or ""),
             "dagster/row_count": len(df),
-            "dagster/column_schema": dg.TableSchema(columns=columns)
-        }
+            "dagster/column_schema": dg.TableSchema(columns=columns),
+        },
     )
 
 
@@ -125,23 +117,20 @@ def raw_pandas_df(
     description="Takes spatial mean. Converts Kelvin to Celsius. Cleans columns",
     resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
-    group_name="ml_transform"
+    group_name="ml_transform",
 )
-def clean_df(
-    context: dg.AssetExecutionContext,
-    raw_pandas_df: pd.DataFrame
-) -> dg.MaterializeResult:
+def clean_df(context: dg.AssetExecutionContext, raw_pandas_df: pd.DataFrame) -> dg.MaterializeResult:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting data cleaning.")
 
     # ERA5 data for a region will have multiple lat/lon points per time.
     # For a very simple time series model, we need a single value per timestamp.
     # Take a spatial mean across all lat/lon points for each timestamp.
-    df_spatial_mean: pd.DataFrame = raw_pandas_df.groupby('time')['t2m'].mean().reset_index()
+    df_spatial_mean: pd.DataFrame = raw_pandas_df.groupby("time")["t2m"].mean().reset_index()
     context.log.info("Aggregated multiple lat/lon points by averaging 't2m' per timestamp.")
 
     num_time_steps = len(df_spatial_mean)
-    mean_temp_kelvin = df_spatial_mean['t2m'].mean()
+    mean_temp_kelvin = df_spatial_mean["t2m"].mean()
 
     mlflow_client.log_metric("processed_num_time_steps", num_time_steps)
     mlflow_client.log_metric("processed_mean_temperature_k", mean_temp_kelvin)
@@ -170,8 +159,8 @@ def clean_df(
         metadata={
             "dagster/row_count": len(df_spatial_mean),
             "dagster/column_schema": dg.TableSchema(columns=columns),
-            "preview": dg.MetadataValue.md(df_spatial_mean.head().to_markdown() or "")
-        }
+            "preview": dg.MetadataValue.md(df_spatial_mean.head().to_markdown() or ""),
+        },
     )
 
 
@@ -182,9 +171,7 @@ def clean_df(
     group_name="ml_model",
 )
 def tune_ridge_hyperparameters(  # noqa: C901
-    context: dg.AssetExecutionContext,
-    config: TuningConfig,
-    clean_df: pd.DataFrame
+    context: dg.AssetExecutionContext, config: TuningConfig, clean_df: pd.DataFrame
 ) -> dict:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting hyperparameter tuning for Ridge model.")
@@ -211,11 +198,9 @@ def tune_ridge_hyperparameters(  # noqa: C901
     y = df_with_lag["t2m_celsius"].values
 
     # Split data: 70% for training + hyperopt validation, 30% for final test
-    X_train_val, X_test, y_train_val, y_test = train_test_split(X,
-                                                                y,
-                                                                test_size=0.3,
-                                                                random_state=42,
-                                                                shuffle=False)  # Time series, so shuffle=False
+    X_train_val, X_test, y_train_val, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42, shuffle=False
+    )  # Time series, so shuffle=False
 
     if len(X_train_val) < 5 or len(X_test) < 1:  # Need enough for hyperopt val and at least one test sample
         msg = "Train/validation or test set is too small after initial split."
@@ -226,7 +211,7 @@ def tune_ridge_hyperparameters(  # noqa: C901
 
     # Define Hyperopt search space for Ridge alpha
     search_space = {
-        'alpha': hyperopt.hp.loguniform('alpha', -5, 2)  # Alpha between ~0.0067 and ~7.39
+        "alpha": hyperopt.hp.loguniform("alpha", -5, 2)  # Alpha between ~0.0067 and ~7.39
     }
 
     # MLflow experiment context for nested runs
@@ -248,23 +233,19 @@ def tune_ridge_hyperparameters(  # noqa: C901
         trial_num = len(trials.trials)
         context.log.info(f"Starting Hyperopt Trial {trial_num} with params: {params}")
         try:
-            alpha = params['alpha']
+            alpha = params["alpha"]
             # Split train_val further into training_for_hyperopt and validation_for_hyperopt
-            X_train_h, X_val_h, y_train_h, y_val_h = train_test_split(X_train_val,
-                                                                  y_train_val,
-                                                                  test_size=0.25,
-                                                                  random_state=42,
-                                                                  shuffle=False)
+            X_train_h, X_val_h, y_train_h, y_val_h = train_test_split(
+                X_train_val, y_train_val, test_size=0.25, random_state=42, shuffle=False
+            )
 
             if len(X_train_h) == 0 or len(X_val_h) == 0:
                 context.log.warning(f"Trial {trial_num}: Skipped due to empty train/val split for params: {params}")
                 # This case should be rare given prior checks but good to have
-                return {'loss': float('inf'), 'status': hyperopt.STATUS_OK, 'params': params}  # Penalize if split fails
+                return {"loss": float("inf"), "status": hyperopt.STATUS_OK, "params": params}  # Penalize if split fails
             run_name = f"hyperopt_trial_{trial_num}_alpha_{alpha:.4f}"
 
-            with mlflow_client.start_run(experiment_id=experiment_id,
-                                        run_name=run_name,
-                                        nested=True):
+            with mlflow_client.start_run(experiment_id=experiment_id, run_name=run_name, nested=True):
                 mlflow_client.log_params(params)
                 model = Ridge(alpha=alpha)
                 model.fit(X_train_h, y_train_h)
@@ -272,36 +253,37 @@ def tune_ridge_hyperparameters(  # noqa: C901
                 rmse = mean_squared_error(y_val_h, preds)
                 mlflow_client.log_metric("validation_mse", rmse)
                 context.log.info(f"Trial {trial_num} successful: params={params}, mse={rmse:.4f}")
-            return {'loss': rmse, 'status': hyperopt.STATUS_OK, 'params': params}
+            return {"loss": rmse, "status": hyperopt.STATUS_OK, "params": params}
         except Exception as e:
-            context.log.error(f"Trial {trial_num}: Exception in objective function for params {params}: {e}",
-                              exc_info=True)
-            return {'loss': float('inf'), 'status': hyperopt.STATUS_FAIL, 'params': params, 'error_message': str(e)}
+            context.log.error(
+                f"Trial {trial_num}: Exception in objective function for params {params}: {e}", exc_info=True
+            )
+            return {"loss": float("inf"), "status": hyperopt.STATUS_FAIL, "params": params, "error_message": str(e)}
 
     best_hyperparams = hyperopt.fmin(
         fn=objective,
         space=search_space,
         algo=hyperopt.tpe.suggest,
         max_evals=config.max_hyperopt_evals,  # Number of iterations
-        trials=trials
+        trials=trials,
     )
     context.log.info(f"fmin completed. Returned best_hyperparams: {best_hyperparams}")
     best_trial_info = trials.best_trial
-    best_alpha_to_log = float('nan')  # Initialize
-    best_loss_to_log = float('inf')  # Initialize
+    best_alpha_to_log = float("nan")  # Initialize
+    best_loss_to_log = float("inf")  # Initialize
 
     if best_trial_info is None:
         context.log.error("trials.best_trial is None.")
         if best_hyperparams:
             context.log.warning(f"Using fmin's output: {best_hyperparams}")
-            best_alpha_to_log = best_hyperparams['alpha']
+            best_alpha_to_log = best_hyperparams["alpha"]
             # best_loss_to_log remains float('inf')
         else:
             raise ValueError("Hyperopt tuning failed: fmin returned no parameters and no successful trials found.")
     else:
-        best_loss_to_log = best_trial_info['result']['loss']
-        alpha_from_best_trial = best_trial_info['misc']['vals']['alpha'][0]
-        best_alpha_to_log = best_hyperparams.get('alpha', alpha_from_best_trial)  # type: ignore
+        best_loss_to_log = best_trial_info["result"]["loss"]
+        alpha_from_best_trial = best_trial_info["misc"]["vals"]["alpha"][0]
+        best_alpha_to_log = best_hyperparams.get("alpha", alpha_from_best_trial)  # type: ignore
         context.log.info(
             f"Hyperopt best alpha (fmin): {best_hyperparams.get('alpha', 'N/A')}, "  # type: ignore
             f"Best alpha (trials.best_trial): {alpha_from_best_trial:.4f}, "
@@ -310,13 +292,13 @@ def tune_ridge_hyperparameters(  # noqa: C901
 
     context.log.info(f"Final best alpha: {best_alpha_to_log:.4f}, Corresponding mse: {best_loss_to_log:.4f}")
     mlflow_client.log_param("best_ridge_alpha", best_alpha_to_log)
-    if best_loss_to_log != float('inf'):
+    if best_loss_to_log != float("inf"):
         mlflow_client.log_metric("best_hyperopt_validation_mse", best_loss_to_log)
     else:
         # log something to indicate the metric wasn't reliably found
         mlflow_client.log_metric("best_hyperopt_validation_mse_unavailable", 1.0)
 
-    final_best_params_output = {'alpha': best_alpha_to_log}
+    final_best_params_output = {"alpha": best_alpha_to_log}
 
     # Return a single dictionary
     return {
@@ -333,12 +315,9 @@ def tune_ridge_hyperparameters(  # noqa: C901
     description="Trains a Ridge model using the best hyperparameters found by Hyperopt.",
     resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
-    group_name="ml_model"
+    group_name="ml_model",
 )
-def train_tuned_model(
-    context: dg.AssetExecutionContext,
-    tune_ridge_hyperparameters
-) -> dict:
+def train_tuned_model(context: dg.AssetExecutionContext, tune_ridge_hyperparameters) -> dict:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model training with tuned hyperparameters.")
 
@@ -352,39 +331,31 @@ def train_tuned_model(
     context.log.info(f"Training Ridge model with parameters: {best_params}")
     context.log.info(f"Training on {len(X_train_val)} samples.")
 
-    final_model = Ridge(alpha=best_params['alpha'])
+    final_model = Ridge(alpha=best_params["alpha"])
     final_model.fit(X_train_val, y_train_val)
     context.log.info("Final Ridge model trained.")
 
     train_params_log = {
         "model_type": "Ridge",
-        "alpha": best_params['alpha'],
+        "alpha": best_params["alpha"],
         "feature_used": ", ".join(feature_names),
         "lag_period": 1,  # Assuming lag_period is 1 as per feature eng.
         "final_train_samples": len(X_train_val),
-        "final_test_samples": len(X_test)
+        "final_test_samples": len(X_test),
     }
     mlflow_client.log_params(train_params_log)
     context.log.info(f"Logged final training parameters to MLflow: {train_params_log}")
 
-    return {
-        "model": final_model,
-        "X_test": X_test,
-        "y_test": y_test,
-        "feature_names": feature_names
-    }
+    return {"model": final_model, "X_test": X_test, "y_test": y_test, "feature_names": feature_names}
 
 
 @dg.asset(
     description="Evaluates the tuned model and logs model and metrics to MLflow.",
     resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
-    group_name="ml_evaluate"
+    group_name="ml_evaluate",
 )
-def test_model(
-    context: dg.AssetExecutionContext,
-    train_tuned_model: dict
-) -> dg.MaterializeResult:
+def test_model(context: dg.AssetExecutionContext, train_tuned_model: dict) -> dg.MaterializeResult:
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model evaluation.")
 
@@ -399,16 +370,16 @@ def test_model(
             value={
                 "status": "skipped_evaluation",
                 "reason": "Test set empty, evaluation skipped.",
-                "eval_metrics": {"test_mse": float('nan'), "test_mae": float('nan')},
-                "model_version_info": None
+                "eval_metrics": {"test_mse": float("nan"), "test_mae": float("nan")},
+                "model_version_info": None,
             },
             metadata={
                 "status": "skipped_evaluation",
                 "reason": dg.MetadataValue.text("Test set was empty, no evaluation performed."),
-                "test_mse": dg.MetadataValue.float(float('nan')),
-                "test_mae": dg.MetadataValue.float(float('nan')),
-                "test_r2": dg.MetadataValue.float(float('nan')),
-            }
+                "test_mse": dg.MetadataValue.float(float("nan")),
+                "test_mae": dg.MetadataValue.float(float("nan")),
+                "test_r2": dg.MetadataValue.float(float("nan")),
+            },
         )
 
     predictions = model.predict(X_test)
@@ -430,21 +401,17 @@ def test_model(
         log_model_info = ms.log_model(
             sk_model=model,
             artifact_path="tuned_temperature_forecaster",
-            input_example=pd.DataFrame(X_test[:min(5, len(X_test))], columns=feature_names),
-            registered_model_name=registered_model_name
+            input_example=pd.DataFrame(X_test[: min(5, len(X_test))], columns=feature_names),
+            registered_model_name=registered_model_name,
         )
         context.log.info(f"Model logged to MLflow Run ID: {current_run.info.run_id}")
         context.log.info(f"Logged model artifact URI: {log_model_info.model_uri}")
 
         # use search_model_versions with a proper filter string
-        model_versions = mlflow_client.search_model_versions(
-            filter_string=f"name='{registered_model_name}'"
-        )
+        model_versions = mlflow_client.search_model_versions(filter_string=f"name='{registered_model_name}'")
 
         # Find the model version registered in this run
-        matching_versions = [
-            mv for mv in model_versions if mv.run_id == current_run.info.run_id
-        ]
+        matching_versions = [mv for mv in model_versions if mv.run_id == current_run.info.run_id]
 
         if matching_versions:
             registered_model_version = matching_versions[0]
@@ -453,7 +420,7 @@ def test_model(
                 "version": registered_model_version.version,
                 "status": registered_model_version.status,
                 "stage": registered_model_version.current_stage,
-                "model_uri": f"models:/{registered_model_version.name}/{registered_model_version.version}"
+                "model_uri": f"models:/{registered_model_version.name}/{registered_model_version.version}",
             }
             context.log.info("Successfully retrieved registered model version info from registry.")
         else:
@@ -466,7 +433,7 @@ def test_model(
     output_value_for_downstream = {
         "eval_metrics": eval_metrics,
         "model_version_info": model_version_info,
-        "status": "evaluated_successfully"
+        "status": "evaluated_successfully",
     }
 
     return dg.MaterializeResult(
@@ -479,8 +446,8 @@ def test_model(
             "model_version": dg.MetadataValue.text(str(model_version_info["version"])),
             "mlflow_run_id": dg.MetadataValue.text(current_run.info.run_id),
             "mlflow_model_uri": dg.MetadataValue.text(model_version_info["model_uri"]),
-            "mlflow_stage": dg.MetadataValue.text(model_version_info["stage"])
-        }
+            "mlflow_stage": dg.MetadataValue.text(model_version_info["stage"]),
+        },
     )
 
 
@@ -490,12 +457,10 @@ def test_model(
     description="Promotes the newly trained model to Staging if it meets performance criteria.",
     resource_defs={"mlflow_tracking": mlflow_resource, "mlflow_client": mlflow_client},
     compute_kind="python",
-    group_name="ml_promote"
+    group_name="ml_promote",
 )
 def promote_model_to_staging(
-    context: dg.AssetExecutionContext,
-    config: PromotionConfig,
-    test_model: dict
+    context: dg.AssetExecutionContext, config: PromotionConfig, test_model: dict
 ) -> dg.MaterializeResult:
     # Get the MLflow client from the context to interact with the model registry
     mlflow_client = context.resources.mlflow_client
@@ -506,7 +471,7 @@ def promote_model_to_staging(
         context.log.info("Evaluation was skipped in the previous step. Skipping staging promotion.")
         return dg.MaterializeResult(
             value={"status": "skipped_promotion", "reason": "evaluation_skipped_upstream"},
-            metadata={"status": "skipped_promotion_due_to_upstream_skip"}
+            metadata={"status": "skipped_promotion_due_to_upstream_skip"},
         )
     # Extract metrics and model version info from evaluation result
     eval_metrics = test_model.get("eval_metrics", {})
@@ -518,12 +483,12 @@ def promote_model_to_staging(
         context.log.warning("No valid model version info found from evaluation. Skipping staging promotion.")
         return dg.MaterializeResult(
             value={"status": "skipped_promotion", "reason": "no_model_version_info_from_evaluation"},
-            metadata={"status": "skipped_promotion_no_model_info"}
+            metadata={"status": "skipped_promotion_no_model_info"},
         )
     # Get performance metrics (default to infinity if missing)
-    current_mse = eval_metrics.get("test_mse", float('inf'))
-    current_mae = eval_metrics.get("test_mae", float('inf'))
-    current_r2 = eval_metrics.get("test_r2", float('inf'))
+    current_mse = eval_metrics.get("test_mse", float("inf"))
+    current_mae = eval_metrics.get("test_mae", float("inf"))
+    current_r2 = eval_metrics.get("test_r2", float("inf"))
 
     # STAGING_MSE_THRESHOLD = config.staging_mse_threshold
     # STAGING_MAE_THRESHOLD = config.staging_mae_threshold
@@ -541,11 +506,7 @@ def promote_model_to_staging(
 
             # Promote the model to the 'Staging' stage
             context.log.info(f"Model '{model_name}' (version {model_version}) meets criteria. Promoting to Staging")
-            mlflow_client.transition_model_version_stage(
-                name=model_name,
-                version=model_version,
-                stage="Staging"
-            )
+            mlflow_client.transition_model_version_stage(name=model_name, version=model_version, stage="Staging")
 
             # Return successful result with status and relevant metadata
             context.log.info(f"Model '{model_name}' (version {model_version}) promoted to Staging.")
@@ -554,7 +515,7 @@ def promote_model_to_staging(
                     "status": "promoted_to_staging",
                     "model_name": model_name,
                     "model_version": model_version,
-                    "metrics": eval_metrics
+                    "metrics": eval_metrics,
                 },
                 metadata={
                     "status": "promoted_to_staging",
@@ -562,31 +523,27 @@ def promote_model_to_staging(
                     "model_version": dg.MetadataValue.text(str(model_version)),
                     "mse_at_promotion": dg.MetadataValue.float(current_mse),
                     "mae_at_promotion": dg.MetadataValue.float(current_mae),
-                    "r2_at_promotion": dg.MetadataValue.float(current_r2)
-                }
+                    "r2_at_promotion": dg.MetadataValue.float(current_r2),
+                },
             )
         except Exception as e:
             # Handle any exception during promotion and log the error
             context.log.error(f"Error promoting model to Staging: {e}")
             return dg.MaterializeResult(
                 value={"status": "failed_promotion_to_staging", "error": str(e)},
-                metadata={"status": "failed_promotion_to_staging", "error_message": dg.MetadataValue.text(str(e))}
+                metadata={"status": "failed_promotion_to_staging", "error_message": dg.MetadataValue.text(str(e))},
             )
     # If model doesn't meet criteria, log and return "not promoted"
     else:
         context.log.info("Model does not meet performance criteria for Staging promotion. Skipping.")
         return dg.MaterializeResult(
-            value={
-                "status": "not_promoted_to_staging",
-                "reason": "criteria_not_met",
-                "metrics": eval_metrics
-            },
+            value={"status": "not_promoted_to_staging", "reason": "criteria_not_met", "metrics": eval_metrics},
             metadata={
                 "status": "not_promoted_to_staging",
                 "mse": dg.MetadataValue.float(current_mse),
                 "mae": dg.MetadataValue.float(current_mae),
-                "r2": dg.MetadataValue.float(current_r2)
-            }
+                "r2": dg.MetadataValue.float(current_r2),
+            },
         )
 
 
@@ -594,11 +551,10 @@ def promote_model_to_staging(
     description="Promotes the best model from Staging to Production, usually with manual approval.",
     resource_defs={"mlflow_tracking": mlflow_resource, "mlflow_client": mlflow_client},
     compute_kind="python",
-    group_name="ml_promote"
+    group_name="ml_promote",
 )
 def promote_model_to_production(
-    context: dg.AssetExecutionContext,
-    promote_model_to_staging: dict
+    context: dg.AssetExecutionContext, promote_model_to_staging: dict
 ) -> dg.MaterializeResult:
     # Get the MLflow client to interact with the model registry
     mlflow_client = context.resources.mlflow_client
@@ -610,7 +566,7 @@ def promote_model_to_production(
         context.log.info("No model was promoted to Staging in the previous step. Skipping production promotion.")
         return dg.MaterializeResult(
             value={"status": "skipped_production_promotion", "reason": "no_model_in_staging_from_previous_step"},
-            metadata={"status": "skipped_production_promotion"}
+            metadata={"status": "skipped_production_promotion"},
         )
     # Get the model name from the previous promotion step
     model_name = promote_model_to_staging.get("model_name", "tuned-temp-forecaster")
@@ -635,7 +591,7 @@ def promote_model_to_production(
                 context.log.warning(f"No model found in Staging stage for '{model_name}'. Skipping prod promotion.")
                 return dg.MaterializeResult(
                     value={"status": "skipped_production_promotion", "reason": "no_staging_model_found_for_prod"},
-                    metadata={"status": "skipped_production_promotion_no_staging_model"}
+                    metadata={"status": "skipped_production_promotion_no_staging_model"},
                 )
 
             # Extract the model name and version to promote
@@ -646,18 +602,12 @@ def promote_model_to_production(
             for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
                 if mv.current_stage == "Production":
                     context.log.info(f"Archiving previous Production model '{mv.name}' (version {mv.version})")
-                    mlflow_client.transition_model_version_stage(
-                        name=mv.name,
-                        version=mv.version,
-                        stage="Archived"
-                    )
+                    mlflow_client.transition_model_version_stage(name=mv.name, version=mv.version, stage="Archived")
 
             # Promote the new version to Production
             context.log.info(f"Promoting model '{prod_model_name}' (version {prod_model_version}) to Production")
             mlflow_client.transition_model_version_stage(
-                name=prod_model_name,
-                version=prod_model_version,
-                stage="Production"
+                name=prod_model_name, version=prod_model_version, stage="Production"
             )
 
             # Return success with metadata about the promoted model
@@ -667,20 +617,20 @@ def promote_model_to_production(
                     "status": "promoted_to_production",
                     "model_name": prod_model_name,
                     "model_version": prod_model_version,
-                    "previous_metrics": promote_model_to_staging.get("metrics")
+                    "previous_metrics": promote_model_to_staging.get("metrics"),
                 },
                 metadata={
                     "status": "promoted_to_production",
                     "model_name": dg.MetadataValue.text(prod_model_name),
-                    "model_version": dg.MetadataValue.text(str(prod_model_version))
-                }
+                    "model_version": dg.MetadataValue.text(str(prod_model_version)),
+                },
             )
         except Exception as e:
             # Catch and log any error that occurs during the promotion process
             context.log.error(f"Error promoting model to Production: {e}")
             return dg.MaterializeResult(
                 value={"status": "failed_production_promotion", "error": str(e)},
-                metadata={"status": "failed_production_promotion", "error_message": dg.MetadataValue.text(str(e))}
+                metadata={"status": "failed_production_promotion", "error_message": dg.MetadataValue.text(str(e))},
             )
 
     # If manual approval was denied, skip promotion and return reason
@@ -688,7 +638,7 @@ def promote_model_to_production(
         context.log.info("Manual approval not granted. Skipping production promotion")
         return dg.MaterializeResult(
             value={"status": "not_promoted_to_production", "reason": "manual_approval_denied"},
-            metadata={"status": "not_promoted_to_production"}
+            metadata={"status": "not_promoted_to_production"},
         )
 
 
