@@ -110,11 +110,11 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
         image_input = gr.Image(type="pil", label="Upload Image")
 
     with gr.Row():
-        grayscale = gr.Checkbox(False, label="Convert to Grayscale")
+        grayscale = gr.Checkbox(False, label="Apply Grayscale")
         brightness = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Brightness")
         contrast = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Contrast")
         rotate = gr.Slider(-180, 180, value=0, step=1, label="Rotation (degrees)")
-        
+
     output_image = gr.Image(type="pil", label="Final Combined Output", interactive=False)
     Modify = gr.Button("Modify Image")
 
