@@ -19,6 +19,7 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
+    3. [**Imagedit 🖼️](/image-edit/)
     -----
     """),
     version="1.0.0",
@@ -129,4 +130,4 @@ def update_user_details(username: str, request: UpdateUserRequest):
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
-gr.mount_gradio_app(app, image_edit_app, path="image-edit")
+gr.mount_gradio_app(app, image_edit_app, path="/image-edit")

@@ -1,39 +1,53 @@
 import gradio as gr
 from gradioapp.utils.heart_disease_utils import predict_heart_disease
+from PIL import ImageEnhance
 
 
 def wrapped_predict(*args):
     return predict_heart_disease(list(args))
 
 
+def edit_image(
+    img,
+    brightness,
+    contrast,
+    apply_grayscale,
+):
+    image = img.copy()
+    enhancer = ImageEnhance.Brightness(image)
+    image = enhancer.enhance(brightness)
+    enhancer = ImageEnhance.Contrast(image)
+    image = enhancer.enhance(contrast)
+
+    if apply_grayscale:
+        image = image.convert("L").convert("RGB")
+
+    return image
+
+
 with gr.Blocks(css="body {background: #f2f7ff;}") as image_edit_app:
-    gr.Markdown("# AIMS Course: Heart Disease Risk Predictor")
-    gr.Markdown("Fill in the patient info below to predict heart disease risk.")
+    gr.Markdown('# Imagedit 🖼️')
+    gr.Markdown('Choose a picture you want to edit below')
 
     with gr.Row():
         # Input Column 1
         with gr.Column():
-            age = gr.Slider(20, 80, value=50, label="Age")
-            sex = gr.Radio(choices=[0, 1], value=1, label="Sex", info="0 = Female, 1 = Male")
-            cp = gr.Radio(choices=[0, 1, 2, 3], value=1, label="Chest Pain Type")
-            trestbps = gr.Slider(90, 200, value=120, label="Resting BP")
-            chol = gr.Slider(100, 600, value=250, label="Cholesterol")
-            fbs = gr.Radio(choices=[0, 1], value=0, label="Fasting Blood Sugar > 120 mg/dl")
-            restecg = gr.Radio(choices=[0, 1, 2], value=1, label="Resting ECG")
+            input_image = gr.Image(type='pil')
 
-        # Input Column 2
+        # Image input
         with gr.Column():
-            thalach = gr.Slider(70, 210, value=150, label="Max Heart Rate")
-            exang = gr.Radio(choices=[0, 1], value=0, label="Exercise Induced Angina")
-            oldpeak = gr.Slider(0.0, 6.0, value=1.0, step=0.1, label="ST Depression")
-            slope = gr.Slider(0, 2, value=1, label="Slope")
-            ca = gr.Slider(0, 4, value=0, label="Major Vessels")
-            thal = gr.Slider(0, 7, value=3, label="Thal")
+            # gr.Markdown('# Edited Image')
+            output_image = gr.Image()
+            gr.Button('Clear')
+            gr.Button('Download')
+        #     pass
 
-    predict_btn = gr.Button("Predict")
-    result = gr.Textbox(label="Result")
+        with gr.Column():
+            apply_grayscale = gr.Checkbox(value=False, label='Convert Image to Grayscale')
+            brightness = gr.Slider(minimum=0.5, value=1.0, maximum=1.5, label='Adjust Brightness')
+            contrast = gr.Slider(minimum=0.5, value=1.0, maximum=1.5, label='Adjust Contrast')
 
-    predict_btn.click(fn=wrapped_predict,
-                      inputs=[age, sex, cp, trestbps, chol, fbs, restecg,
-                              thalach, exang, oldpeak, slope, ca, thal],
-                      outputs=result)
+        inputs = [input_image, brightness, contrast, apply_grayscale]
+
+        for component in inputs:
+            component.change(fn=edit_image, inputs=inputs, outputs=output_image)
