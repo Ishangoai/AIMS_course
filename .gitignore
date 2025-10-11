@@ -216,4 +216,4 @@ mlruns/
 mlflow_local_tracking.db
 
 
-src/students/$GITHUB_USER/.gradio
+*/src/students/*/.gradio
