@@ -1,0 +1,3 @@
+#https://pillow.readthedocs.io/en/stable/reference/Image.html
+# Load model
+#https://www.geeksforgeeks.org/python/python-pil-imageops-greyscale-method/
