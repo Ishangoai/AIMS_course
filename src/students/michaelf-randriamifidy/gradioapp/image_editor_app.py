@@ -1,0 +1,99 @@
+import os
+import tempfile
+
+import gradio as gr
+from PIL import Image, ImageEnhance
+
+
+def adjust_brightness(img: Image.Image, brightness: float) -> Image.Image:
+    """
+    Adjust brightness
+    Args:
+        img (Image.Image): The image to adjust
+        brightness (float): brightness factor
+
+    Returns:
+        Image.Image: brightness adjusted image
+    """
+    enhancer = ImageEnhance.Brightness(img)
+    return enhancer.enhance(brightness)
+
+
+def adjust_contrast(img: Image.Image, contrast: float) -> Image.Image:
+    """
+    Adjust contrast
+    Args:
+        img (Image.Image):  The image to adjust
+        contrast (float): contrast factor
+    Returns:
+        Image.Image: contrast adjusted image
+    """
+    enhancer = ImageEnhance.Contrast(img)
+    return enhancer.enhance(contrast)
+
+
+def rotate_image(img: Image.Image, angle: float) -> Image.Image:
+    """
+    Rotate an image by a given angle.
+
+    Args:
+        img (Image.Image): The image to rotate
+        angle (float): The rotation angle in degrees, counter-clockwise
+
+    Returns:
+        Image.Image: A new rotated image.
+    """
+    return img.rotate(angle, expand=True)
+
+
+def to_grayscale(img: Image.Image) -> Image.Image:
+    """
+    Transform image to grayscale
+    Args:
+        img (Image.Image):  The image to adjust
+    Returns:
+        Image.Image: grayscale image
+    """
+    return img.convert("L")
+
+
+def combined_effects(
+    img: Image.Image, brightness: float, contrast: float, angle: float, is_grayscale: bool = False
+) -> Image.Image:
+    """
+    Transform image
+    Args:
+        img (Image.Image):  The image to adjust
+        brightness (float): brightness factor
+        contrast (float): contrast factor
+        angle (float): The rotation angle in degrees, counter-clockwise
+        is_grayscale(boolean)
+
+    Returns:
+        Image.Image: contrast adjusted image
+    """
+    img = adjust_brightness(img, brightness)
+    img = adjust_contrast(img, contrast)
+    img = rotate_image(img, angle)
+    if is_grayscale:
+        img = to_grayscale(img)
+    return img
+
+
+def save_image(img: Image.Image, path: str = None) -> str:
+    """Download Image
+
+    Args:
+        img (Image.Image): Image to be downloaded. Defaults to None.
+
+        path (str): Download path
+    Returns:
+        str: Download path
+    """
+    if path is not None:
+        save_path = os.path.join(path, "modified_image.png")
+    else:
+        temp_dir = tempfile.mkdtemp()
+        save_path = os.path.join(temp_dir, "modified_image.png")
+    img.save(save_path)
+    return save_path
