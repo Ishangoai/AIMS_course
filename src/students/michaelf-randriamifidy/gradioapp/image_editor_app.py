@@ -80,17 +80,17 @@ def combined_effects(
     return img
 
 
-def save_image(img: Image.Image, path: str = None) -> str:
+def save_image(img: Image.Image, path: str = "") -> str:
     """Download Image
 
     Args:
         img (Image.Image): Image to be downloaded. Defaults to None.
 
-        path (str): Download path
+        path (str): Download path, Defaults to ""
     Returns:
         str: Download path
     """
-    if path is not None:
+    if path:
         save_path = os.path.join(path, "modified_image.png")
     else:
         temp_dir = tempfile.mkdtemp()
