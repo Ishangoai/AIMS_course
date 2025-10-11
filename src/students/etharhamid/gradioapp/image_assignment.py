@@ -1,12 +1,14 @@
+# Import Standard library
 import tempfile
 
 import gradio as gr
 import numpy as np
+
+# Import Third-party
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
+
 # The core function to edit the image
-
-
 def edit_image(image, grayscale, brightness, contrast, rotation, flip_h, flip_v, blur):
     """
     Applies various editing effects to an input image.
@@ -108,9 +110,15 @@ def save_temp_image(image):
     return temp_file.name
 
 
+theme = gr.Theme(
+    primary_hue="blue",
+    secondary_hue="purple",
+    neutral_hue="gray"
+)
+
 # Building the Gradio Interface
-with gr.Blocks(theme=gr.Theme()) as image_app:
-    gr.Markdown("## Image Editor")
+with gr.Blocks(theme=theme) as image_app:
+    gr.Markdown('<h1 style="text-align: center;"> Image Editor</h1>')
     gr.Markdown("Upload an image and use the controls to edit it. The edited image will be displayed on the right.")
 
     # Create a main row to hold the input controls and the output image
