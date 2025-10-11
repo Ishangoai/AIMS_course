@@ -80,7 +80,7 @@ with gr.Blocks() as text_app:
 
     # --- Scrabble Section ---
     gr.Markdown("## 🮖 Mini Scrabble Game")
-    gr.Markdown("Test your vocabulary by forming complex words from the given chracters!!")
+    gr.Markdown("Test your vocabulary by playing against the computer!")
 
     # 🧩 This is the correct way to include the Scrabble subapp
     scrabble_game = text_app_utils.scrabble_demo  # export name in text_app_utils.py
