@@ -1,18 +1,27 @@
 import gradio as gr
-from PIL import Image, ImageEnhance, ImageOps
+from PIL import Image, ImageEnhance, ImageOps, ImageFilter
+import io
+import numpy as np
+import os
+import tempfile
+
 
 # The core function to edit the image
-def edit_image(image, grayscale, brightness, contrast, rotation):
-    if image is None:
-        return None, None  # Return None for both image and a downloadable file
 
+def edit_image(image, grayscale, brightness, contrast, rotation, flip_h, flip_v, blur):
+
+    if image is None:
+        return None  # Return None for both image and a downloadable file
+
+    if isinstance(image, np.ndarray):
+         image = Image.fromarray(image)
     try:
-        # Convert numpy array from Gradio to a PIL Image
-        edited_image = Image.fromarray(image)
+
+        edited_image = image.convert("RGB")
 
         # Apply grayscale if checked
         if grayscale:
-            edited_image = ImageOps.grayscale(edited_image)
+            edited_image = edited_image.convert("L").convert("RGB")
 
         # Adjust brightness
         enhancer_brightness = ImageEnhance.Brightness(edited_image)
@@ -23,53 +32,81 @@ def edit_image(image, grayscale, brightness, contrast, rotation):
         edited_image = enhancer_contrast.enhance(contrast)
 
         # Rotate the image
-        if rotation != 0:
-            edited_image = edited_image.rotate(rotation, expand=True, fillcolor='white')
+        edited_image = edited_image.rotate(rotation, expand=True, fillcolor='black')
 
-        return edited_image, edited_image
+        # Flip the image
+        if flip_h:
+            edited_image = ImageOps.mirror(edited_image)
+        
+        if flip_v:
+            edited_image = ImageOps.flip(edited_image)
+        
+        # Blur the image
+        if blur > 0:
+            edited_image = edited_image.filter(ImageFilter.GaussianBlur(radius=blur))
+
+        return edited_image
+
     except Exception as e:
         print(f"An error occurred: {e}")
-        return None, None
+        return None
 
 
 # Function to reset all controls to their default values
-def reset_all():
-    return None, False, 1.0, 1.0, 0, None, None
+def reset_all(original_image):
+    return original_image, False, 1.0, 1.0, 0, False, False, 0, original_image
+
+def save_temp_image(image):
+    if image is None:
+        return None
+
+    if isinstance(image, np.ndarray):
+        image = Image.fromarray(image)
+    
+    temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+    image.save(temp_file.name)
+    return temp_file.name
+
+       
+
 
 # Building the Gradio Interface
 with gr.Blocks(theme=gr.themes.Soft()) as image_app:
-    gr.Markdown("# Simple Image Editor")
+    gr.Markdown("## Image Editor")
     gr.Markdown("Upload an image and use the controls to edit it. The edited image will be displayed on the right.")
 
     with gr.Row():
         with gr.Column(scale=1):
-            input_image = gr.Image(type="numpy", label="Input Image")
-            grayscale_check = gr.Checkbox(label="Convert to Grayscale")
+            input_image = gr.Image(type="pil", label="Input Image", sources =["upload", "clipboard"])
+            grayscale_check = gr.Checkbox(label="Convert to Grayscale", value=False)
+            flip_h_check = gr.Checkbox(label="Flip Horizontal", value=False)
+            flip_v_check = gr.Checkbox(label="Flip Vertically", value=False)
             brightness_slider = gr.Slider(minimum=0.5, maximum=1.5, value=1.0, label="Brightness")
             contrast_slider = gr.Slider(minimum=0.5, maximum=1.5, value=1.0, label="Contrast")
-            rotation_slider = gr.Slider(minimum=-180, maximum=180, value=0, label="Rotation (degrees)")
+            rotation_slider = gr.Slider(minimum=-180, maximum=180, value=0, label="Rotation")
+            blur_slider = gr.Slider(0, 10, value=0, step=1, label="Blur")
 
             with gr.Row():
                 reset_btn = gr.Button("Reset")
                 # The download button is part of the gr.File component
 
         with gr.Column(scale=2):
-            output_image = gr.Image(type="pil", label="Output Image")
-            download_file = gr.File(label="Download Edited Image", visible=True)
+            output_image = gr.Image(type="pil", label="Output Image", interactive=False)
+            download_btn = gr.DownloadButton(label="Download Edited Image")
 
     # Define the components that will act as inputs to the edit_image function
-    inputs = [input_image, grayscale_check, brightness_slider, contrast_slider, rotation_slider]
+    inputs = [input_image, grayscale_check, brightness_slider, contrast_slider, rotation_slider, flip_h_check, flip_v_check, blur_slider]
 
     # When any input component changes, call the edit_image function
     for component in inputs:
-        component.change(fn=edit_image, inputs=inputs, outputs=[output_image, download_file])
+        component.change(fn=edit_image, inputs=inputs, outputs=output_image)
 
     # Define what happens when the reset button is clicked
     reset_btn.click(
         fn=reset_all,
-        inputs=[],
-        outputs=[input_image, grayscale_check, brightness_slider, contrast_slider, rotation_slider, output_image, download_file]
+        inputs=[input_image],
+        outputs=inputs + [output_image]
     )
 
-# Launch the application
-# demo.launch()
+    download_btn.click(fn=save_temp_image, inputs=output_image, outputs=download_btn)
+
