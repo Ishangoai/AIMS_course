@@ -269,3 +269,188 @@ def clear_all() -> List:
         List: A list of empty/zero values for all fields.
     """
     return ["", "", 0, 0, 0, 0]
+
+
+
+
+with gr.Blocks(theme=gr.themes.Soft()) as text_manipulation_app:
+    with gr.Column(elem_id="main-container"):
+        gr.Markdown("# 🧠 Text Manipulation App")
+        gr.Markdown(
+            "Perform **case conversions**, **reverse text**, **cleanup**, "
+            "and see live **text analysis** — all in one interface."
+        )
+
+        input_text = gr.Textbox(
+            label="✏️ Input Text",
+            placeholder="Enter your text here...",
+            lines=4,
+            elem_id="input-box"
+        )
+
+        with gr.Tabs(elem_id="tabs"):
+            with gr.Tab("🔠 Case Converter"):
+                case_type = gr.Radio(
+                    choices=[
+                        "Uppercase",
+                        "Lowercase",
+                        "Title Case",
+                        "Alternate Case"
+                    ],
+                    label="Select Case Type",
+                    value="Uppercase",
+                )
+                convert_button = gr.Button("Convert Case", variant="primary")
+
+            with gr.Tab("🔁 Text Reverser"):
+                reverse_type = gr.Radio(
+                    choices=["Word-wise", "Character-wise", "Scrambled"],
+                    label="Select Reversal Type",
+                    value="Word-wise",
+                )
+                reverse_button = gr.Button("Reverse Text", variant="primary")
+
+            with gr.Tab("🧹 Text Cleanup"):
+                gr.Markdown(
+                    "**Normalize whitespace**, capitalize sentences, "
+                    "and clean up your text."
+                )
+                cleanup_button = gr.Button("Clean Up Text", variant="primary")
+
+            with gr.Tab("📊 Word Frequency"):
+                gr.Markdown("Analyze word frequency in your text.")
+                with gr.Row():
+                    freq_button = gr.Button(
+                        "Show All Word Frequencies",
+                        variant="primary"
+                    )
+                    top_words_button = gr.Button(
+                        "Show Top 5 Words",
+                        variant="secondary"
+                    )
+
+            with gr.Tab("🔧 Other Tools"):
+                gr.Markdown("Additional text processing utilities.")
+                with gr.Row():
+                    remove_punct_button = gr.Button(
+                        "Remove Punctuation",
+                        variant="primary"
+                    )
+                    extract_emails_button = gr.Button(
+                        "Extract Emails",
+                        variant="secondary"
+                    )
+
+        # Shared output box
+        output_textbox = gr.Textbox(
+            label="🧾 Output",
+            lines=6,
+            interactive=False,
+            elem_id="output-box"
+        )
+
+        clear_button = gr.Button("Clear All", variant="stop")
+
+        # Text Analyzer Dashboard
+        with gr.Group(elem_id="analyzer-section"):
+            gr.Markdown("### 📊 Live Text Analyzer Dashboard")
+            with gr.Row():
+                char_box = gr.Number(
+                    label="Characters",
+                    elem_classes=["analyzer-metric"],
+                    interactive=False,
+                    show_label=True,
+                    scale=1,
+                    container=True
+                )
+                word_box = gr.Number(
+                    label="Words",
+                    elem_classes=["analyzer-metric"],
+                    interactive=False,
+                    show_label=True,
+                    scale=1,
+                    container=True
+                )
+                sentence_box = gr.Number(
+                    label="Sentences",
+                    elem_classes=["analyzer-metric"],
+                    interactive=False,
+                    show_label=True,
+                    scale=1,
+                    container=True
+                )
+                avgword_box = gr.Number(
+                    label="Avg. Word Length",
+                    elem_classes=["analyzer-metric"],
+                    interactive=False,
+                    show_label=True,
+                    scale=1,
+                    container=True
+                )
+
+        convert_button.click(
+            fn=case_converter,
+            inputs=[input_text, case_type],
+            outputs=output_textbox
+        )
+
+        reverse_button.click(
+            fn=text_reverser,
+            inputs=[input_text, reverse_type],
+            outputs=output_textbox
+        )
+
+        cleanup_button.click(
+            fn=text_cleanup,
+            inputs=input_text,
+            outputs=output_textbox
+        )
+
+        freq_button.click(
+            fn=word_frequency_analyzer,
+            inputs=input_text,
+            outputs=output_textbox
+        )
+
+        top_words_button.click(
+            fn=top_words_analyzer,
+            inputs=input_text,
+            outputs=output_textbox
+        )
+
+        remove_punct_button.click(
+            fn=remove_punctuation,
+            inputs=input_text,
+            outputs=output_textbox
+        )
+
+        extract_emails_button.click(
+            fn=extract_emails,
+            inputs=input_text,
+            outputs=output_textbox
+        )
+
+        clear_button.click(
+            fn=lambda: clear_all(),
+            inputs=None,
+            outputs=[
+                input_text,
+                output_textbox,
+                char_box,
+                word_box,
+                sentence_box,
+                avgword_box
+            ],
+            queue=False
+        )
+
+        # Live text analyzer updates
+        input_text.change(
+            fn=text_analyzer,
+            inputs=input_text,
+            outputs=[char_box, word_box, sentence_box, avgword_box]
+        )
+
+
+if __name__ == "__main__":
+    text_manipulation_app.launch()
