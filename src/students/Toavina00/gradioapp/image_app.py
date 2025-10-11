@@ -122,8 +122,8 @@ def transform_image(
     image = normalize_image(image)  # Normalize image to pixels of (-1.0, 1.0) for numerical stability
     image = change_brightness(image, brightness)
     image = change_contrast(image, contrast)
-    image = img_to_grayscale(image, to_grayscale)
     image = blur_image(image, blur_sigma)
+    image = img_to_grayscale(image, to_grayscale)
     image = flip_horizontal(image, flip_h)
     image = flip_vertical(image, flip_v)
     image = invert_color(image, invert)
@@ -144,20 +144,20 @@ with gr.Blocks() as app:
             dst = gr.Image()
 
     with gr.Row():
-        grayscale = gr.Checkbox(False, label="Grayscale")
-        invert = gr.Checkbox(False, label="Invert Color")
-        flip_h = gr.Checkbox(False, label="Flip Horizontal")
-        flip_v = gr.Checkbox(False, label="Flip Vertical")
-        dither = gr.Checkbox(False, label="Dithering")
+        with gr.Column():
+            brightness = gr.Slider(0.5, 1.5, value=1.0, label="Brightness")
+            contrast = gr.Slider(0.5, 1.5, value=1.0, label="Contrast")
+            rotate = gr.Slider(-180.0, 180.0, value=0.0, label="Rotate")
+            blur = gr.Slider(0, 5, value=0, step=1, label="Blur")
 
-    brightness = gr.Slider(0.5, 1.5, value=1.0, label="Brightness")
-    contrast = gr.Slider(0.5, 1.5, value=1.0, label="Contrast")
-    rotate = gr.Slider(-180.0, 180.0, value=0.0, label="Rotate")
-    blur = gr.Slider(0, 5, value=0, step=1, label="Blur")
-
-    with gr.Row():
-        reset_btn = gr.Button("Reset")
-        download_btn = gr.Button("Download")
+        with gr.Column():
+            with gr.Group():
+                grayscale = gr.Checkbox(False, label="Grayscale")
+                invert = gr.Checkbox(False, label="Invert Color")
+                flip_h = gr.Checkbox(False, label="Flip Horizontal")
+                flip_v = gr.Checkbox(False, label="Flip Vertical")
+                dither = gr.Checkbox(False, label="Dithering")
+            reset_btn = gr.Button("Reset")
 
     transforms = [
         grayscale,
@@ -173,5 +173,4 @@ with gr.Blocks() as app:
     initial_value = [trans.value for trans in transforms]  # Keep track of the initial value for reset event
 
     gr.on(fn=transform_image, inputs=[src, *transforms], outputs=dst)
-
-    reset_btn.click(lambda: initial_value, outputs=[*transforms])
+    gr.on(reset_btn.click, fn=lambda: initial_value, outputs=[*transforms])
