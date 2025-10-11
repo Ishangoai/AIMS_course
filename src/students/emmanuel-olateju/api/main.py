@@ -10,6 +10,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.imagedit import image_edit_app
+from gradioapp.imagedit_v2 import image_edit_v2_app
 
 app = FastAPI(
     title="AIMS Course API",
@@ -131,3 +132,4 @@ gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, image_edit_app, path="/image-edit")
+gr.mount_gradio_app(app, image_edit_v2_app, path="/image-edit-v2")

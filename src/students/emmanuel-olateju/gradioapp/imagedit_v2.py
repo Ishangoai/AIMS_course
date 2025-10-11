@@ -16,7 +16,7 @@ def edit_image(img, brightness, contrast, apply_grayscale, rotate_angle):
     return image
 
 
-with gr.Blocks(css="body {background: #f2f7ff;}") as image_edit_app:
+with gr.Blocks(css="body {background: #f2f7ff;}") as image_edit_v2_app:
     gr.Markdown('# Imagedit 🖼️')
     gr.Markdown('Choose a picture you want to edit below')
 
