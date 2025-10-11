@@ -8,8 +8,9 @@ from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
-from gradioapp.assignment1 import dard
 from gradioapp.heart_disease_app import heart_app
+
+# from gradioapp.assignment1 import dard
 
 app = FastAPI(
     title="AIMS Course API",
@@ -128,4 +129,4 @@ def update_user_details(username: str, request: UpdateUserRequest):
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
-gr.mount_gradio_app(app, dard, path="/assignment1")
+# gr.mount_gradio_app(app, dard, path="/assignment1")
