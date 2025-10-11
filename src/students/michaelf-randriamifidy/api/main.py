@@ -42,7 +42,7 @@ def root():
 
 @app.get("/hello", summary="Greet the user", description="Returns a greeting message.")
 def hello():
-    return {"message": f"Hello from {current_user}! Ready!"}
+    return {"message": f"Hello from {current_user}! Ready!!"}
 
 
 @app.get(
