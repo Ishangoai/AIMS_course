@@ -6,6 +6,28 @@ from PIL import Image, ImageEnhance
 
 
 def edit_image(image, grayscale, brightness, contrast, rotation):
+    """
+    Apply basic edits to an image.
+
+    Parameters
+    ----------
+    image : PIL.Image.Image | numpy.ndarray | None
+        Input image. If a numpy array is provided it will be converted into a PIL Image.
+    grayscale : bool
+        If True, convert the image to grayscale.
+    brightness : float
+        Brightness multiplier (1.0 = original).
+    contrast : float
+        Contrast multiplier (1.0 = original).
+    rotation : float
+        Degrees to rotate the image (positive = counterclockwise).
+
+    Returns
+    -------
+    PIL.Image.Image | None
+        Edited image or None if input was None.
+    """
+
     if image is None:
         return None
 
@@ -30,6 +52,20 @@ def edit_image(image, grayscale, brightness, contrast, rotation):
 
 
 def save_temp_image(img):
+    """
+    Save an image to a temporary PNG file and return its file path.
+
+    Parameters
+    ----------
+    img : PIL.Image.Image | numpy.ndarray | None
+        Image to save. If None, returns None.
+
+    Returns
+    -------
+    str | None
+        Full filesystem path to the saved temporary PNG file, or None if img was None.
+    """
+
     if img is None:
         return None
 
@@ -66,6 +102,20 @@ with gr.Blocks(title="Image Editor") as image_app:
 
     # Reset button restores original image and resets settings
     def reset_to_original(image):
+        """
+        Reset UI widgets to their default values and restore original image.
+
+        Parameters
+        ----------
+        image : PIL.Image.Image | numpy.ndarray | None
+            The original image to restore.
+
+        Returns
+        -------
+        tuple
+            (image, False, 1.0, 1.0, 0, image) corresponding to:
+            (image_input, grayscale, brightness, contrast, rotation, image_output)
+        """
         return image, False, 1.0, 1.0, 0, image
 
     reset_btn.click(
