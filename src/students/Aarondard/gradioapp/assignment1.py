@@ -1,52 +1,13 @@
 import re
-import ssl
 import string
 from collections import Counter
 from typing import NamedTuple, cast
 
 import gradio as gr
 import matplotlib.pyplot as plt
-import nltk
 import pandas as pd
-import plotly.graph_objects as go
 from matplotlib.figure import Figure
-from nltk.corpus import stopwords
-from nltk.tokenize import sent_tokenize, word_tokenize
 from textblob import TextBlob
-from wordcloud import WordCloud
-
-# Handle SSL certificate issues for NLTK downloads
-try:
-    _create_unverified_https_context = ssl._create_unverified_context
-except AttributeError:
-    pass
-else:
-    ssl._create_default_https_context = _create_unverified_https_context
-
-
-# Download required NLTK data with error handling
-def download_nltk_resources():
-    resources = ["punkt", "punkt_tab", "stopwords"]
-
-    for resource in resources:
-        try:
-            if resource in ["punkt", "punkt_tab"]:
-                nltk.data.find(f"tokenizers/{resource}")
-            elif resource == "stopwords":
-                nltk.data.find(f"corpora/{resource}")
-            else:
-                nltk.data.find(f"taggers/{resource}")
-        except LookupError:
-            print(f"Downloading NLTK resource: {resource}")
-            try:
-                nltk.download(resource, quiet=True)
-            except Exception as e:
-                print(f"Failed to download {resource}: {e}")
-
-
-# Download resources at startup
-download_nltk_resources()
-
 
 text_configs = {
     "text_case": None,
@@ -54,48 +15,22 @@ text_configs = {
     "reverse_char_order": False,
 }
 
-# Common function words to exclude from analysis
-FUNCTION_WORDS = set(stopwords.words("english")).union(
-    {
-        "the",
-        "a",
-        "an",
-        "and",
-        "or",
-        "but",
-        "in",
-        "on",
-        "at",
-        "to",
-        "for",
-        "of",
-        "with",
-        "by",
-        "as",
-        "is",
-        "are",
-        "was",
-        "were",
-        "be",
-        "been",
-        "being",
-        "have",
-        "has",
-        "had",
-        "do",
-        "does",
-        "did",
-        "will",
-        "would",
-        "could",
-        "should",
-        "may",
-        "might",
-        "must",
-        "can",
-        "shall",
-    }
-)
+# Common function words to exclude from analysis (manual list instead of NLTK stopwords)
+FUNCTION_WORDS = {
+    "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of",
+    "with", "by", "as", "is", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "do", "does", "did", "will", "would", "could",
+    "should", "may", "might", "must", "can", "shall", "i", "you", "he", "she",
+    "it", "we", "they", "me", "him", "her", "us", "them", "my", "your", "his",
+    "its", "our", "their", "this", "that", "these", "those", "am", "not", "so",
+    "than", "too", "very", "what", "when", "where", "which", "who", "whom", "why",
+    "how", "all", "any", "both", "each", "few", "more", "most", "some", "such",
+    "no", "nor", "only", "own", "same", "just", "also", "now", "then", "here",
+    "there", "up", "down", "out", "off", "over", "under", "again", "further",
+    "once", "every", "because", "since", "until", "while", "after", "before",
+    "above", "below", "between", "through", "during", "without", "under",
+    "about", "against", "into", "like", "through", "until", "upon", "within"
+}
 
 # Add punctuation for exclusion
 FUNCTION_WORDS = FUNCTION_WORDS.union(set(string.punctuation))
@@ -114,21 +49,24 @@ def to_titlecase(text: str) -> str:
 
 
 def get_word_tokens(text: str) -> list[str]:
-    try:
-        return word_tokenize(text.lower())
-    except Exception as e:
-        # Fallback to simple split if tokenization fails
-        print(f"Unable to get word tokens {str(e)}")
-        return text.lower().split()
+    """Simple word tokenization without NLTK."""
+    # Convert to lowercase and split, then clean up tokens
+    words = text.lower().split()
+    # Remove punctuation from words and filter empty strings
+    cleaned_words = []
+    for word in words:
+        # Remove punctuation from start and end of words
+        cleaned_word = word.strip(string.punctuation)
+        if cleaned_word:  # Only add non-empty strings
+            cleaned_words.append(cleaned_word)
+    return cleaned_words
 
 
 def get_sentences(text: str) -> list[str]:
-    try:
-        return sent_tokenize(text)
-    except Exception as e:
-        # Fallback to simple sentence splitting
-        print(f"Unable to fetch sentences {str(e)}")
-        return [s.strip() for s in re.split(r"[.!?]+", text) if s.strip()]
+    """Simple sentence splitting without NLTK."""
+    # Split on sentence endings and filter empty strings
+    sentences = [s.strip() for s in re.split(r'[.!?]+', text) if s.strip()]
+    return sentences
 
 
 def reverse_word(text: str) -> str:
@@ -216,7 +154,7 @@ def lexical_density(text: str) -> float:
     if not alpha_tokens:
         return 0.0
 
-    # Fallback: consider all non-stopwords as content words
+    # Consider all non-stopwords as content words
     content_words = [token for token in alpha_tokens if token not in FUNCTION_WORDS]
     return round(len(content_words) / len(alpha_tokens), 3)
 
@@ -294,8 +232,8 @@ def filter_function_words(words: list[str]) -> list[str]:
     return [word for word in words if word.lower() not in FUNCTION_WORDS]
 
 
-def create_wordcloud_figure(text: str) -> Figure:
-    """Create a word cloud matplotlib figure."""
+def create_word_frequency_chart(text: str) -> Figure:
+    """Create a word frequency bar chart instead of word cloud."""
     if not text or text.isspace():
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.text(0.5, 0.5, "No data to display", ha="center", va="center", fontsize=16)
@@ -318,20 +256,30 @@ def create_wordcloud_figure(text: str) -> Figure:
         ax.axis("off")
         return fig
 
-    wordcloud = WordCloud(
-        width=800,
-        height=400,
-        background_color="white",
-        colormap="viridis",
-        max_words=50,
-        relative_scaling=0.5,  # type: ignore
-    ).generate(" ".join(filtered_tokens))
+    # Count word frequencies and get top 15 words
+    word_freq = Counter(filtered_tokens)
+    common_words = word_freq.most_common(15)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.imshow(wordcloud, interpolation="bilinear")
-    ax.axis("off")
-    ax.set_title("Word Cloud (Excluding Common Words)", pad=20, fontsize=14)
+    words, counts = zip(*common_words)
 
+    # Create horizontal bar chart
+    fig, ax = plt.subplots(figsize=(12, 8))
+    y_pos = range(len(words))
+
+    bars = ax.barh(y_pos, counts, color='skyblue', alpha=0.7)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(words)
+    ax.invert_yaxis()  # Highest frequency at top
+    ax.set_xlabel('Frequency')
+    ax.set_title('Top 15 Most Frequent Words (Excluding Common Words)', pad=20, fontsize=14)
+
+    # Add value labels on bars
+    for bar in bars:
+        width = bar.get_width()
+        ax.text(width, bar.get_y() + bar.get_height() / 2,
+                f' {width}', ha='left', va='center', fontsize=9)
+
+    plt.tight_layout()
     return fig
 
 
@@ -369,19 +317,17 @@ def generate_comprehensive_table(text: str) -> pd.DataFrame:
     ]
 
     columns_list: tuple[str, str, str] = ("Category", "Statistic", "Value")
-
     return pd.DataFrame(data, columns=list(columns_list))  # type: ignore
 
 
-def create_statistics_visualizations(text: str) -> tuple[go.Figure, go.Figure]:
-    """Create statistics and gauge visualizations."""
+def create_statistics_visualizations(text: str) -> tuple[Figure, Figure]:
+    """Create statistics visualizations using matplotlib instead of plotly."""
     if not text or text.isspace():
-        empty_plot = go.Figure()
-        empty_plot.add_annotation(
-            text="No data to display", x=0.5, y=0.5, showarrow=False
-        )
-        empty_plot.update_layout(title="No data available")
-        return empty_plot, empty_plot
+        empty_fig, empty_ax = plt.subplots(figsize=(8, 4))
+        empty_ax.text(0.5, 0.5, "No data to display", ha="center", va="center", fontsize=14)
+        empty_ax.axis("off")
+        empty_fig.suptitle("No data available")
+        return empty_fig, empty_fig
 
     # Basic statistics bar chart
     wc = word_count(text)
@@ -389,110 +335,101 @@ def create_statistics_visualizations(text: str) -> tuple[go.Figure, go.Figure]:
     pc = paragraph_count(text)
     sc = sentence_count(text)
 
-    stats_fig = go.Figure(
-        data=[
-            go.Bar(
-                name="Count",
-                x=["Words", "Characters", "Paragraphs", "Sentences"],
-                y=[wc, cc, pc, sc],
-                marker_color=["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A"],
-            )
-        ]
-    )
-    stats_fig.update_layout(
-        title="Basic Text Statistics",
-        xaxis_title="Metric",
-        yaxis_title="Count",
-        showlegend=False,
-    )
+    # Create basic stats figure
+    stats_fig, stats_ax = plt.subplots(figsize=(10, 6))
+    metrics = ["Words", "Characters", "Paragraphs", "Sentences"]
+    values = [wc, cc, pc, sc]
+    colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A"]
 
-    # Readability and sentiment gauge chart
+    bars = stats_ax.bar(metrics, values, color=colors, alpha=0.7)
+    stats_ax.set_title("Basic Text Statistics", fontsize=14, pad=20)
+    stats_ax.set_ylabel("Count")
+
+    # Add value labels on bars
+    for bar in bars:
+        height = bar.get_height()
+        stats_ax.text(bar.get_x() + bar.get_width() / 2., height,
+                     f'{int(height)}', ha='center', va='bottom')
+
+    plt.setp(stats_ax.xaxis.get_majorticklabels(), rotation=45)
+    stats_fig.tight_layout()
+
+    # Create readability and sentiment gauge figure
     fre = flesch_reading_ease(text)
     sentiment = sentiment_analysis(text)
 
-    gauge_fig = go.Figure()
+    gauge_fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
-    # Flesch Reading Ease gauge
-    gauge_fig.add_trace(
-        go.Indicator(
-            mode="gauge+number",
-            value=fre,
-            title={"text": "Reading Ease"},
-            domain={"row": 0, "column": 0},
-            gauge={
-                "axis": {"range": [0, 100]},
-                "bar": {"color": "darkblue"},
-                "steps": [
-                    {"range": [0, 30], "color": "red"},
-                    {"range": [30, 60], "color": "yellow"},
-                    {"range": [60, 100], "color": "green"},
-                ],
-            },
-        )
-    )
+    # Reading ease gauge (simplified as bar)
+    ax1.barh([0], [fre], color='lightblue', alpha=0.7, height=0.5)
+    ax1.set_xlim(0, 100)
+    ax1.set_xlabel('Score')
+    ax1.set_title('Reading Ease Score')
+    ax1.text(fre / 2, 0, f'{fre}', ha='center', va='center', fontweight='bold')
 
-    # Sentiment gauge
-    gauge_fig.add_trace(
-        go.Indicator(
-            mode="gauge+number",
-            value=(sentiment["polarity"] + 1) * 50,  # Convert -1 to +1 to 0-100 scale
-            title={"text": "Sentiment"},
-            domain={"row": 0, "column": 1},
-            gauge={
-                "axis": {"range": [0, 100]},
-                "bar": {"color": "darkblue"},
-                "steps": [
-                    {"range": [0, 40], "color": "red"},
-                    {"range": [40, 60], "color": "yellow"},
-                    {"range": [60, 100], "color": "green"},
-                ],
-            },
-        )
-    )
+    # Add readability indicators
+    ax1.axvline(x=30, color='red', linestyle='--', alpha=0.5)
+    ax1.axvline(x=60, color='yellow', linestyle='--', alpha=0.5)
+    ax1.axvline(x=90, color='green', linestyle='--', alpha=0.5)
 
-    gauge_fig.update_layout(
-        grid={"rows": 1, "columns": 2, "pattern": "independent"},
-        title="Readability & Sentiment Scores",
-    )
+    # Sentiment gauge (simplified as bar)
+    sentiment_score = (sentiment["polarity"] + 1) * 50  # Convert -1 to +1 to 0-100 scale
+    ax2.barh([0], [sentiment_score], color='lightcoral', alpha=0.7, height=0.5)
+    ax2.set_xlim(0, 100)
+    ax2.set_xlabel('Score')
+    ax2.set_title('Sentiment Score')
+    ax2.text(sentiment_score / 2, 0, f'{sentiment_score:.1f}', ha='center', va='center', fontweight='bold')
+
+    # Add sentiment indicators
+    ax2.axvline(x=40, color='red', linestyle='--', alpha=0.5)
+    ax2.axvline(x=60, color='yellow', linestyle='--', alpha=0.5)
+    ax2.axvline(x=80, color='green', linestyle='--', alpha=0.5)
+
+    gauge_fig.suptitle('Readability & Sentiment Scores', fontsize=14)
+    gauge_fig.tight_layout()
 
     return stats_fig, gauge_fig
 
 
-def create_advanced_visualizations(text: str) -> go.Figure:
-    """Create advanced word frequency visualization."""
+def create_advanced_visualizations(text: str) -> Figure:
+    """Create advanced word frequency visualization using matplotlib."""
     if not text or text.isspace():
-        empty_plot = go.Figure()
-        empty_plot.add_annotation(
-            text="No data to display", x=0.5, y=0.5, showarrow=False
-        )
-        empty_plot.update_layout(title="No data available")
-        return empty_plot
+        empty_fig, empty_ax = plt.subplots(figsize=(10, 6))
+        empty_ax.text(0.5, 0.5, "No data to display", ha="center", va="center", fontsize=16)
+        empty_ax.axis("off")
+        empty_fig.suptitle("No data available")
+        return empty_fig
 
     tokens = get_word_tokens(text)
     filtered_tokens = filter_function_words(tokens)
 
     if not filtered_tokens:
-        empty_plot = go.Figure()
-        empty_plot.add_annotation(
-            text="No meaningful words after filtering", x=0.5, y=0.5, showarrow=False
-        )
-        empty_plot.update_layout(title="Word Frequency Analysis")
-        return empty_plot
+        empty_fig, empty_ax = plt.subplots(figsize=(10, 6))
+        empty_ax.text(0.5, 0.5, "No meaningful words after filtering",
+                     ha="center", va="center", fontsize=14)
+        empty_ax.axis("off")
+        empty_fig.suptitle("Word Frequency Analysis")
+        return empty_fig
 
     word_freq = Counter(filtered_tokens)
     common_words = word_freq.most_common(8)
 
     words, counts = zip(*common_words)
 
-    advanced_fig = go.Figure(
-        data=[go.Bar(x=words, y=counts, marker_color="#FFA07A", name="Word Frequency")]
-    )
-    advanced_fig.update_layout(
-        title="Most Frequent Meaningful Words",
-        xaxis_title="Words",
-        yaxis_title="Frequency",
-        showlegend=False,
-    )
+    advanced_fig, ax = plt.subplots(figsize=(10, 6))
+    bars = ax.bar(words, counts, color="#FFA07A", alpha=0.7)
+    ax.set_title("Most Frequent Meaningful Words", fontsize=14, pad=20)
+    ax.set_xlabel("Words")
+    ax.set_ylabel("Frequency")
+
+    # Add value labels on bars
+    for bar in bars:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2., height,
+                f'{int(height)}', ha='center', va='bottom')
+
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+    advanced_fig.tight_layout()
 
     return advanced_fig
 
@@ -519,17 +456,16 @@ def set_reverse_char(is_checked: bool) -> None:
     text_configs["reverse_char_order"] = is_checked
 
 
-def text_actions(text: str) -> tuple[str, pd.DataFrame, go.Figure, go.Figure, go.Figure, Figure]:
+def text_actions(text: str) -> tuple[str, pd.DataFrame, Figure, Figure, Figure, Figure]:
     """Process text and generate all analyses."""
     if not text:
-        empty_plot = go.Figure()
-        empty_plot.add_annotation(
-            text="No data to display", x=0.5, y=0.5, showarrow=False
-        )
-        empty_plot.update_layout(title="No data available")
-        empty_wordcloud = create_wordcloud_figure("")
+        empty_fig, empty_ax = plt.subplots(figsize=(8, 4))
+        empty_ax.text(0.5, 0.5, "No data to display", ha="center", va="center", fontsize=14)
+        empty_ax.axis("off")
+        empty_fig.suptitle("No data available")
+        empty_wordchart = create_word_frequency_chart("")
         empty_table = generate_comprehensive_table("")
-        return "", empty_table, empty_plot, empty_plot, empty_plot, empty_wordcloud
+        return "", empty_table, empty_fig, empty_fig, empty_fig, empty_wordchart
 
     processed_text = text
     text_case = text_configs["text_case"]
@@ -552,7 +488,7 @@ def text_actions(text: str) -> tuple[str, pd.DataFrame, go.Figure, go.Figure, go
     stats_table = generate_comprehensive_table(text)
     stats_fig, gauge_fig = create_statistics_visualizations(text)
     advanced_fig = create_advanced_visualizations(text)
-    wordcloud_fig = create_wordcloud_figure(text)
+    word_freq_fig = create_word_frequency_chart(text)
 
     return (
         processed_text,
@@ -560,28 +496,27 @@ def text_actions(text: str) -> tuple[str, pd.DataFrame, go.Figure, go.Figure, go
         stats_fig,
         gauge_fig,
         advanced_fig,
-        wordcloud_fig,
+        word_freq_fig,
     )
 
 
-def update_statistics(text: str) -> tuple[pd.DataFrame, go.Figure, go.Figure, go.Figure, Figure]:
+def update_statistics(text: str) -> tuple[pd.DataFrame, Figure, Figure, Figure, Figure]:
     """Update statistics based on text input."""
     if not text or text.isspace():
-        empty_plot = go.Figure()
-        empty_plot.add_annotation(
-            text="No data to display", x=0.5, y=0.5, showarrow=False
-        )
-        empty_plot.update_layout(title="No data available")
-        empty_wordcloud = create_wordcloud_figure("")
+        empty_fig, empty_ax = plt.subplots(figsize=(8, 4))
+        empty_ax.text(0.5, 0.5, "No data to display", ha="center", va="center", fontsize=14)
+        empty_ax.axis("off")
+        empty_fig.suptitle("No data available")
+        empty_wordchart = create_word_frequency_chart("")
         empty_table = generate_comprehensive_table("")
-        return empty_table, empty_plot, empty_plot, empty_plot, empty_wordcloud
+        return empty_table, empty_fig, empty_fig, empty_fig, empty_wordchart
 
     stats_table = generate_comprehensive_table(text)
     stats_fig, gauge_fig = create_statistics_visualizations(text)
     advanced_fig = create_advanced_visualizations(text)
-    wordcloud_fig = create_wordcloud_figure(text)
+    word_freq_fig = create_word_frequency_chart(text)
 
-    return stats_table, stats_fig, gauge_fig, advanced_fig, wordcloud_fig
+    return stats_table, stats_fig, gauge_fig, advanced_fig, word_freq_fig
 
 
 def clear_actions() -> tuple[gr.Radio, gr.Checkbox, gr.Checkbox]:
@@ -592,24 +527,23 @@ def clear_actions() -> tuple[gr.Radio, gr.Checkbox, gr.Checkbox]:
     return gr.Radio(value=None), gr.Checkbox(value=False), gr.Checkbox(value=False)
 
 
-def clear_all() -> tuple[str, pd.DataFrame, go.Figure, go.Figure, go.Figure, Figure, None, bool, bool]:
+def clear_all() -> tuple[str, pd.DataFrame, Figure, Figure, Figure, Figure, None, bool, bool]:
     """Clear all inputs and outputs."""
     clear_actions()
 
-    empty_plot = go.Figure()
-    empty_plot.add_annotation(
-        text="No data to display", x=0.5, y=0.5, showarrow=False
-    )
-    empty_plot.update_layout(title="No data available")
-    empty_wordcloud = create_wordcloud_figure("")
+    empty_fig, empty_ax = plt.subplots(figsize=(8, 4))
+    empty_ax.text(0.5, 0.5, "No data to display", ha="center", va="center", fontsize=14)
+    empty_ax.axis("off")
+    empty_fig.suptitle("No data available")
+    empty_wordchart = create_word_frequency_chart("")
     empty_table = generate_comprehensive_table("")
     return (
         "",
         empty_table,
-        empty_plot,
-        empty_plot,
-        empty_plot,
-        empty_wordcloud,
+        empty_fig,
+        empty_fig,
+        empty_fig,
+        empty_wordchart,
         None,
         False,
         False,
@@ -686,7 +620,7 @@ with gr.Blocks(
         with gr.TabItem("Word Analysis"):
             with gr.Row():
                 advanced_plot = gr.Plot(label="Word Frequency Analysis")
-                wordcloud_display = gr.Plot(label="Word Cloud")
+                wordcloud_display = gr.Plot(label="Word Frequency Chart")
 
     user_input.change(
         fn=update_statistics,
@@ -713,16 +647,15 @@ with gr.Blocks(
         ],
     )
 
-    def clear_text_function() -> tuple[str, pd.DataFrame, go.Figure, go.Figure, go.Figure, Figure]:
+    def clear_text_function() -> tuple[str, pd.DataFrame, Figure, Figure, Figure, Figure]:
         """Clear text input and reset outputs."""
-        empty_plot = go.Figure()
-        empty_plot.add_annotation(
-            text="No data to display", x=0.5, y=0.5, showarrow=False
-        )
-        empty_plot.update_layout(title="No data available")
-        empty_wordcloud = create_wordcloud_figure("")
+        empty_fig, empty_ax = plt.subplots(figsize=(8, 4))
+        empty_ax.text(0.5, 0.5, "No data to display", ha="center", va="center", fontsize=14)
+        empty_ax.axis("off")
+        empty_fig.suptitle("No data available")
+        empty_wordchart = create_word_frequency_chart("")
         empty_table = generate_comprehensive_table("")
-        return "", empty_table, empty_plot, empty_plot, empty_plot, empty_wordcloud
+        return "", empty_table, empty_fig, empty_fig, empty_fig, empty_wordchart
 
     clear_text_btn.click(
         fn=clear_text_function,
@@ -734,23 +667,22 @@ with gr.Blocks(
         outputs=[case_choice, reverse_word_checkbox, reverse_char_checkbox],
     )
 
-    def clear_all_function() -> tuple[str, pd.DataFrame, go.Figure, go.Figure, go.Figure, Figure, None, bool, bool]:
+    def clear_all_function() -> tuple[str, pd.DataFrame, Figure, Figure, Figure, Figure, None, bool, bool]:
         """Clear all inputs and outputs."""
         clear_actions()
-        empty_plot = go.Figure()
-        empty_plot.add_annotation(
-            text="No data to display", x=0.5, y=0.5, showarrow=False
-        )
-        empty_plot.update_layout(title="No data available")
-        empty_wordcloud = create_wordcloud_figure("")
+        empty_fig, empty_ax = plt.subplots(figsize=(8, 4))
+        empty_ax.text(0.5, 0.5, "No data to display", ha="center", va="center", fontsize=14)
+        empty_ax.axis("off")
+        empty_fig.suptitle("No data available")
+        empty_wordchart = create_word_frequency_chart("")
         empty_table = generate_comprehensive_table("")
         return (
             "",
             empty_table,
-            empty_plot,
-            empty_plot,
-            empty_plot,
-            empty_wordcloud,
+            empty_fig,
+            empty_fig,
+            empty_fig,
+            empty_wordchart,
             None,
             False,
             False,
