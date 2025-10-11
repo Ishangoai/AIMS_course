@@ -2,7 +2,19 @@ import os
 import tempfile
 
 import gradio as gr
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageFilter
+
+
+def filter_function(img, choice):
+    if choice == 'BLUR':
+        filter_img = img.filter(ImageFilter.BLUR)
+    elif choice == "CONTOUR":
+        filter_img = img.filter(ImageFilter.CONTOUR)
+
+    elif choice == "DETAIL":
+        filter_img = img.filter(ImageFilter.DETAIL)
+
+    return filter_img
 
 
 def adjust_brightness(img: Image.Image, brightness: float) -> Image.Image:
@@ -102,46 +114,77 @@ def save_image(img: Image.Image, path: str = "") -> str:
 # --- Gradio interface ---
 
 with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
-    gr.Markdown("# Image Operations\nUpload an image, apply effects"
-                "(brightness, contrast, rotation, grayscale), or reset to the original image."
-                )
+    gr.Markdown("# Image Operations\n Upload an image, apply effects")
 
     with gr.Row():
         image_input = gr.Image(type="pil", label="Upload Image")
 
-    with gr.Row():
-        grayscale = gr.Checkbox(False, label="Apply Grayscale")
-        brightness = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Brightness")
-        contrast = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Contrast")
-        rotate = gr.Slider(-180, 180, value=0, step=1, label="Rotation (degrees)")
+    with gr.Tabs():
+        with gr.Tab("Adjust Image"):
+            gr.Markdown("# Convert image to grayscale, set brightness, contrast, rotation")
+            grayscale = gr.Checkbox(False, label="Convert to Grayscale")
+            brightness = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Brightness")
+            contrast = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Contrast")
+            rotate = gr.Slider(-180, 180, value=0, step=1, label="Rotation(degrees)")
 
-    output_image = gr.Image(type="pil", label="Final Combined Output", interactive=False)
-    Modify = gr.Button("Modify Image")
+            output_image = gr.Image(type="pil", label="Final Combined Output", interactive=False)
+            Modify = gr.Button("Modify Image")
 
-    Modify.click(
-        combined_effects,
-        inputs=[image_input, brightness, contrast, rotate, grayscale],
-        outputs=output_image
-    )
+            Modify.click(
+            combined_effects,
+            inputs=[image_input, brightness, contrast, rotate, grayscale],
+            outputs=output_image
+            )
 
-    # --- Reset button ---
-    gr.Markdown("### Reset to Original Image")
-    reset_button = gr.Button("Reset to Original")
-    reset_button.click(
-        fn=lambda x: x,
-        inputs=image_input,
-        outputs=[output_image],
-    )
+            # --- Reset button ---
+            gr.Markdown("Reset to Original Image")
+            reset_button = gr.Button("Reset to Original")
+            reset_button.click(
+            fn=lambda x: x,
+            inputs=image_input,
+            outputs=[output_image],
+            )
 
-    # Save button
-    gr.Markdown("### Download Image")
-    save_button = gr.Button("Save Image")
-    file_output = gr.File(label="Download your edited image")
-    save_button.click(
-        save_image,
-        inputs=output_image,
-        outputs=file_output
-    )
+            # Save button
+            gr.Markdown("### Download Image")
+            save_button = gr.Button("Save Image")
+            file_output = gr.File(label="Download your edited image")
+            save_button.click(
+                save_image,
+                inputs=output_image,
+                outputs=file_output
+            )
+
+        with gr.Tab(label="Filter Image"):
+            gr.Markdown("# Choose filter Option: blur or contour or detail")
+            output_filter = gr.Image(type='pil', label="Filter image", interactive=False)
+            choice = gr.Radio(["BLUR", "CONTOUR", "DETAIL"], label="Filters")
+            filter_button = gr.Button("Filter")
+
+            filter_button.click(
+            filter_function,
+            inputs=[image_input, choice],
+            outputs=output_filter
+            )
+
+            # --- Reset button ---
+            gr.Markdown("### Reset to Original Image")
+            reset_button_filter = gr.Button("Reset to Original")
+            reset_button_filter.click(
+            fn=lambda x: x,
+            inputs=image_input,
+            outputs=[output_filter],
+            )
+
+            # Save button
+            gr.Markdown("### Download Image")
+            save_button_filter = gr.Button("Save Image")
+            file_output_filter = gr.File(label="Download your filter image")
+            save_button_filter.click(
+                save_image,
+                inputs=output_filter,
+                outputs=file_output_filter
+            )
 
 if __name__ == "__main__":
     image_transformation.launch()
