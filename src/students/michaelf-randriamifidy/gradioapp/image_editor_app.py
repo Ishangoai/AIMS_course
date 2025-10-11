@@ -116,7 +116,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
         rotate = gr.Slider(-180, 180, value=0, step=1, label="Rotation (degrees)")
 
     output_image = gr.Image(type="pil", label="Final Combined Output", interactive=False)
-    Modify = gr.Button("Apply Combined Effects")
+    Modify = gr.Button("Modify Image")
 
     Modify.click(
         combined_effects,
