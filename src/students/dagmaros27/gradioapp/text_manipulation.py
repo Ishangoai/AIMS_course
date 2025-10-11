@@ -271,9 +271,51 @@ def clear_all() -> List:
     return ["", "", 0, 0, 0, 0]
 
 
+CUSTOM_CSS = """
+    #main-container { 
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    #tabs { 
+        margin-top: 20px; 
+    }
+    #output-box { 
+        margin-top: 20px; 
+    }
+    #analyzer-section { 
+        margin-top: 30px; 
+        border-top: 2px solid #ddd; 
+        padding-top: 25px; 
+        text-align: center;
+    }
+    .analyzer-metric {
+        border: 2px solid #ddd;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        font-weight: 700;
+        font-size: 32px;
+        text-align: center;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    .analyzer-metric label {
+        font-size: 16px;
+        font-weight: 600;
+        color: #666;
+        margin-bottom: 10px;
+    }
+    .gr-button { 
+        border-radius: 10px !important; 
+    }
+    
+"""
 
-
-with gr.Blocks(theme=gr.themes.Soft()) as text_manipulation_app:
+with gr.Blocks(theme="soft", css=CUSTOM_CSS) as text_manipulation_app:
     with gr.Column(elem_id="main-container"):
         gr.Markdown("# 🧠 Text Manipulation App")
         gr.Markdown(
@@ -353,7 +395,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as text_manipulation_app:
 
         # Text Analyzer Dashboard
         with gr.Group(elem_id="analyzer-section"):
-            gr.Markdown("### 📊 Live Text Analyzer Dashboard")
+            gr.Markdown("### 📊 Text Analyzer Dashboard")
             with gr.Row():
                 char_box = gr.Number(
                     label="Characters",
@@ -444,7 +486,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as text_manipulation_app:
             queue=False
         )
 
-        # Live text analyzer updates
+        # text analyzer updates
         input_text.change(
             fn=text_analyzer,
             inputs=input_text,
