@@ -88,6 +88,32 @@ def text_cleanup(text: str) -> str:
     return ''.join(result)
 
 
+def extract_words(text: str) -> List[str]:
+    """
+    Helper function to extract words from text.
+
+    Args:
+        text (str): The input text to extract words from.
+
+    Returns:
+        List[str]: A list of lowercase words extracted from the text.
+    """
+    words = []
+    current_word = []
+
+    for char in text.lower():
+        if char.isalnum():
+            current_word.append(char)
+        elif current_word:
+            words.append(''.join(current_word))
+            current_word = []
+
+    if current_word:
+        words.append(''.join(current_word))
+
+    return words
+
+
 def word_frequency_analyzer(text: str) -> str:
     """
     Analyze word frequency in the text and return formatted results.
@@ -101,18 +127,7 @@ def word_frequency_analyzer(text: str) -> str:
     if not text.strip():
         return "No text to analyze."
 
-    words = []
-    current_word = []
-
-    for char in text.lower():
-        if char.isalnum():
-            current_word.append(char)
-        elif current_word:
-            words.append(''.join(current_word))
-            current_word = []
-
-    if current_word:
-        words.append(''.join(current_word))
+    words = extract_words(text)
 
     if not words:
         return "No words found."
@@ -140,19 +155,7 @@ def top_words_analyzer(text: str, top_n: int = 5) -> str:
     if not text.strip():
         return "No text to analyze."
 
-    # Convert to lowercase and split into words
-    words = []
-    current_word = []
-
-    for char in text.lower():
-        if char.isalnum():
-            current_word.append(char)
-        elif current_word:
-            words.append(''.join(current_word))
-            current_word = []
-
-    if current_word:
-        words.append(''.join(current_word))
+    words = extract_words(text)
 
     if not words:
         return "No words found."
@@ -171,7 +174,6 @@ def top_words_analyzer(text: str, top_n: int = 5) -> str:
     return '\n'.join(result)
 
 
-#comment for change
 def unique_words_count(text: str) -> int:
     """
     Count the number of unique words in the text.
@@ -185,18 +187,7 @@ def unique_words_count(text: str) -> int:
     if not text.strip():
         return 0
 
-    words = []
-    current_word = []
-
-    for char in text.lower():
-        if char.isalnum():
-            current_word.append(char)
-        elif current_word:
-            words.append(''.join(current_word))
-            current_word = []
-
-    if current_word:
-        words.append(''.join(current_word))
+    words = extract_words(text)
 
     return len(set(words))
 
@@ -475,7 +466,7 @@ with gr.Blocks(theme="soft", css=CUSTOM_CSS) as text_manipulation_app:
         )
 
         clear_button.click(
-            fn=lambda: clear_all(),
+            fn=clear_all,
             inputs=None,
             outputs=[
                 input_text,
