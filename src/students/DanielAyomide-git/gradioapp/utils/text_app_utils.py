@@ -4,7 +4,7 @@ Scrabble Game (Simplified)
 A minimal interactive Scrabble game with Gradio UI.
 You play against a computer AI that forms random valid words.
 
-Author: [Your Name]
+Authors: [Daniel Ayomide and Elisha Komolafe]
 Date: 2025-10-11
 """
 
