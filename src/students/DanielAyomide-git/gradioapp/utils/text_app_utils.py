@@ -102,15 +102,15 @@ class Rack:
     """Represents a player's rack of up to 7 tiles."""
 
     def __init__(self, bag: Bag) -> None:
-            """
-            Initialize a rack by drawing up to 7 tiles from the bag.
+        """
+        Initialize a rack by drawing up to 7 tiles from the bag.
 
-            Args:
-                bag (Bag): The bag to draw tiles from.
-            """
-            self.bag: Bag = bag
-            self.tiles: list[Tile] = []
-            self.refill()  # Fill the rack initially
+        Args:
+            bag (Bag): The bag to draw tiles from.
+        """
+        self.bag: Bag = bag
+        self.tiles: list[Tile] = []
+        self.refill()  # Fill the rack initially
 
     def refill(self) -> None:
         """Draw tiles until the rack has 7 letters (if possible)."""
@@ -122,6 +122,7 @@ class Rack:
     def letters(self) -> str:
         """Return a string of all letters currently on the rack."""
         return "".join(tile.letter for tile in self.tiles)
+
 
 class Player:
     """Represents a player (human or AI) in the Scrabble game."""
@@ -267,10 +268,10 @@ class Game:
                 ai_result += "\n🤝 It's a tie!"
 
         return f"{player_result}\n{ai_result}"
+
     def scores(self) -> str:
         """
         Get a formatted score string.
-
         Returns:
             str: Scores of both players and current round.
         """
