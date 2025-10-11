@@ -1,10 +1,5 @@
 import gradio as gr
-from gradioapp.utils.heart_disease_utils import predict_heart_disease
 from PIL import ImageEnhance
-
-
-def wrapped_predict(*args):
-    return predict_heart_disease(list(args))
 
 
 def edit_image(
@@ -12,12 +7,14 @@ def edit_image(
     brightness,
     contrast,
     apply_grayscale,
+    rotate_angle,
 ):
     image = img.copy()
     enhancer = ImageEnhance.Brightness(image)
     image = enhancer.enhance(brightness)
     enhancer = ImageEnhance.Contrast(image)
     image = enhancer.enhance(contrast)
+    image = image.rotate(rotate_angle)
 
     if apply_grayscale:
         image = image.convert("L").convert("RGB")
@@ -33,11 +30,10 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_edit_app:
         # Input Column 1
         with gr.Column():
             input_image = gr.Image(type='pil')
-
         # Image input
         with gr.Column():
             # gr.Markdown('# Edited Image')
-            output_image = gr.Image()
+            output_image = gr.Image(format='png')
             gr.Button('Clear')
             gr.Button('Download')
         #     pass
@@ -46,8 +42,9 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_edit_app:
             apply_grayscale = gr.Checkbox(value=False, label='Convert Image to Grayscale')
             brightness = gr.Slider(minimum=0.5, value=1.0, maximum=1.5, label='Adjust Brightness')
             contrast = gr.Slider(minimum=0.5, value=1.0, maximum=1.5, label='Adjust Contrast')
+            rotate_angle = gr.Slider(minimum=-180, value=0, maximum=180, label='Rotate Image')
 
-        inputs = [input_image, brightness, contrast, apply_grayscale]
+        inputs = [input_image, brightness, contrast, apply_grayscale, rotate_angle]
 
         for component in inputs:
             component.change(fn=edit_image, inputs=inputs, outputs=output_image)
