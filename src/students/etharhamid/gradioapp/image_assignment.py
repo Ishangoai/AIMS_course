@@ -1,12 +1,11 @@
-import gradio as gr
-from PIL import Image, ImageEnhance, ImageOps, ImageFilter
-import io
-import numpy as np
-import os
 import tempfile
 
+import gradio as gr
+import numpy as np
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 # The core function to edit the image
+
 
 def edit_image(image, grayscale, brightness, contrast, rotation, flip_h, flip_v, blur):
 
@@ -14,7 +13,7 @@ def edit_image(image, grayscale, brightness, contrast, rotation, flip_h, flip_v,
         return None  # Return None for both image and a downloadable file
 
     if isinstance(image, np.ndarray):
-         image = Image.fromarray(image)
+        image = Image.fromarray(image)
     try:
 
         edited_image = image.convert("RGB")
@@ -37,10 +36,10 @@ def edit_image(image, grayscale, brightness, contrast, rotation, flip_h, flip_v,
         # Flip the image
         if flip_h:
             edited_image = ImageOps.mirror(edited_image)
-        
+
         if flip_v:
             edited_image = ImageOps.flip(edited_image)
-        
+
         # Blur the image
         if blur > 0:
             edited_image = edited_image.filter(ImageFilter.GaussianBlur(radius=blur))
@@ -56,18 +55,17 @@ def edit_image(image, grayscale, brightness, contrast, rotation, flip_h, flip_v,
 def reset_all(original_image):
     return original_image, False, 1.0, 1.0, 0, False, False, 0, original_image
 
+
 def save_temp_image(image):
     if image is None:
         return None
 
     if isinstance(image, np.ndarray):
         image = Image.fromarray(image)
-    
+
     temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
     image.save(temp_file.name)
     return temp_file.name
-
-       
 
 
 # Building the Gradio Interface
@@ -77,7 +75,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as image_app:
 
     with gr.Row():
         with gr.Column(scale=1):
-            input_image = gr.Image(type="pil", label="Input Image", sources =["upload", "clipboard"])
+            input_image = gr.Image(type="pil", label="Input Image", sources=["upload", "clipboard"])
             grayscale_check = gr.Checkbox(label="Convert to Grayscale", value=False)
             flip_h_check = gr.Checkbox(label="Flip Horizontal", value=False)
             flip_v_check = gr.Checkbox(label="Flip Vertically", value=False)
@@ -95,7 +93,8 @@ with gr.Blocks(theme=gr.themes.Soft()) as image_app:
             download_btn = gr.DownloadButton(label="Download Edited Image")
 
     # Define the components that will act as inputs to the edit_image function
-    inputs = [input_image, grayscale_check, brightness_slider, contrast_slider, rotation_slider, flip_h_check, flip_v_check, blur_slider]
+    inputs = [input_image, grayscale_check, brightness_slider, contrast_slider, rotation_slider,
+    flip_h_check, flip_v_check, blur_slider]
 
     # When any input component changes, call the edit_image function
     for component in inputs:
@@ -109,4 +108,3 @@ with gr.Blocks(theme=gr.themes.Soft()) as image_app:
     )
 
     download_btn.click(fn=save_temp_image, inputs=output_image, outputs=download_btn)
-
