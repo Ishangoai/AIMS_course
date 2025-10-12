@@ -129,5 +129,3 @@ def update_user_details(username: str, request: UpdateUserRequest):
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
-gr.mount_gradio_app(app, image_app, patch="/image_app")
-gr.mount_gradio_app(app, text_app, patch="/text-corrector")
