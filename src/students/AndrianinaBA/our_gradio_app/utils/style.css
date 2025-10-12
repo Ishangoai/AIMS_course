@@ -1,0 +1,151 @@
+
+.gradio-container {
+background-color: rgb(162, 207, 246)!important;
+font-size: 16px!important;
+background-image: 
+    linear-gradient(45deg, rgba(0,0,0,0.03) 25%, transparent 25%), 
+    linear-gradient(-45deg, rgba(0,0,0,0.03) 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, rgba(0,0,0,0.03) 75%), 
+    linear-gradient(-45deg, transparent 75%, rgba(0,0,0,0.03) 75%)!important;
+background-size: 200px 200px;
+}
+
+.app{
+    max-width: 800px!important;
+}
+
+.gradio-container *{
+  
+    background: #fff!important;
+    color:#000!important;
+}
+.app-title {
+  text-align: center !important;
+  font-size: 24px!important;
+  font-family: "Comic Sans MS", "Comic Sans", cursive!important;
+  font-weight: bold!important;
+  overflow: hidden!important;
+  color: #ffff33!important; /* bright yellow */
+  text-shadow: 
+    0 0 5px #ffff33, 
+    0 0 10px #ffff33, 
+    0 0 20px #ffff33, 
+    0 0 40px #ffff33;
+  animation: neonPulse 0.5s ease-in-out infinite alternate!important;
+}
+
+@keyframes neonPulse {
+  from { 
+    text-shadow: 0 0 5px #ffff33, 0 0 10px #ffff33!important; 
+  }
+  to { 
+    text-shadow: 0 0 20px #ffff33, 0 0 40px #ffff33, 0 0 60px #ffff33!important; 
+  }
+}
+
+
+.app-intro{
+    font-size: 20px!important;
+}
+.gradio-container  p{ 
+font-size: 16px!important;
+}
+.text_input{
+border:none!important;
+border-radius: none!important;
+}
+.text_input label span {
+display:none!important;
+}
+.text_input textarea{
+max-height:100px!important;
+font-size: 18px !important;
+border:0.5px solid #33abfe!important;
+border-radius: 0px!important;
+background: #eee!important;
+border-bottom:2px solid #33abfe!important;
+}
+.text_input textarea::placeholder{
+font-size: 18px !important;
+font-weight:bold!important;
+color:#68acd9;
+}
+.tabs{
+    box-shadow: 1px 1px 1px #abc2ec!important;
+    border:1px solid #aaa!important;
+    border-radius: 4px !important;
+    background: #fff!important;
+    padding: 10px!important;
+}
+.form{
+    border: none!important;
+}
+.gradio-container p,
+.gradio-container label,
+.gradio-container button,
+.gradio-container input {
+    font-size: 18px !important;  /* Override default sizes */
+}
+
+
+.custom-button {
+  display: inline-block!important;
+  padding: 10px 25px!important;
+  font-size: 14px!important;
+  font-family: "Segoe UI", Tahoma, sans-serif!important;
+  font-weight: 600!important;
+  color: #ffffff!important;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.3)!important;
+  background: linear-gradient(to bottom, #6c8cd5 0%, #3b6ec2 100%)!important;
+  border: 1px solid #1e3d7b!important;
+  border-radius: 4px!important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 1px rgba(255,255,255,0.2)!important;
+  cursor: pointer!important;
+  transition: all 0.2s ease-in-out!important;
+}
+
+.custom-button:hover {
+  background: linear-gradient(to bottom, #7ea3e8 0%, #4a7bd1 100%)!important;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.4), inset 0 1px rgba(255,255,255,0.25)!important;
+}
+
+.custom-button:active {
+  background: linear-gradient(to bottom, #4a7bd1 0%, #3b6ec2 100%)!important;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5)!important;
+  transform: translateY(1px)!important;
+}
+.custom-button-green {
+  display: inline-block!important;
+  padding: 10px 25px!important;
+  font-size: 14px!important;
+  font-family: "Segoe UI", Tahoma, sans-serif!important;
+  font-weight: 600!important;
+  color: #ffffff!important;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.3)!important;
+  background: linear-gradient(to bottom, #6ac259 0%, #3b8b3b 100%)!important;
+  border: 1px solid #1e5a1e!important;
+  border-radius: 4px!important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 1px rgba(255,255,255,0.2)!important;
+  cursor: pointer!important;
+  transition: all 0.2s ease-in-out!important;
+}
+
+.custom-button-green:hover {
+  background: linear-gradient(to bottom, #7bd875 0%, #4ba94b 100%)!important;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.4), inset 0 1px rgba(255,255,255,0.25)!important;
+}
+
+.custom-button-green:active {
+  background: linear-gradient(to bottom, #4ba94b 0%, #3b8b3b 100%)!important;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5)!important;
+  transform: translateY(1px)!important;
+}
+
+.result label span{
+font-size: 20px!important;
+font-weight: bold!important;
+color:rgb(76, 197, 16)!important;
+}
+.result textarea{
+font-size: 18px!important;
+}
