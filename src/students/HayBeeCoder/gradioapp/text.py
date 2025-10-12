@@ -1,9 +1,9 @@
 from PIL import ImageDraw
 
 try:
-    from .image_utils import parse_color, load_font
+    from .image_utils import load_font, parse_color
 except ImportError:
-    from image_utils import parse_color, load_font
+    from image_utils import load_font, parse_color
 
 
 def add_text_overlay(img, text, color=(0, 0, 0), font_size=50, position="center", font_type="dejavusans"):

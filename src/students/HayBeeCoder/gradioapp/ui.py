@@ -1,5 +1,5 @@
-import tempfile
 import random
+import tempfile
 
 import gradio as gr
 
@@ -199,9 +199,13 @@ def create_interface():
 
         input_img = gr.Image(type="pil", label="Upload Image")
 
-        presets = gr.Dropdown(["None", "Vintage", "Dramatic", "Cartoon", "Glitchy", "Embossed Art", "Kaleidoscope Dream",
-                               "Wavy Surreal", "Mosaic Madness"], label="Apply Preset", value="None",
-                               info="Select a preset to quickly apply a unique style.")
+        presets = gr.Dropdown(
+            ["None", "Vintage", "Dramatic", "Cartoon", "Glitchy", "Embossed Art", "Kaleidoscope Dream",
+             "Wavy Surreal", "Mosaic Madness"],
+            label="Apply Preset",
+            value="None",
+            info="Select a preset to quickly apply a unique style."
+        )
 
         with gr.Accordion("Basic Features", open=False):
             with gr.Row():
@@ -279,11 +283,16 @@ def create_interface():
                 text_overlay = gr.Textbox(label="Text Overlay", value="", info="Add text to the image.")
                 text_color = gr.ColorPicker(label="Text Color", value="#000000",
                                              info="Select the color of the text overlay.")
-                text_font_size = gr.Slider(10, 200, value=50, step=5, label="Text Font Size", info="Adjust the font size of"
-                " the overlay text.")
-                text_position = gr.Dropdown(["center", "top_left", "top_right", "bottom_left", "bottom_right"],
-                                             label="Text Position", value="center", info="Select the position of the text o"
-                                             " the image.")
+                text_font_size = gr.Slider(
+                    10, 200, value=50, step=5, label="Text Font Size",
+                    info="Adjust the font size of the overlay text."
+                )
+                text_position = gr.Dropdown(
+                    ["center", "top_left", "top_right", "bottom_left", "bottom_right"],
+                    label="Text Position",
+                    value="center",
+                    info="Select the position of the text on the image."
+                )
                 font_type = gr.Dropdown(
                     ["bebasnas", "dejavusans", "montserrat", "oswald", "poppins", "raleway", "robotocondensed",
                      "sourcesans", "ubuntu"],
@@ -301,7 +310,6 @@ def create_interface():
             randomize_btn = gr.Button("Randomize")
             ascii_btn = gr.Button("Generate ASCII Art")
             download_btn = gr.Button("Download Edited Image")
-            cloud_btn = gr.Button("Upload to Cloud (Coming Soon)", interactive=False)
 
         download_file = gr.File(label="Download File", visible=True)
         cloud_url = gr.Textbox(label="Shareable Cloud URL", interactive=False, placeholder="Cloud upload coming soon.")

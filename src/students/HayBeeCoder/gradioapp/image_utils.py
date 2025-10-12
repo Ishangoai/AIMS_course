@@ -1,10 +1,9 @@
 import os
-import random
 import re
 from io import BytesIO
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageFont
 from scipy import ndimage
 
 
@@ -49,7 +48,7 @@ def generate_gif(img, frames=5):
     """Generate animated GIF from image with rotation."""
     gif_frames = []
     for i in range(frames):
-        frame = img.rotate(i * (360 / frames), resample=Image.BICUBIC, expand=False)
+        frame = img.rotate(i * (360 / frames), resample=Image.Resampling.BICUBIC, expand=False)
         gif_frames.append(frame)
     buffered = BytesIO()
     gif_frames[0].save(buffered, format="GIF", save_all=True, append_images=gif_frames[1:], duration=100, loop=0)
@@ -72,8 +71,8 @@ def _apply_pixelate(img, pixelate):
     """Apply pixelation effect to image."""
     if pixelate > 1:
         w, h = img.size
-        small = img.resize((w // pixelate, h // pixelate), Image.NEAREST)
-        img = small.resize((w, h), Image.NEAREST)
+        small = img.resize((w // pixelate, h // pixelate), Image.Resampling.NEAREST)
+        img = small.resize((w, h), Image.Resampling.NEAREST)
     return img
 
 

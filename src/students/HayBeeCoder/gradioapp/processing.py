@@ -1,11 +1,11 @@
 try:
     from .effects import apply_effects
     from .filters import apply_advanced_edits, apply_basic_edits, apply_intermediate_edits, apply_misc
-    from .image_utils import _apply_crop, _apply_pixelate, improved_remove_background, image_to_ascii
+    from .image_utils import _apply_crop, _apply_pixelate, image_to_ascii, improved_remove_background
 except ImportError:
     from effects import apply_effects
     from filters import apply_advanced_edits, apply_basic_edits, apply_intermediate_edits, apply_misc
-    from image_utils import _apply_crop, _apply_pixelate, improved_remove_background, image_to_ascii
+    from image_utils import _apply_crop, _apply_pixelate, image_to_ascii, improved_remove_background
 
 
 def edit_image(
