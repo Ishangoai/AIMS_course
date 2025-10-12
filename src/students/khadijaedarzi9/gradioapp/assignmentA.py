@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
-from gradioapp.corrector_text_app import text_app
+from gradioapp.assignmentA import txt_app
 
 app = FastAPI(
     title="AIMS Course API",
@@ -19,7 +19,6 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
-    4.[**Text Corrector**](/text-corrector/)
     -----
     """),
     version="1.0.0",
@@ -56,7 +55,7 @@ def evaluate(expression: str):
     Evaluate the given arguments and return the result.
     """
     try:
-        # Evaluate the expressiontext_app
+        # Evaluate the expression
         # print(args.expression)
         # print(type(args.expression))
         result = safe_eval(expression)
@@ -114,6 +113,7 @@ def delete_user(username: str):
     del users[username]
     return {"message": f"User {username} deleted successfully"}
 
+
 @app.put("/register/{username}", summary="Update user details", description="Updates the details of a specific user.")
 def update_user_details(username: str, request: UpdateUserRequest):
     """
@@ -129,5 +129,4 @@ def update_user_details(username: str, request: UpdateUserRequest):
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
-gr.mount_gradio_app(app, image_app, patch="/image_app")
-gr.mount_gradio_app(app,text_app,patch ="/text-corrector")
+gr.mount_gradio_app(app, txt_app, patch="/txt_app")
