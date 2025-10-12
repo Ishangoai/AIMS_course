@@ -3,7 +3,6 @@ import os
 import gradio as gr
 from PIL import Image, ImageEnhance
 
-
 # === Configuration ===
 os.environ["GRADIO_TEMP_DIR"] = "/home/eliasse/Desktop/tmp_gradio"
 os.environ["GRADIO_DISABLE_VIBE"] = "1"
@@ -138,4 +137,3 @@ with gr.Blocks(css="body {background: #f7f9fc;}", analytics_enabled=False) as gr
 
 if __name__ == "__main__":
     gradioImage.launch()
-    

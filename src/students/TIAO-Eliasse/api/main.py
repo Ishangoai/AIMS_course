@@ -2,16 +2,14 @@ import os
 import textwrap
 
 import gradio as gr
-from fastapi import FastAPI, HTTPException
-from fastapi.openapi.docs import get_swagger_ui_html
-
 from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
+from fastapi import FastAPI, HTTPException
+from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.Assignment1propoB import gradioImage
 from gradioapp.heart_disease_app import heart_app
-
 
 app = FastAPI(
     title="AIMS Course API",

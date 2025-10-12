@@ -1,7 +1,6 @@
 import gradio as gr
 from transformers import pipeline
 
-
 pipe = pipeline("translation", model="Helsinki-NLP/opus-mt-en-es")
 
 

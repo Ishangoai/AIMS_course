@@ -2,7 +2,6 @@ import os
 
 import gradio as gr
 
-
 # 👉 Fix: Rediriger le dossier temporaire de Gradio vers ton répertoire personnel
 os.environ["GRADIO_TEMP_DIR"] = os.path.expanduser("~/.gradio_tmp")
 os.makedirs(os.environ["GRADIO_TEMP_DIR"], exist_ok=True)
