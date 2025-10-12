@@ -120,7 +120,7 @@ with gr.Blocks(
     analytics_enabled=False
 ) as gradioImage:
     gr.Markdown("## Pillow Image Editing App\nUpload and enhance your image easily!")
-    
+
     with gr.Row():
         with gr.Column(elem_classes="input-section"):
             input_img = gr.Image(type="pil", label="Upload Image")
@@ -129,7 +129,7 @@ with gr.Blocks(
             contrast = gr.Slider(0.5, 1.5, value=1.0, label="Contrast")
             rotation = gr.Slider(-180, 180, value=0, label="Rotate (°)")
             reset_btn = gr.Button("Reset")
-        
+
         with gr.Column(elem_classes="output-section"):
             output_img = gr.Image(label="Edited Image")
             format_dropdown = gr.Dropdown(
@@ -138,19 +138,19 @@ with gr.Blocks(
                 label="Select Download Format"
             )
             download_btn = gr.Button("Download")
-    
+
     # Connect controls
     controls = [input_img, grayscale, brightness, contrast, rotation]
     for ctrl in controls:
         ctrl.change(process_image, inputs=controls, outputs=output_img)
-    
+
     reset_btn.click(fn=reset_image, outputs=[grayscale, brightness, contrast, rotation])
     download_btn.click(
         fn=save_image,
         inputs=[output_img, format_dropdown],
         outputs=gr.File(label="Download Edited Image")
     )
-    
+
 
 if __name__ == "__main__":
     gradioImage.launch()
