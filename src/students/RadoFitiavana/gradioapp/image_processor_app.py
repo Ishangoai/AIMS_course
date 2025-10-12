@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import io
-<<<<<<< HEAD
 import os
 import tempfile
-=======
->>>>>>> development
 from typing import Callable, Dict, List, Optional, Tuple
 
 import gradio as gr
@@ -20,71 +17,40 @@ def _send_image_to_api(
     image: Image.Image,
     params: Optional[Dict[str, str]] = None,
 ) -> Image.Image:
-<<<<<<< HEAD
     """Send an image to the backend API and return the processed result."""
     buffered = io.BytesIO()
     image.save(buffered, format="PNG")
     buffered.seek(0)
     files = {"image": ("image.png", buffered, "image/png")}
     data = params or {}
-=======
-    """Send an image to a REST API endpoint and return the resulting image."""
-    buffered = io.BytesIO()
-    image.save(buffered, format="PNG")
-    buffered.seek(0)
-
-    files = {"image": ("image.png", buffered, "image/png")}
-    data = params or {}
-
->>>>>>> development
     response = req.post(f"{API_BASE_URL}/{endpoint}", files=files, data=data)
     if response.status_code != 200:
         raise RuntimeError(
             f"API request failed: {response.status_code} - {response.text}"
         )
-<<<<<<< HEAD
-=======
-
->>>>>>> development
     return Image.open(io.BytesIO(response.content))
 
 
 def to_grayscale(image: Image.Image) -> Image.Image:
-<<<<<<< HEAD
     """Convert the image to grayscale via the API."""
-=======
->>>>>>> development
     return _send_image_to_api("grayscale", image)
 
 
 def adjust_brightness(image: Image.Image, brightness: float) -> Image.Image:
-<<<<<<< HEAD
     """Adjust brightness of the image via the API."""
-=======
->>>>>>> development
     return _send_image_to_api("brightness", image, {"brightness": str(brightness)})
 
 
 def adjust_contrast(image: Image.Image, contrast: float) -> Image.Image:
-<<<<<<< HEAD
     """Adjust contrast of the image via the API."""
-=======
->>>>>>> development
     return _send_image_to_api("contrast", image, {"contrast": str(contrast)})
 
 
 def rotate_image(image: Image.Image, rotation: float) -> Image.Image:
-<<<<<<< HEAD
     """Rotate the image via the API."""
     return _send_image_to_api("rotate", image, {"rotation": str(rotation)})
 
 
-=======
-    return _send_image_to_api("rotate", image, {"rotation": str(rotation)})
-
-
-# Type aliases
->>>>>>> development
 ImageHistory = List[Image.Image]
 ParamHistory = List[Dict[str, float]]
 ApplyResult = Tuple[Optional[Image.Image], ImageHistory, ParamHistory]
@@ -99,49 +65,26 @@ def apply_modification(
     updated_param_name: Optional[str] = None,
     updated_value: Optional[float] = None,
 ) -> ApplyResult:
-<<<<<<< HEAD
     """Apply a transformation, update history and parameters."""
     if img is None:
         return None, img_hist, param_hist
 
-=======
-    """Apply a transformation and update image & parameter history."""
-    if img is None:
-        return None, img_hist, param_hist
-
-    # Create new param snapshot (copy last or defaults)
->>>>>>> development
     new_params: Dict[str, float] = (
         param_hist[-1].copy()
         if param_hist
         else {"brightness": 1.0, "contrast": 1.0, "rotation": 0.0}
     )
 
-<<<<<<< HEAD
     if updated_param_name is not None and updated_value is not None:
         new_params[updated_param_name] = updated_value
 
-=======
-    # Update only the changed parameter
-    if updated_param_name is not None and updated_value is not None:
-        new_params[updated_param_name] = updated_value
-
-    # Apply the image transformation
->>>>>>> development
     if updated_value is not None:
         new_img = endpoint_fn(img, updated_value)
     else:
         new_img = endpoint_fn(img)
 
-<<<<<<< HEAD
     img_hist.append(img.copy())
     param_hist.append(new_params.copy())
-=======
-    # Save both image & parameter history
-    img_hist.append(img.copy())
-    param_hist.append(new_params.copy())
-
->>>>>>> development
     return new_img, img_hist, param_hist
 
 
@@ -155,11 +98,7 @@ def revert_change(
     float,
     float,
 ]:
-<<<<<<< HEAD
     """Revert the last applied image modification."""
-=======
-    """Revert to the previous image and parameters."""
->>>>>>> development
     if not img_hist or len(img_hist) <= 1:
         if img_hist:
             return img_hist[0], img_hist, param_hist, 1.0, 1.0, 0.0
@@ -167,15 +106,8 @@ def revert_change(
 
     img_hist.pop()
     param_hist.pop()
-<<<<<<< HEAD
     prev_img = img_hist[-1]
     prev_params = param_hist[-1]
-=======
-
-    prev_img = img_hist[-1]
-    prev_params = param_hist[-1]
-
->>>>>>> development
     return (
         prev_img,
         img_hist,
