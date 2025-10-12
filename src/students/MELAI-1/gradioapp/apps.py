@@ -1,18 +1,7 @@
-"""Gradio interface for Text Processing App.
-
-Location: khadijaedarzi9/gradio_app/app.py
-This file contains only UI code and imports functions from operations.py
-"""
-
-import datetime
-from typing import Any, Tuple
-
 import gradio as gr
 import requests
 
 API_URL = "http://0.0.0.0:8080"
-
-
 
 
 def greet_user():
