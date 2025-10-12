@@ -3,7 +3,6 @@
 import gradio as gr
 from gradioapp.utils.text_analyzer import case_converter, text_analyzer, text_reverser_all_character, text_reverser_word
 
-
 with gr.Blocks(css="body {background: #f2f7ff;}") as text_analyzer_app_instance:
     gr.Markdown("# AIMS Course: Text Analyzer by Vicent and Andrianina")
     gr.Markdown("This app provides various text analysis functionalities.")
