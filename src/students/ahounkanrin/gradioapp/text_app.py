@@ -44,7 +44,7 @@ def reset(text):
     return text, None, False, False
 
 
-with gr.Blocks(theme=gr.themes.Citrus()) as text_app:
+with gr.Blocks() as text_app:
     gr.Markdown("# Text Manipulation App")
 
     with gr.Row():

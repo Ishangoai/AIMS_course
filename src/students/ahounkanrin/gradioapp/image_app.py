@@ -37,7 +37,7 @@ def reset():
     return None, False, 1, 1, 0, None
 
 
-with gr.Blocks(theme=gr.themes.Citrus()) as image_app:
+with gr.Blocks() as image_app:
     gr.Markdown("# Image Processing App")
 
     with gr.Row():
