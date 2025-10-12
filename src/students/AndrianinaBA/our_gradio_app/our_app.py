@@ -43,7 +43,7 @@ def update_display(input_text, case_option, reverse_all, reverse_word):
 
 
 def apply_events(input_widgets, input_options, output_options):
-    """ Apply the events to the input widgets. It is the function that handles 
+    """ Apply the events to the input widgets. It is the function that handles
     the app updating the user's input dynamically
     Args :
         - input_widgets (list): the list of the input widgets
