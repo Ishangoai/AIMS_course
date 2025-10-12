@@ -1,11 +1,11 @@
 """
-Scrabble Game (Simplified)
+Scrabble/Word Composing Game (Simplified)
 --------------------------
-A minimal interactive Scrabble game with Gradio UI.
-You play against a computer AI that forms random valid words.
+A minimal interactive Word Composing game with Gradio UI.
+You play against a computer to Score the most points through forming words from a given tray.
 
 Authors: [Daniel Ayomide and Elisha Komolafe]
-Date: 2025-10-11
+Date: 2025-10-12
 """
 
 from pathlib import Path
@@ -14,7 +14,7 @@ from random import shuffle
 import gradio as gr
 
 # ============================================================
-# 🧰 Utility Functions and Constants
+#  Utility Functions and Constants
 # ============================================================
 
 
@@ -41,7 +41,7 @@ def load_dictionary() -> set[str]:
 # Load the dictionary once
 DICTIONARY = load_dictionary()
 
-# Letter point values
+# Scoring for each letter based on the scrabble game
 LETTER_VALUES: dict[str, int] = {
     "A": 1, "B": 3, "C": 3, "D": 2, "E": 1, "F": 4, "G": 2, "H": 4,
     "I": 1, "J": 8, "K": 5, "L": 1, "M": 3, "N": 1, "O": 1, "P": 3,
@@ -50,7 +50,7 @@ LETTER_VALUES: dict[str, int] = {
 }
 
 # ============================================================
-# 🎲 Game Components
+#  Game Components
 # ============================================================
 
 
