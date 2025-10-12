@@ -65,7 +65,7 @@ def process_text(text, case_option, reverse_words, reverse_chars, analyze):
 
 # ---- Gradio Interface ----
 
-with gr.Blocks() as demo:
+with gr.Blocks() as app:
     gr.Markdown("# Text Operations App")
     gr.Markdown("Type or paste text, choose your operations, and see the result below.")
 
@@ -100,5 +100,3 @@ with gr.Blocks() as demo:
         outputs=output_box
     )
 
-# Launch app
-demo.launch(share=True)
