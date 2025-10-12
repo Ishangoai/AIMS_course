@@ -1,7 +1,8 @@
 import os
-from PIL import Image, ImageEnhance
-from io import BytesIO
+
 import gradio as gr
+from PIL import Image, ImageEnhance
+
 
 # === Configuration ===
 os.environ["GRADIO_TEMP_DIR"] = "/home/eliasse/Desktop/tmp_gradio"
@@ -44,13 +45,13 @@ def process_image(image, grayscale, brightness, contrast, rotation):
     """Apply all selected transformations using Pillow."""
     if image is None:
         return None
-    
+
     img = load_image(image)
     img = apply_grayscale(img, grayscale)
     img = adjust_brightness(img, brightness)
     img = adjust_contrast(img, contrast)
     img = rotate_image(img, rotation)
-    
+
     return img
 
 
@@ -63,25 +64,25 @@ def save_image(image, format_choice):
     """
     Prepare the image for download in the selected format.
     Browser will prompt user where to save.
-    
+
     Args:
         image: The image to save
         format_choice: Selected format (PNG or JPEG)
-    
+
     Returns:
         str: Temporary file path for download
     """
     if image is None:
         return None
-    
+
     # Convert NumPy array to PIL Image if needed
     if not isinstance(image, Image.Image):
         image = Image.fromarray(image)
-    
+
     # Create temp directory if it doesn't exist
     temp_dir = os.environ.get("GRADIO_TEMP_DIR", "/tmp")
     os.makedirs(temp_dir, exist_ok=True)
-    
+
     # Determine filename and path
     if format_choice == "JPEG":
         filename = os.path.join(temp_dir, "edited_image.jpg")
@@ -96,14 +97,14 @@ def save_image(image, format_choice):
     else:  # PNG
         filename = os.path.join(temp_dir, "edited_image.png")
         image.save(filename, format="PNG")
-    
+
     return filename
 
 
 # === Interface Gradio ===
 with gr.Blocks(css="body {background: #f7f9fc;}", analytics_enabled=False) as gradioImage:
-    gr.Markdown("## 🎨 Pillow Image Editing App\nUpload and enhance your image easily!")
-    
+    gr.Markdown("## Pillow Image Editing App\nUpload and enhance your image easily!")
+
     with gr.Row():
         with gr.Column():
             input_img = gr.Image(type="pil", label="Upload Image")
@@ -111,29 +112,30 @@ with gr.Blocks(css="body {background: #f7f9fc;}", analytics_enabled=False) as gr
             brightness = gr.Slider(0.5, 1.5, value=1.0, label="Brightness")
             contrast = gr.Slider(0.5, 1.5, value=1.0, label="Contrast")
             rotation = gr.Slider(-180, 180, value=0, label="Rotate (°)")
-            reset_btn = gr.Button("🔄 Reset")
-            
+            reset_btn = gr.Button("Reset")
+
         with gr.Column():
             output_img = gr.Image(label="Edited Image")
             format_dropdown = gr.Dropdown(
-                choices=["PNG", "JPEG"], 
-                value="PNG", 
-                label="📁 Select Download Format"
+                choices=["PNG", "JPEG"],
+                value="PNG",
+                label="Select Download Format"
             )
-            download_btn = gr.Button("⬇️ Download")
-    
+            download_btn = gr.Button("Download")
+
     # Connect controls
     controls = [input_img, grayscale, brightness, contrast, rotation]
     for ctrl in controls:
         ctrl.change(process_image, inputs=controls, outputs=output_img)
-    
+
     reset_btn.click(fn=reset_image, outputs=[grayscale, brightness, contrast, rotation])
     download_btn.click(
-        fn=save_image, 
-        inputs=[output_img, format_dropdown], 
+        fn=save_image,
+        inputs=[output_img, format_dropdown],
         outputs=gr.File(label="Download Edited Image")
     )
 
 
 if __name__ == "__main__":
     gradioImage.launch()
+    

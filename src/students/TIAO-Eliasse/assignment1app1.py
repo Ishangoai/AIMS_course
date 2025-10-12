@@ -1,12 +1,16 @@
 import os
 
+import gradio as gr
+
+
 # 👉 Fix: Rediriger le dossier temporaire de Gradio vers ton répertoire personnel
 os.environ["GRADIO_TEMP_DIR"] = os.path.expanduser("~/.gradio_tmp")
 os.makedirs(os.environ["GRADIO_TEMP_DIR"], exist_ok=True)
 
-import gradio as gr
 
 # --- Utility Functions ---
+
+
 def process_text(text, case_option, reverse_words, reverse_chars):
     if not text:
         return ""
@@ -33,22 +37,28 @@ def process_text(text, case_option, reverse_words, reverse_chars):
 def analyze_text(text):
     if not text.strip():
         return 0, 0, 0.0
+
     words = text.split()
     word_count = len(words)
     char_count = len(text)
     avg_word_len = sum(len(w) for w in words) / word_count if word_count else 0
+
     return word_count, char_count, round(avg_word_len, 2)
 
 
 # --- Main Function ---
+
+
 def text_tool(text, case_option, reverse_words, reverse_chars):
     processed = process_text(text, case_option, reverse_words, reverse_chars)
     word_count, char_count, avg_word_len = analyze_text(text)
+
     stats = (
         f"**Word Count:** {word_count}\n"
         f"**Character Count:** {char_count}\n"
         f"**Average Word Length:** {avg_word_len}"
     )
+
     return processed, stats
 
 
@@ -77,7 +87,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as demo:
 
     with gr.Row():
         result_output = gr.Textbox(label="Output", lines=5, interactive=False)
-    
+
     with gr.Row():
         clear_btn = gr.Button("🧹 Clear")
 
