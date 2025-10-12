@@ -54,6 +54,8 @@ def filter_function(img: Image.Image, filter_type: str) -> Image.Image:
     else:
         return img
 
+<<<<<<< HEAD
+
 # def filter_function(img: Image.Image, choice) -> Image.Image:
 
 #     if choice == 'BLUR':
@@ -66,6 +68,8 @@ def filter_function(img: Image.Image, filter_type: str) -> Image.Image:
 
 #     return filter_img
 
+=======
+>>>>>>> development
 
 def adjust_brightness(img: Image.Image, brightness: float) -> Image.Image:
     """
@@ -275,8 +279,16 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
 
             save_button_filter.click(save_image, inputs=[filter_output_image, filter_radio], outputs=file_output_filter)
 
-    upload_btn.upload(fn=wrapped_upload_image, inputs=upload_btn,
+<<<<<<< HEAD
+    upload_btn.upload(
+        fn=wrapped_upload_image,
+        inputs=upload_btn,
+        outputs=[input_image, output_image, filter_input_image, filter_output_image],
+    )
+=======
+    upload_button.upload(fn=wrapped_upload_image, inputs=upload_button,
                     outputs=[input_image, output_image, filter_input_image, filter_output_image])
+>>>>>>> development
 
 
 if __name__ == "__main__":
