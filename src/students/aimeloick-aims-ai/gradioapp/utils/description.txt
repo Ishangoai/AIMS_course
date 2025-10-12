@@ -1,3 +1,4 @@
 #https://pillow.readthedocs.io/en/stable/reference/Image.html
 # Load model
 #https://www.geeksforgeeks.org/python/python-pil-imageops-greyscale-method/
+https://penscola.medium.com/remove-image-background-with-5-lines-of-python-code-b3ca7beba869
