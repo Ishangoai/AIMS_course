@@ -93,5 +93,3 @@ with gr.Blocks() as app:
         inputs=[input_image],
         outputs=inputs + [output_image]
     )
-
-    
