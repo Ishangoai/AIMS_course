@@ -1,37 +1,43 @@
 # scripts/utils.py
-import os
-import numpy as np
-from PIL import Image, ImageOps, ImageEnhance
+from PIL import Image, ImageEnhance, ImageOps
+
 
 def grayscale(image):
-    #applying grayscale method 
+    """Apply grayscale filter to the image."""
     image_gray = ImageOps.grayscale(image)
     return image_gray
 
+
 def brightness(image, brightness_factor):
+    """Adjust the brightness of the image."""
     enhancer = ImageEnhance.Brightness(image)
     brightened_image = enhancer.enhance(brightness_factor)
     return brightened_image
 
+
 def contrast(image, contrast_factor):
+    """Adjust the contrast of the image."""
     enhancer = ImageEnhance.Contrast(image)
     contrasted_image = enhancer.enhance(contrast_factor)
     return contrasted_image
 
-def rotate_image(image, degree):
-    return image.rotate(degree, expand = True)
 
-   
+def rotate_image(image, degree):
+    """Rotate the image by a given degree."""
+    return image.rotate(degree, expand=True)
+
+
 def apply_zoom(image, zoom_factor):
-    """Zoom in/out l'image par un facteur."""
+    """Zoom in/out the image by a factor."""
     if zoom_factor == 1.0:
         return image
     w, h = image.size
     new_w, new_h = int(w * zoom_factor), int(h * zoom_factor)
-    return image.resize((new_w, new_h), resample =  Image.LANCZOS)
+    return image.resize((new_w, new_h), resample=Image.LANCZOS)
+
 
 def remove_white_background(image, threshold):
-    """Rend le fond blanc transparent."""
+    """Make white background transparent based on threshold."""
     img = image.convert("RGBA")
     datas = img.getdata()
 
@@ -44,16 +50,17 @@ def remove_white_background(image, threshold):
     img.putdata(new_data)
     return img
 
+
 def transform_image(image, grayscale_or_not, brightness_factor, contrast_factor, degree, threshold):
+    """Apply all transformations in sequence to the image."""
     if grayscale_or_not == "Grayscale":
-         image_gray = grayscale(image)
-    else :
-         image_gray = image
+        image_gray = grayscale(image)
+    else:
+        image_gray = image
+
     brightened_image = brightness(image_gray, brightness_factor)
-    contrastn_image = contrast(brightened_image, contrast_factor)
-    rotation_image = rotate_image(contrastn_image, degree)
-    without_background_image = remove_white_background(rotation_image, threshold)
-    #zoom_image = apply_zoom(without_background_image, zoom_factor)
-    return without_background_image 
-
-
+    contrasted_image = contrast(brightened_image, contrast_factor)
+    rotated_image = rotate_image(contrasted_image, degree)
+    final_image = remove_white_background(rotated_image, threshold)
+    # zoom_image = apply_zoom(final_image, zoom_factor)
+    return final_image
