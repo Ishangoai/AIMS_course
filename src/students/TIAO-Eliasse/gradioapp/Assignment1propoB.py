@@ -101,19 +101,36 @@ def save_image(image, format_choice):
 
 
 # === Interface Gradio ===
-with gr.Blocks(css="body {background: #f7f9fc;}", analytics_enabled=False) as gradioImage:
+with gr.Blocks(
+    css="""
+    body {background: #f7f9fc;}
+    .input-section {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .output-section {
+        background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    """,
+    analytics_enabled=False
+) as gradioImage:
     gr.Markdown("## Pillow Image Editing App\nUpload and enhance your image easily!")
-
+    
     with gr.Row():
-        with gr.Column():
+        with gr.Column(elem_classes="input-section"):
             input_img = gr.Image(type="pil", label="Upload Image")
             grayscale = gr.Checkbox(label="Convert to Grayscale", value=False)
             brightness = gr.Slider(0.5, 1.5, value=1.0, label="Brightness")
             contrast = gr.Slider(0.5, 1.5, value=1.0, label="Contrast")
             rotation = gr.Slider(-180, 180, value=0, label="Rotate (°)")
             reset_btn = gr.Button("Reset")
-
-        with gr.Column():
+        
+        with gr.Column(elem_classes="output-section"):
             output_img = gr.Image(label="Edited Image")
             format_dropdown = gr.Dropdown(
                 choices=["PNG", "JPEG"],
@@ -121,19 +138,19 @@ with gr.Blocks(css="body {background: #f7f9fc;}", analytics_enabled=False) as gr
                 label="Select Download Format"
             )
             download_btn = gr.Button("Download")
-
+    
     # Connect controls
     controls = [input_img, grayscale, brightness, contrast, rotation]
     for ctrl in controls:
         ctrl.change(process_image, inputs=controls, outputs=output_img)
-
+    
     reset_btn.click(fn=reset_image, outputs=[grayscale, brightness, contrast, rotation])
     download_btn.click(
         fn=save_image,
         inputs=[output_img, format_dropdown],
         outputs=gr.File(label="Download Edited Image")
     )
-
+    
 
 if __name__ == "__main__":
     gradioImage.launch()
