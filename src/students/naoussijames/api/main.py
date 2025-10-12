@@ -8,8 +8,8 @@ from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
-from gradioapp.heart_disease_app import heart_app
 from gradioapp.Assignment_1 import my_app
+from gradioapp.heart_disease_app import heart_app
 
 app = FastAPI(
     title="AIMS Course API",
