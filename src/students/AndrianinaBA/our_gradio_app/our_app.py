@@ -27,6 +27,12 @@ with open("our_gradio_app/utils/style.css") as f:
 
 
 def update_display(input_text, case_option, reverse_all, reverse_word):
+    """ Update the display based on the input text and the selected options
+    Args :
+     - input_text (str): the text that we want to process
+     - case_option (str): the case option selected by the user
+     - reverse_all (bool): whether to reverse all characters or not
+    """
     output_text = input_text
     if reverse_all:
         output_text = text_reverser_all_character(output_text, reverse_all)
@@ -37,15 +43,34 @@ def update_display(input_text, case_option, reverse_all, reverse_word):
 
 
 def apply_events(input_widgets, input_options, output_options):
+    """ Apply the events to the input widgets. It is the function that handles
+    the app updating the user's input dynamically
+    Args :
+        - input_widgets (list): the list of the input widgets
+        - input_options (list): the list of the input options
+        - output_options (list): the list of the output options
+    """
     for widget in input_widgets:
         widget.change(fn=update_display, inputs=input_options, outputs=output_options)
 
 
 def update_statistics(input_text):
+    """ Update the text statistics based on the input text
+    Args :
+     - input_text (str): the text that we want to analyze
+    Returns :
+     - analyzed text using the text_analyzer function
+    """
     return text_analyzer(input_text)
 
 
 def update_image(input_text):
+    """ Generate the wordart image from the input text
+    Args :
+     - input_text (str): the text that we want to convert to word art
+    Returns :
+     - the wordart image
+    """
     url = make_url(input_text) if input_text != '' else make_url()
     response = requests.get(url)
     img = Image.open(BytesIO(response.content))
@@ -53,12 +78,19 @@ def update_image(input_text):
 
 
 def make_url(text='Click button to generate word art ....'):
+    """
+    Create the url to generate the wordart image
+    Args :
+     - text (str): the text that we want to convert to word art
+    """
     url = f"https://quickchart.io/wordcloud?format=png&backgroundColor=white&maxNumWords=200&fontScale=25&width=500&height=500&text={text}"
 
     return url
 
 
 def delete_text():
+    """"
+    Clear the input text and reset the image to placeholder"""
     url = make_url()
     return '', url
 
