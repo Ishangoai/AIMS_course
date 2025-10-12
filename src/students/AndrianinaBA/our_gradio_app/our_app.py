@@ -19,10 +19,10 @@ import gradio as gr
 import requests
 from PIL import Image
 
-from utils.text_analyzer import case_converter, text_analyzer, text_reverser_all_character, text_reverser_word
+from .utils.text_analyzer import case_converter, text_analyzer, text_reverser_all_character, text_reverser_word
 
 style = ''
-with open("utils/style.css") as f:
+with open("our_gradio_app/utils/style.css") as f:
     style = f.read()
 
 

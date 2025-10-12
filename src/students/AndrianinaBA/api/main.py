@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
-from our_gradio_app.our_app import our_gradio_instance  # IGNORE
+from our_gradio_app.our_app import our_gradio_instance
 
 app = FastAPI(
     title="AIMS Course API",
@@ -100,9 +100,7 @@ def get_user_details(username: str):
 
 
 @app.delete(
-    "/register/{username}/delete",
-    summary="Delete a user",
-    description="Deletes a user with the given username."
+    "/register/{username}/delete", summary="Delete a user", description="Deletes a user with the given username."
 )
 def delete_user(username: str):
     """
