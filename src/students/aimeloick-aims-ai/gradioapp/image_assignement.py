@@ -20,12 +20,22 @@ css = """
 # ==============================
 def transform_images(image, grayscale_or_not, brightness, contrast_factor, degree, threshold):
     """Apply transformations to an image."""
+    if image is None:
+        return None
     return transform_image(image, grayscale_or_not, brightness, contrast_factor, degree, threshold)
 
 
 def reset_image():
     """Reset all image transformation controls to default."""
-    return "No Grayscale", 1.0, 1.0, 0
+    return "No Grayscale", 1.0, 1.0, 0, 80
+
+
+def download_image(image):
+    """Return the image for download."""
+    if image is None:
+        gr.Warning("No image to download!")
+        return None
+    return image
 
 
 def process_folder(folder):
@@ -46,12 +56,6 @@ with gr.Blocks(css=css) as app:
     )
     gr.HTML("<hr>")
 
-    # Top buttons
-    with gr.Row():
-        btn1 = gr.Button("Image")
-        btn2 = gr.Button("Folder")
-
-    gr.HTML("<hr>")
     with gr.Row():
         gr.Markdown("# Please upload an image.")
 
@@ -76,6 +80,7 @@ with gr.Blocks(css=css) as app:
 
             controls = [image, grayscale_or_not, brightness, contrast_factor, degree, threshold]
 
+            # Update output when controls change
             for ctrl in controls:
                 ctrl.change(transform_images, inputs=controls, outputs=output_img)
 
@@ -84,15 +89,14 @@ with gr.Blocks(css=css) as app:
                     reset_btn = gr.Button("Reset")
                     reset_btn.click(
                         fn=reset_image,
-                        outputs=[grayscale_or_not, brightness, contrast_factor, degree],
+                        outputs=[grayscale_or_not, brightness, contrast_factor, degree, threshold],
                     )
                 with gr.Column():
+                    # File component for download (hidden by default)
+                    download_file = gr.File(label="Download Image", visible=False)
                     download_btn = gr.Button("Download")
-
-        # ---------- Right Column (Folder Processing) ----------
-        with gr.Column(elem_classes="shadow-box"):
-            gr.Markdown("Upload a folder to see its contents")
-            input_folder = gr.File(file_count="directory", label="Upload a folder")
-            output_text = gr.Textbox(label="Processed Files")
-            submit_button = gr.Button("Process")
-            submit_button.click(fn=process_folder, inputs=input_folder, outputs=output_text)
+                    download_btn.click(
+                        fn=download_image,
+                        inputs=[output_img],
+                        outputs=[download_file]
+                    )

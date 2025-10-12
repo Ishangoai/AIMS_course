@@ -15,3 +15,14 @@ https://penscola.medium.com/remove-image-background-with-5-lines-of-python-code-
             # transform_btn.click(fn=transform_images,
             #               inputs=[image,grayscale_or_not,brightness,contrast_factor,degree,threshold],
             #              outputs = output_img)
+
+
+# ---------- Right Column (Folder Processing) ----------
+        with gr.Column(elem_classes="shadow-box"):
+            gr.Markdown("Upload a folder to see its contents")
+            input_folder = gr.File(file_count="directory", label="Upload a folder")
+            output_text = gr.Textbox(label="Processed Files")
+            submit_button = gr.Button("Process")
+            submit_button.click(fn=process_folder, inputs=input_folder, outputs=output_text)
+btn1 = gr.Button("Image")
+        btn2 = gr.Button("Folder")

@@ -1,5 +1,5 @@
 # scripts/utils.py
-from PIL import Image, ImageEnhance, ImageOps
+from PIL import ImageEnhance, ImageOps
 
 
 def grayscale(image):
@@ -25,15 +25,6 @@ def contrast(image, contrast_factor):
 def rotate_image(image, degree):
     """Rotate the image by a given degree."""
     return image.rotate(degree, expand=True)
-
-
-def apply_zoom(image, zoom_factor):
-    """Zoom in/out the image by a factor."""
-    if zoom_factor == 1.0:
-        return image
-    w, h = image.size
-    new_w, new_h = int(w * zoom_factor), int(h * zoom_factor)
-    return image.resize((new_w, new_h), resample=Image.LANCZOS)
 
 
 def remove_white_background(image, threshold):
@@ -62,5 +53,4 @@ def transform_image(image, grayscale_or_not, brightness_factor, contrast_factor,
     contrasted_image = contrast(brightened_image, contrast_factor)
     rotated_image = rotate_image(contrasted_image, degree)
     final_image = remove_white_background(rotated_image, threshold)
-    # zoom_image = apply_zoom(final_image, zoom_factor)
     return final_image
