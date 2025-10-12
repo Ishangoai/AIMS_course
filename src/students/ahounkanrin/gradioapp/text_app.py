@@ -1,20 +1,14 @@
 import gradio as gr
 
 
-def update_output_textbox(text):
+def case_converter(text, case):
+    if case == "Uppercase":
+        return text.upper()
+    elif case == "Lowercase":
+        return text.lower()
+    elif case == "Titlecase":
+        return text.title()
     return text
-
-
-def uppercase(text):
-    return text.upper()
-
-
-def lowercase(text):
-    return text.lower()
-
-
-def titlecase(text):
-    return text.title()
 
 
 def reverse_words_order(text, checkbox_checked):
@@ -47,7 +41,7 @@ def average_word_length_counter(text):
 
 
 def reset(text):
-    return text
+    return text, None, False, False
 
 
 with gr.Blocks() as text_app:
@@ -62,11 +56,8 @@ with gr.Blocks() as text_app:
 
             with gr.Row():
                 with gr.Column():
-                    uppercase_button = gr.Button("Uppercase")
-                with gr.Column():
-                    lowercase_button = gr.Button("Lowercase")
-                with gr.Column():
-                    titlecase_button = gr.Button("Titlecase")
+                    case_buttons = gr.Radio(choices=["Uppercase", "Lowercase", "Titlecase"],
+                                            label="Chose an option", value=None)
 
         with gr.Tab("Text Reverser"):
 
@@ -97,11 +88,10 @@ with gr.Blocks() as text_app:
         with gr.Column():
             reset_button = gr.Button("Reset")
 
-    uppercase_button.click(fn=uppercase, inputs=input_text, outputs=output_text)
-    lowercase_button.click(fn=lowercase, inputs=input_text, outputs=output_text)
-    titlecase_button.click(fn=titlecase, inputs=input_text, outputs=output_text)
+    case_buttons.change(fn=case_converter, inputs=[input_text, case_buttons], outputs=output_text)
     clear_button.click(fn=lambda: None, inputs=None, outputs=output_text)
-    reset_button.click(fn=reset, inputs=input_text, outputs=output_text)
+    reset_button.click(fn=reset, inputs=input_text,
+                       outputs=[output_text, case_buttons, reversed_words_checkbox, reversed_characters_checkbox])
 
     reversed_words_checkbox.change(fn=reverse_words_order,
                                    inputs=[input_text, reversed_words_checkbox],
@@ -113,4 +103,4 @@ with gr.Blocks() as text_app:
     input_text.change(fn=word_counter, inputs=input_text, outputs=words_count)
     input_text.change(fn=charater_counter, inputs=input_text, outputs=character_count)
     input_text.change(fn=average_word_length_counter, inputs=input_text, outputs=average_word_length)
-    input_text.change(fn=update_output_textbox, inputs=input_text, outputs=output_text)
+    input_text.change(fn=lambda x: x, inputs=input_text, outputs=output_text)
