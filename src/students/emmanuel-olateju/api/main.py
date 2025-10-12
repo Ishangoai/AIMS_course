@@ -11,6 +11,7 @@ from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.imagedit import image_edit_app
 from gradioapp.imagedit_v2 import image_edit_v2_app
+from gradioapp.imagedit_vibe import imagedit_vibe_app
 
 # from gradioapp.imagedit_v3 import image_editor
 
@@ -135,4 +136,5 @@ gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, image_edit_app, path="/image-edit")
 gr.mount_gradio_app(app, image_edit_v2_app, path="/image-edit-v2")
+gr.mount_gradio_app(app, imagedit_vibe_app, path="/image-edit-vibe")
 # gr.mount_gradio_app(app, image_editor, path="/image-edit-v3")

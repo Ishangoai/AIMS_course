@@ -130,7 +130,7 @@ def on_image_upload(image):
 
 # Create Gradio interface
 
-with gr.Blocks(title="Image Editor Pro", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="Image Editor Pro", theme=gr.themes.Soft()) as imagedit_vibe_app:
     gr.Markdown(
         """
        # 🎨 Image Editor Pro
@@ -263,4 +263,4 @@ with gr.Blocks(title="Image Editor Pro", theme=gr.themes.Soft()) as demo:
 
 
 if __name__ == "__main__":
-    demo.launch()
+    imagedit_vibe_app.launch()
