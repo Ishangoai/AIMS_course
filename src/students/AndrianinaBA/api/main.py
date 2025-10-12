@@ -3,13 +3,13 @@ import textwrap
 
 import gradio as gr
 from agents.chatbot.llm_gradio import llm_chat
-from AndrianinaBA.our_gradio_app.our_app import our_gradio_instance  # IGNORE
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
+from our_gradio_app.our_app import our_gradio_instance  # IGNORE
 
 app = FastAPI(
     title="AIMS Course API",
