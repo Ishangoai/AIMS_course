@@ -48,6 +48,7 @@ def delete_user(username):
 
 with gr.Blocks() as app:
     gr.Markdown("# AIMS Course Gradio App")
+    gr.Textbox("Hello world ")
 
     with gr.Tab("Greet"):
         greet_button = gr.Button("Greet Me")
