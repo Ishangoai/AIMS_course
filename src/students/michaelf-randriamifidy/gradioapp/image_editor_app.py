@@ -44,18 +44,6 @@ def filter_function(img: Image.Image, filter_type: str) -> Image.Image:
     else:
         return img
 
-# def filter_function(img: Image.Image, choice) -> Image.Image:
-
-#     if choice == 'BLUR':
-#         filter_img = img.filter(ImageFilter.BLUR)
-#     elif choice == "CONTOUR":
-#         filter_img = img.filter(ImageFilter.CONTOUR)
-
-#     elif choice == "DETAIL":
-#         filter_img = img.filter(ImageFilter.DETAIL)
-
-#     return filter_img
-
 
 def adjust_brightness(img: Image.Image, brightness: float) -> Image.Image:
     """
@@ -198,11 +186,10 @@ def save_image(img: Image.Image, filename: str = "", ext: str = ".png") -> str:
 
 # --- Gradio interface ---
 with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
-    gr.Markdown("# Image Operations\n Upload an image, apply effects \n by Ange and Michael Fitiavana")
+    gr.Markdown("# Image Operations\n Upload an image, apply effects\n by Ange and Michael Fitiavana")
 
     with gr.Row():
-        upload_btn = gr.File(label="Upload Image", file_types=[".png", ".jpg", ".jpeg"])
-        # image_input = gr.Image(type="pil", label="Upload Image")
+        upload_button = gr.File(label="Upload Image", file_types=[".png", ".jpg", ".jpeg"])
 
     with gr.Tabs():
         with gr.Tab("Adjust Image"):
@@ -233,7 +220,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
             outputs=[output_image],
             )
 
-            # Save button
+            # --- Save button ---
             gr.Markdown("### Download Image")
             save_button = gr.Button("Save Image")
             file_output = gr.File(label="Download your edited image")
@@ -244,7 +231,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
             )
 
         with gr.Tab(label="Filter Image"):
-            gr.Markdown("# Choose filter Option: blur or contour or detail")
+            gr.Markdown("# Choose filter Option")
 
             with gr.Row():
                 with gr.Column(scale=2):
@@ -269,7 +256,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
             outputs=[filter_output_image],
             )
 
-            # Save button
+            # --- Save button ---
             gr.Markdown("### Download Image")
             save_button_filter = gr.Button("Save Image")
             file_output_filter = gr.File(label="Download your filter image")
@@ -280,7 +267,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
                 outputs=file_output_filter
             )
 
-    upload_btn.upload(fn=wrapped_upload_image, inputs=upload_btn,
+    upload_button.upload(fn=wrapped_upload_image, inputs=upload_button,
                     outputs=[input_image, output_image, filter_input_image, filter_output_image])
 
 
