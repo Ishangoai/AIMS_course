@@ -5,30 +5,37 @@ Location: khadijaedarzi9/gradio_app/app.py
 This file contains only UI code and imports functions from operations.py
 """
 
-import gradio as gr
 import datetime
-from gradioapp.utils.operations import (correct_text,convert_text,reverse_text,analyze_text,generate_word_cloud,save_as_txt)
 
+import gradio as gr
+from gradioapp.utils.operations import (
+    analyze_text,
+    convert_text,
+    correct_text,
+    generate_word_cloud,
+    reverse_text,
+    save_as_txt,
+)
 
 
 class TextStyler:
     """Apply styling to text based on font, size, and type."""
-    
+
     FONT_FAMILIES = {
         "Arial": "Arial, sans-serif",
         "Times New Roman": "'Times New Roman', serif",
         "Courier": "'Courier New', monospace"
     }
-    
+
     @staticmethod
     def apply_style(text, font, size, text_type):
         """Apply HTML styling to text."""
         if not text:
             return ""
-        
+
         font_family = TextStyler.FONT_FAMILIES.get(font, "Arial, sans-serif")
         font_size = f"{size}px"
-        
+
         # Apply text type styling
         if text_type == "Title":
             weight = "bold"
@@ -39,14 +46,14 @@ class TextStyler:
         else:  # Body
             weight = "normal"
             transform = "none"
-        
+
         style = (
             f"font-family: {font_family}; "
             f"font-size: {font_size}; "
             f"font-weight: {weight}; "
             f"text-transform: {transform};"
         )
-        
+
         return f'<div style="{style}">{text}</div>'
 
 
@@ -58,7 +65,7 @@ def build_interface():
         font=["Inter", "sans-serif"],
         radius_size="lg",
     )
-    
+
     css = """
     .word-cloud-html { min-height: 200px; }
     .styled-text { padding: 15px; border-radius: 8px; 
@@ -93,7 +100,7 @@ def build_interface():
                         value="Body",
                         interactive=True,
                     )
-                
+
                 with gr.Row():
                     with gr.Column():
                         input_text = gr.Textbox(
@@ -113,7 +120,7 @@ def build_interface():
                                   "</div>",
                             label="Corrected & Styled Text (Live Preview)"
                         )
-                        
+
                         # Hidden textbox to store plain corrected text
                         corrected_plain = gr.Textbox(
                             visible=False,
@@ -132,7 +139,7 @@ def build_interface():
                             "</div>"
                         )
                         return empty_html, ""
-                    
+
                     corrected_text = correct_text(text)
                     styled = TextStyler.apply_style(
                         corrected_text,
@@ -154,7 +161,7 @@ def build_interface():
                     inputs=[input_text, font_dropdown, size_dropdown, text_type],
                     outputs=[corrected, corrected_plain]
                 )
-                
+
                 # Update style when dropdowns change
                 for dropdown in [font_dropdown, size_dropdown, text_type]:
                     dropdown.change(
@@ -257,7 +264,7 @@ def build_interface():
                             lines=8,
                             interactive=False
                         )
-                
+
                 gr.Markdown("### Word Cloud Visualization")
                 wc_output = gr.HTML(
                     value="<p style='text-align: center; color: #666;'>"
@@ -273,10 +280,10 @@ def build_interface():
                         no_text_html = "<p style='text-align: center; " \
                                       "color: #666;'>No text to analyze</p>"
                         return no_text_msg, no_text_html
-                    
+
                     analysis = analyze_text(corrected_text)
                     wc = generate_word_cloud(corrected_text)
-                    
+
                     ana_str = (
                         f"Total Words: {analysis['word_count']}\n\n"
                         f"Total Characters: {analysis['char_count']}\n\n"
@@ -285,7 +292,7 @@ def build_interface():
                         f"{analysis['avg_word_length']} characters\n\n"
                         f"Most Frequent Word: '{analysis['most_common']}'"
                     )
-                    
+
                     return ana_str, wc
 
                 ana_btn.click(
@@ -297,7 +304,7 @@ def build_interface():
             # ============== DOWNLOAD TAB ==============
             with gr.Tab("💾 Download"):
                 gr.Markdown("### Export all your processed text")
-                
+
                 with gr.Row():
                     format_dropdown = gr.Dropdown(
                         label="Choose Export Format",
@@ -320,41 +327,41 @@ def build_interface():
                             f.write("ERROR: No content to export.\n")
                             f.write("Please correct text first in the Correction tab.")
                         return error_path
-                    
+
                     corrected_val = corrected_text or ""
                     converted_val = conv_text or "Not converted yet"
                     reversed_val = rev_text or "Not reversed yet"
                     analysis_val = analysis_text or "Not analyzed yet"
-                    
+
                     timestamp = datetime.datetime.now().strftime(
                         '%Y-%m-%d %H:%M:%S'
                     )
-                    
+
                     aggregated = (
-                        f"╔{'═'*68}╗\n"
-                        f"║{' '*68}║\n"
+                        f"╔{'═' * 68}╗\n"
+                        f"║{' ' * 68}║\n"
                         f"║{'SMART TEXT STUDIO - COMPLETE EXPORT':^68}║\n"
-                        f"║{' '*68}║\n"
-                        f"╚{'═'*68}╝\n\n"
+                        f"║{' ' * 68}║\n"
+                        f"╚{'═' * 68}╝\n\n"
                         f"Export Date: {timestamp}\n"
                         f"Format: {fmt.upper()}\n"
-                        f"{'='*70}\n\n\n"
+                        f"{'=' * 70}\n\n\n"
                         f"{'CORRECTED TEXT':^70}\n"
-                        f"{'-'*70}\n\n{corrected_val}\n\n\n"
-                        f"{'='*70}\n\n\n"
+                        f"{'-' * 70}\n\n{corrected_val}\n\n\n"
+                        f"{'=' * 70}\n\n\n"
                         f"{'CONVERTED TEXT':^70}\n"
-                        f"{'-'*70}\n\n{converted_val}\n\n\n"
-                        f"{'='*70}\n\n\n"
+                        f"{'-' * 70}\n\n{converted_val}\n\n\n"
+                        f"{'=' * 70}\n\n\n"
                         f"{'REVERSED TEXT':^70}\n"
-                        f"{'-'*70}\n\n{reversed_val}\n\n\n"
-                        f"{'='*70}\n\n\n"
+                        f"{'-' * 70}\n\n{reversed_val}\n\n\n"
+                        f"{'=' * 70}\n\n\n"
                         f"{'TEXT ANALYSIS':^70}\n"
-                        f"{'-'*70}\n\n{analysis_val}\n\n\n"
-                        f"{'='*70}\n"
+                        f"{'-' * 70}\n\n{analysis_val}\n\n\n"
+                        f"{'=' * 70}\n"
                         f"End of document - Generated by Smart Text Studio\n"
-                        f"{'='*70}\n"
+                        f"{'=' * 70}\n"
                     )
-                    
+
                     try:
                         if fmt == "txt":
                             path = save_as_txt(aggregated)
@@ -362,7 +369,7 @@ def build_interface():
                     except Exception as e:
                         error_path = FileExporter._get_filename("txt")
                         with open(error_path, "w", encoding="utf-8") as f:
-                            f.write(f"ERROR: Export failed\n")
+                            f.write("ERROR: Export failed\n")
                             f.write(f"Details: {str(e)}")
                         return error_path
 
@@ -384,4 +391,3 @@ def build_interface():
 if __name__ == "__main__":
     demo = build_interface()
     demo.launch()
-
