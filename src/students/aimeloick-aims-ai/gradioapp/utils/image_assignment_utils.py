@@ -106,6 +106,11 @@ def download_single_image(image):
 # ==============================
 def transform_folder(files, grayscale_or_not, brightness_val, contrast_val, degree, threshold, remove_bg):
     """Transform all images in uploaded folder and return a ZIP file."""
+    import os
+    import tempfile
+    import zipfile
+    from PIL import Image
+
     if not files:
         return "No files uploaded", None
 
@@ -118,54 +123,57 @@ def transform_folder(files, grayscale_or_not, brightness_val, contrast_val, degr
 
     image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
 
-    try:
-        for file_obj in files:
-            file_path = file_obj.name
-            file_name = os.path.basename(file_path)
-            file_ext = os.path.splitext(file_name)[1].lower()
+    def process_file(file_path):
+        """Process a single image and return output Image object and file name."""
+        file_name = os.path.basename(file_path)
+        file_ext = os.path.splitext(file_name)[1].lower()
 
-            if file_ext not in image_extensions:
+        if file_ext not in image_extensions:
+            return None, None
+
+        img = Image.open(file_path)
+        transformed_img = transform_image(
+            img, grayscale_or_not, brightness_val, contrast_val,
+            degree, threshold, remove_bg
+        )
+
+        # Convert RGBA to RGB if JPEG
+        if file_ext in ['.jpg', '.jpeg'] and transformed_img.mode == 'RGBA':
+            rgb_img = Image.new('RGB', transformed_img.size, (255, 255, 255))
+            rgb_img.paste(transformed_img, mask=transformed_img.split()[3])
+            return rgb_img, file_name
+
+        return transformed_img, file_name
+
+    for file_obj in files:
+        try:
+            image, file_name = process_file(file_obj.name)
+            if image is None:
                 continue
 
-            try:
-                image = Image.open(file_path)
-                transformed_image = transform_image(
-                    image, grayscale_or_not, brightness_val, contrast_val,
-                    degree, threshold, remove_bg
-                )
+            output_path = os.path.join(output_dir, file_name)
+            image.save(output_path, quality=95)
+            processed_count += 1
 
-                output_path = os.path.join(output_dir, file_name)
+        except Exception as e:
+            failed_count += 1
+            print(f"Failed to process {file_obj.name}: {e}")
+            continue
 
-                if file_ext in ['.jpg', '.jpeg'] and transformed_image.mode == 'RGBA':
-                    rgb_image = Image.new('RGB', transformed_image.size, (255, 255, 255))
-                    rgb_image.paste(transformed_image, mask=transformed_image.split()[3])
-                    rgb_image.save(output_path, quality=95)
-                else:
-                    transformed_image.save(output_path)
+    if processed_count == 0:
+        return "No images could be processed", None
 
-                processed_count += 1
+    zip_path = os.path.join(temp_dir, "transformed_images.zip")
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, _, files_in_dir in os.walk(output_dir):
+            for file in files_in_dir:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, output_dir)
+                zipf.write(file_path, arcname)
 
-            except Exception as e:
-                failed_count += 1
-                print(f"Failed to process {file_name}: {e}")
-                continue
+    status_msg = f"Successfully processed {processed_count} images!"
+    if failed_count > 0:
+        status_msg += f"\n{failed_count} images failed"
 
-        if processed_count == 0:
-            return "No images could be processed", None
+    return status_msg, zip_path
 
-        zip_path = os.path.join(temp_dir, "transformed_images.zip")
-        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for root, dirs, files_in_dir in os.walk(output_dir):
-                for file in files_in_dir:
-                    file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, output_dir)
-                    zipf.write(file_path, arcname)
-
-        status_msg = f"Successfully processed {processed_count} images!"
-        if failed_count > 0:
-            status_msg += f"\n{failed_count} images failed"
-
-        return status_msg, zip_path
-
-    except Exception as e:
-        return f"Error: {str(e)}", None
