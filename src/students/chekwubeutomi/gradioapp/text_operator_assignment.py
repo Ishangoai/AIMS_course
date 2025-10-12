@@ -2,6 +2,7 @@ import gradio as gr
 
 # ---- Functions for text operations ----
 
+
 def case_converter(text, case_option):
     if not text:
         return ""
