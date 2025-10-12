@@ -73,7 +73,7 @@ class SpellChecker:
             'idk': "I don't know", 'tbh': 'to be honest',
         }
 
-    def fix_word(self, word: str) -> str:
+    def fix_word(self, word: str) -> str:  # noqa: C901
         """Fix a single word if it is in the corrections dictionary.
 
         Args:
