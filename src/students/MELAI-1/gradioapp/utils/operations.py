@@ -11,7 +11,7 @@ import tempfile
 from collections import Counter
 from typing import Any, Dict, Tuple
 
-from fpdf import FPDF
+# from fpdf import FPDF
 
 
 class SpellChecker:
@@ -458,33 +458,33 @@ class FileExporter:
             f.write(content)
         return path
 
-    @staticmethod
-    def save_as_pdf(content: str) -> str:
-        """Save content as PDF file.
+    # @staticmethod
+    # def save_as_pdf(content: str) -> str:
+    #     """Save content as PDF file.
 
-        Args:
-            content: The content to save.
+    #     Args:
+    #         content: The content to save.
 
-        Returns:
-            Path to the saved file.
-        """
-        path = FileExporter._get_filename("pdf")
+    #     Returns:
+    #         Path to the saved file.
+    #     """
+    #     path = FileExporter._get_filename("pdf")
 
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.set_font("Arial", size=10)
+    #     pdf = FPDF()
+    #     pdf.add_page()
+    #     pdf.set_auto_page_break(auto=True, margin=15)
+    #     pdf.set_font("Arial", size=10)
 
-        lines = content.split("\n")
-        for line in lines:
-            try:
-                line_encoded = line.encode("latin-1", "replace").decode("latin-1")
-                pdf.multi_cell(0, 6, text=line_encoded)
-            except Exception:
-                pdf.multi_cell(0, 6, text=line.encode("ascii", "ignore").decode("ascii"))
+    #     lines = content.split("\n")
+    #     for line in lines:
+    #         try:
+    #             line_encoded = line.encode("latin-1", "replace").decode("latin-1")
+    #             pdf.multi_cell(0, 6, text=line_encoded)
+    #         except Exception:
+    #             pdf.multi_cell(0, 6, text=line.encode("ascii", "ignore").decode("ascii"))
 
-        pdf.output(path)
-        return path
+    #     pdf.output(path)
+    #     return path
 
 
 # Public API functions
@@ -519,6 +519,6 @@ def save_as_txt(content: str) -> str:
     return FileExporter.save_as_txt(content)
 
 
-def save_as_pdf(content: str) -> str:
-    """Save as PDF using FileExporter."""
-    return FileExporter.save_as_pdf(content)
+# def save_as_pdf(content: str) -> str:
+#     """Save as PDF using FileExporter."""
+#     return FileExporter.save_as_pdf(content)
