@@ -9,6 +9,7 @@
 #
 #  Authors      : Vicent & Andrianina
 #  Assignment   : ML Ops Assignment 1
+
 # ============================================================
 
 def case_converter(text, option=None):
