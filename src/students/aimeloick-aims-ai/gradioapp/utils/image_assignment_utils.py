@@ -104,13 +104,9 @@ def download_single_image(image):
 # ==============================
 # Batch Processing Functions
 # ==============================
-def transform_folder(files, grayscale_or_not, brightness_val, contrast_val, degree, threshold, remove_bg):
+def transform_folder(files, grayscale_or_not, brightness_val, contrast_val,
+                     degree, threshold, remove_bg):
     """Transform all images in uploaded folder and return a ZIP file."""
-    import os
-    import tempfile
-    import zipfile
-    from PIL import Image
-
     if not files:
         return "No files uploaded", None
 
@@ -121,43 +117,19 @@ def transform_folder(files, grayscale_or_not, brightness_val, contrast_val, degr
     processed_count = 0
     failed_count = 0
 
-    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
-
-    def process_file(file_path):
-        """Process a single image and return output Image object and file name."""
-        file_name = os.path.basename(file_path)
-        file_ext = os.path.splitext(file_name)[1].lower()
-
-        if file_ext not in image_extensions:
-            return None, None
-
-        img = Image.open(file_path)
-        transformed_img = transform_image(
-            img, grayscale_or_not, brightness_val, contrast_val,
-            degree, threshold, remove_bg
-        )
-
-        # Convert RGBA to RGB if JPEG
-        if file_ext in ['.jpg', '.jpeg'] and transformed_img.mode == 'RGBA':
-            rgb_img = Image.new('RGB', transformed_img.size, (255, 255, 255))
-            rgb_img.paste(transformed_img, mask=transformed_img.split()[3])
-            return rgb_img, file_name
-
-        return transformed_img, file_name
-
     for file_obj in files:
+        file_name = os.path.basename(file_obj.name)
+        if not is_valid_image(file_name):
+            continue
         try:
-            image, file_name = process_file(file_obj.name)
-            if image is None:
-                continue
-
-            output_path = os.path.join(output_dir, file_name)
-            image.save(output_path, quality=95)
+            img = transform_single_image(file_obj.name, grayscale_or_not,
+                                         brightness_val, contrast_val,
+                                         degree, threshold, remove_bg)
+            save_image(img, output_dir, file_name)
             processed_count += 1
-
         except Exception as e:
             failed_count += 1
-            print(f"Failed to process {file_obj.name}: {e}")
+            print(f"Failed to process {file_name}: {e}")
             continue
 
     if processed_count == 0:
