@@ -60,12 +60,12 @@ class TextStyler:
 
 def build_interface():  # noqa: C901
     """Construct and return the Gradio Blocks interface."""
-    theme = gr.themes.Soft(
-        primary_hue="indigo",
-        neutral_hue="slate",
-        font=["Inter", "sans-serif"],
-        radius_size="lg",
-    )
+    # theme = gr.themes.Soft(
+    #     primary_hue="indigo",
+    #     neutral_hue="slate",
+    #     font=["Inter", "sans-serif"],
+    #     radius_size="lg",
+    # )
 
     css = """
     .word-cloud-html { min-height: 200px; }
@@ -73,7 +73,7 @@ def build_interface():  # noqa: C901
                    background-color: #f8f9fa; }
     """
 
-    with gr.Blocks(theme=theme, css=css) as interface:
+    with gr.Blocks(css=css) as interface:
         gr.Markdown("# Text Processing App")
         gr.Markdown(
             "Refine, convert, analyze and export your text."
