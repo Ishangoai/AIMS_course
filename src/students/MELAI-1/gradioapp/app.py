@@ -366,7 +366,7 @@ def build_interface():  # noqa: C901
                     try:
                         if fmt == "txt":
                             path = save_as_txt(aggregated)
-                        return path
+                            return path
                     except Exception as e:
                         error_path = FileExporter._get_filename("txt")
                         with open(error_path, "w", encoding="utf-8") as f:
