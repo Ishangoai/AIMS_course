@@ -249,7 +249,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
             save_button.click(save_image, inputs=[output_image], outputs=file_output)
 
         with gr.Tab(label="Filter Image"):
-            gr.Markdown("# Choose filter Option: blur or contour or detail")
+            gr.Markdown("# Choose filter Option")
 
             with gr.Row():
                 with gr.Column(scale=2):
