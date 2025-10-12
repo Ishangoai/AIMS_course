@@ -6,6 +6,42 @@ from PIL import Image, ImageEnhance, ImageFilter
 original_image = None
 
 
+def apply_grayscale(img):
+    return img.convert("L").convert("RGB")
+
+
+def adjust_brightness(img, brightness):
+    enhancer = ImageEnhance.Brightness(img)
+    return enhancer.enhance(brightness)
+
+
+def adjust_contrast(img, contrast):
+    enhancer = ImageEnhance.Contrast(img)
+    return enhancer.enhance(contrast)
+
+
+def apply_blur(img, blur):
+    return img.filter(ImageFilter.GaussianBlur(radius=blur))
+
+
+def apply_sharpen(img, sharpen):
+    for _ in range(int(sharpen)):
+        img = img.filter(ImageFilter.SHARPEN)
+    return img
+
+
+def flip_image(img, flip_h, flip_v):
+    if flip_h:
+        img = img.transpose(Image.FLIP_LEFT_RIGHT)
+    if flip_v:
+        img = img.transpose(Image.FLIP_TOP_BOTTOM)
+    return img
+
+
+def rotate_image(img, rotation):
+    return img.rotate(rotation, expand=True, fillcolor="white")
+
+
 def process_image(
     image,
     grayscale,
@@ -18,62 +54,35 @@ def process_image(
     flip_v,
 ):
     """Apply various image transformations based on user inputs."""
-
     global original_image
+
     if image is None:
         return None
 
-    # Store original image on first load
-
     if original_image is None:
         original_image = image.copy()
-    # Start with a copy of the original image
+
     img = image.copy()
 
-    # Convert to grayscale
-
     if grayscale:
-        img = img.convert("L").convert("RGB")
-
-    # Adjust brightness
+        img = apply_grayscale(img)
 
     if brightness != 1.0:
-        enhancer = ImageEnhance.Brightness(img)
-
-        img = enhancer.enhance(brightness)
-
-    # Adjust contrast
+        img = adjust_brightness(img, brightness)
 
     if contrast != 1.0:
-        enhancer = ImageEnhance.Contrast(img)
-
-        img = enhancer.enhance(contrast)
-
-    # Apply blur
+        img = adjust_contrast(img, contrast)
 
     if blur > 0:
-        img = img.filter(ImageFilter.GaussianBlur(radius=blur))
-
-    # Apply sharpening
+        img = apply_blur(img, blur)
 
     if sharpen > 0:
-        for _ in range(int(sharpen)):
-            img = img.filter(ImageFilter.SHARPEN)
+        img = apply_sharpen(img, sharpen)
 
-    # Flip horizontally
-
-    if flip_h:
-        img = img.transpose(Image.FLIP_LEFT_RIGHT)
-
-    # Flip vertically
-
-    if flip_v:
-        img = img.transpose(Image.FLIP_TOP_BOTTOM)
-
-    # Rotate image
+    img = flip_image(img, flip_h, flip_v)
 
     if rotation != 0:
-        img = img.rotate(rotation, expand=True, fillcolor="white")
+        img = rotate_image(img, rotation)
 
     return img
 
