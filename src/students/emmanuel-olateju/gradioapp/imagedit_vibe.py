@@ -1,4 +1,5 @@
 import gradio as gr
+from gradio import themes
 from PIL import Image, ImageEnhance, ImageFilter
 
 # Global variable to store the original image
@@ -32,9 +33,9 @@ def apply_sharpen(img, sharpen):
 
 def flip_image(img, flip_h, flip_v):
     if flip_h:
-        img = img.transpose(Image.FLIP_LEFT_RIGHT)
+        img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
     if flip_v:
-        img = img.transpose(Image.FLIP_TOP_BOTTOM)
+        img = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
     return img
 
 
@@ -130,7 +131,7 @@ def on_image_upload(image):
 
 # Create Gradio interface
 
-with gr.Blocks(title="Image Editor Pro", theme=gr.themes.Soft()) as imagedit_vibe_app:
+with gr.Blocks(title="Image Editor Pro", theme=themes.Soft()) as imagedit_vibe_app:
     gr.Markdown(
         """
        # 🎨 Image Editor Pro
