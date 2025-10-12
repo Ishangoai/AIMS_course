@@ -110,8 +110,9 @@ def _prepare_download(image: Optional[Image.Image]) -> Optional[str]:
     return path
 
 
-def upload_fn(path: Optional[str]) -> Tuple[Optional[Image.Image], Optional[Image.Image],
- bool, float, float, float, float, float, float, Optional[str]]:
+def upload_fn(
+    path: Optional[str],
+) -> Tuple[Optional[Image.Image], Optional[Image.Image], bool, float, float, float, float, float, float, Optional[str]]:
     if path is None:
         return None, None, False, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, None
     image = Image.open(path)
@@ -126,28 +127,14 @@ with gr.Blocks() as image_app:
 
     with gr.Row():
         with gr.Column(scale=1):
-            upload_button = gr.UploadButton(
-                "Upload Image", file_types=["image"], file_count="single"
-            )
+            upload_button = gr.UploadButton("Upload Image", file_types=["image"], file_count="single")
             grayscale = gr.Checkbox(label="Grayscale")
-            brightness = gr.Slider(
-                minimum=0.5, maximum=1.5, value=1.0, label="Brightness"
-            )
-            contrast = gr.Slider(
-                minimum=0.5, maximum=1.5, value=1.0, label="Contrast"
-            )
-            hue = gr.Slider(
-                minimum=-180, maximum=180, value=0, label="Hue"
-            )
-            saturation = gr.Slider(
-                minimum=0, maximum=3, value=1, label="Saturation"
-            )
-            sharpness = gr.Slider(
-                minimum=0, maximum=3, value=1, label="Sharpness"
-            )
-            rotate = gr.Slider(
-                minimum=-180, maximum=180, value=0, label="Rotate"
-            )
+            brightness = gr.Slider(minimum=0.5, maximum=1.5, value=1.0, label="Brightness")
+            contrast = gr.Slider(minimum=0.5, maximum=1.5, value=1.0, label="Contrast")
+            hue = gr.Slider(minimum=-180, maximum=180, value=0, label="Hue")
+            saturation = gr.Slider(minimum=0, maximum=3, value=1, label="Saturation")
+            sharpness = gr.Slider(minimum=0, maximum=3, value=1, label="Sharpness")
+            rotate = gr.Slider(minimum=-180, maximum=180, value=0, label="Rotate")
             with gr.Row():
                 reset_button = gr.Button("Reset")
                 download_button = gr.DownloadButton("Download")

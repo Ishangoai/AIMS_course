@@ -10,8 +10,8 @@ def predict(text):
 
 demo = gr.Interface(
     fn=predict,
-    inputs='text',
-    outputs='text',
+    inputs="text",
+    outputs="text",
 )
 
 demo.launch()

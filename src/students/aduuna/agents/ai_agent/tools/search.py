@@ -9,8 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 # Initialize the Google Search wrapper (uses same env vars as graph.py)
-search_wrapper = GoogleSearchAPIWrapper(google_api_key=os.getenv("GOOGLE_API_KEY", ""),
-                                        google_cse_id=os.getenv("GOOGLE_CSE_ID", ""))
+search_wrapper = GoogleSearchAPIWrapper(
+    google_api_key=os.getenv("GOOGLE_API_KEY", ""), google_cse_id=os.getenv("GOOGLE_CSE_ID", "")
+)
 
 
 @tool

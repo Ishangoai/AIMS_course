@@ -21,9 +21,7 @@ import gradio as gr
 from gradioapp.utils import text_app_utils
 
 
-def process_text(
-    text: str, case_option: str, reverse_words: bool, reverse_chars: bool
-) -> str:
+def process_text(text: str, case_option: str, reverse_words: bool, reverse_chars: bool) -> str:
     """
     Apply user-selected text transformations.
 

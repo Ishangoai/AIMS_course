@@ -51,7 +51,7 @@ def edit_image(image, grayscale, brightness, contrast, rotation, flip_h, flip_v,
         edited_image = enhancer_contrast.enhance(contrast)
 
         # Rotate the image
-        edited_image = edited_image.rotate(rotation, expand=True, fillcolor='black')
+        edited_image = edited_image.rotate(rotation, expand=True, fillcolor="black")
 
         # Flip the image horizontally if checked
         if flip_h:
@@ -110,23 +110,20 @@ def save_temp_image(image):
     return temp_file.name
 
 
-theme = gr.Theme(
-    primary_hue="blue",
-    secondary_hue="purple",
-    neutral_hue="gray"
-)
+theme = gr.Theme(primary_hue="blue", secondary_hue="purple", neutral_hue="gray")
 
 # Building the Gradio Interface
 with gr.Blocks(theme=theme) as image_app:
     gr.Markdown('<h1 style="text-align: center;"> Image Editor</h1>')
-    gr.Markdown('<h4 style="text-align: center;"> Upload an image and use the controls to edit it.\
-        The edited image will be displayed on the right.</h4>')
+    gr.Markdown(
+        '<h4 style="text-align: center;"> Upload an image and use the controls to edit it.\
+        The edited image will be displayed on the right.</h4>'
+    )
 
     # Create a main row to hold the input controls and the output image
     with gr.Row():
         # Create a column for the input controls
         with gr.Column():
-
             input_image = gr.Image(type="pil", label="Input Image", sources=["upload", "clipboard"])
             with gr.Group():
                 grayscale_check = gr.Checkbox(label="Convert to Grayscale", value=False)
@@ -144,19 +141,23 @@ with gr.Blocks(theme=theme) as image_app:
             download_btn = gr.DownloadButton(label="Download Edited Image", scale=1)
 
     # Define the components that will act as inputs to the edit_image function
-    inputs = [input_image, grayscale_check, brightness_slider, contrast_slider, rotation_slider,
-    flip_h_check, flip_v_check, blur_slider]
+    inputs = [
+        input_image,
+        grayscale_check,
+        brightness_slider,
+        contrast_slider,
+        rotation_slider,
+        flip_h_check,
+        flip_v_check,
+        blur_slider,
+    ]
 
     # When any input component changes, call the edit_image function
     for component in inputs:
         component.change(fn=edit_image, inputs=inputs, outputs=output_image)
 
     # Define the click event for the reset button
-    reset_btn.click(
-        fn=reset_all,
-        inputs=[input_image],
-        outputs=inputs + [output_image]
-    )
+    reset_btn.click(fn=reset_all, inputs=[input_image], outputs=inputs + [output_image])
 
     # Define the click event for the download button
     download_btn.click(fn=save_temp_image, inputs=output_image, outputs=download_btn)

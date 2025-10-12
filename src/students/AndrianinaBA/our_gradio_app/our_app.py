@@ -1,4 +1,3 @@
-
 # ============================================================
 #  Project      : Text Analyzer Web App
 #  Framework    : Gradio
@@ -21,7 +20,7 @@ from PIL import Image
 
 from .utils.text_analyzer import case_converter, text_analyzer, text_reverser_all_character, text_reverser_word
 
-style = ''
+style = ""
 with open("our_gradio_app/utils/style.css") as f:
     style = f.read()
 
@@ -46,13 +45,13 @@ def update_statistics(input_text):
 
 
 def update_image(input_text):
-    url = make_url(input_text) if input_text != '' else make_url()
+    url = make_url(input_text) if input_text != "" else make_url()
     response = requests.get(url)
     img = Image.open(BytesIO(response.content))
     return img
 
 
-def make_url(text='Click button to generate word art ....'):
+def make_url(text="Click button to generate word art ...."):
     url = f"https://quickchart.io/wordcloud?format=png&backgroundColor=white&maxNumWords=200&fontScale=25&width=500&height=500&text={text}"
 
     return url
@@ -60,14 +59,14 @@ def make_url(text='Click button to generate word art ....'):
 
 def delete_text():
     url = make_url()
-    return '', url
+    return "", url
 
 
 with gr.Blocks(css=style) as our_gradio_instance:
     """
     We thought it would be nice to have a title and small description for our app here.
     """
-    gr.Markdown("# AIMS Course: Text Analyzer by Vicent and Andrianina", elem_classes='app-title')
+    gr.Markdown("# AIMS Course: Text Analyzer by Vicent and Andrianina", elem_classes="app-title")
     gr.Markdown("This app helps you understand your text better. Try out 😎", elem_classes="app-intro")
 
     input_text = gr.Textbox(label="", lines=3, placeholder="Go head, type something here...", elem_classes="text_input")
@@ -75,10 +74,7 @@ with gr.Blocks(css=style) as our_gradio_instance:
     with gr.Tab("Case Converter"):
         gr.Markdown("Select the text case that you would like and see the change below.")
 
-        case_radio_button = gr.Radio(choices=["Upper Case", "Lower Case", "Title Case"]
-                                , value="Upper Case"
-                                , label=""
-                               )
+        case_radio_button = gr.Radio(choices=["Upper Case", "Lower Case", "Title Case"], value="Upper Case", label="")
 
     with gr.Tab("Text Reverser"):
         gr.Markdown("Reverse the input text.")
@@ -93,7 +89,7 @@ with gr.Blocks(css=style) as our_gradio_instance:
             average_count_output = gr.Textbox(label="Average Characters per Word")
 
     with gr.Tab("WordArt"):
-        generate_button = gr.Button(value="Generate", elem_classes='custom-button', size="sm")
+        generate_button = gr.Button(value="Generate", elem_classes="custom-button", size="sm")
         with gr.Row():
             default_text = "Click button to generate word art."
             placeholder_url = make_url()
@@ -104,30 +100,24 @@ with gr.Blocks(css=style) as our_gradio_instance:
                 print("Image loading failed!")
 
     with gr.Blocks():
+        output_text_box = gr.Textbox(
+            label="Result", placeholder="Nothing to display...", lines=3, elem_classes="result"
+        )
 
-        output_text_box = gr.Textbox(label="Result",
-                                     placeholder="Nothing to display...",
-                                     lines=3, elem_classes='result'
-                                     )
-
-        delete_button = gr.Button("Clear Text", elem_classes='custom-button-green')
+        delete_button = gr.Button("Clear Text", elem_classes="custom-button-green")
 
         # Here we are updating the result based on the input typed
         input_options = [input_text, case_radio_button, reverse_all, reverse_word]
-        input_widgets = [
-             input_text,
-             case_radio_button,
-             reverse_all,
-             reverse_word
-        ]
+        input_widgets = [input_text, case_radio_button, reverse_all, reverse_word]
 
         generate_button.click(fn=update_image, inputs=output_text_box, outputs=image)
 
         apply_events(input_widgets, input_options, output_text_box)
-        input_text.change(fn=update_statistics, inputs=input_text, outputs=[word_count_output,
-                                                                           char_count_output,
-                                                                           average_count_output]
-                                                                            )
+        input_text.change(
+            fn=update_statistics,
+            inputs=input_text,
+            outputs=[word_count_output, char_count_output, average_count_output],
+        )
 
         delete_button.click(fn=delete_text, inputs=None, outputs=[input_text, image])
 

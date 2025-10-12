@@ -41,7 +41,7 @@ def image_to_ascii(img, width=100):
     pixels = list(img.getdata())
     ascii_chars = ["@", "#", "S", "%", "?", "*", "+", ";", ":", ",", "."]
     ascii_img = "".join([ascii_chars[pixel // 25] for pixel in pixels])
-    return "\n".join([ascii_img[i:i + width] for i in range(0, len(ascii_img), width)])
+    return "\n".join([ascii_img[i : i + width] for i in range(0, len(ascii_img), width)])
 
 
 def generate_gif(img, frames=5):
@@ -87,7 +87,7 @@ def get_font_paths():
         "raleway": os.path.join(os.path.dirname(__file__), "fonts", "raleway.ttf"),
         "robotocondensed": os.path.join(os.path.dirname(__file__), "fonts", "robotocondensed.ttf"),
         "sourcesans": os.path.join(os.path.dirname(__file__), "fonts", "sourcesans.ttf"),
-        "ubuntu": os.path.join(os.path.dirname(__file__), "fonts", "ubuntu.ttf")
+        "ubuntu": os.path.join(os.path.dirname(__file__), "fonts", "ubuntu.ttf"),
     }
 
 

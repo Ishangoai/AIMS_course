@@ -115,11 +115,7 @@ with gr.Blocks(css="body {background: #f7f9fc;}", analytics_enabled=False) as gr
 
         with gr.Column():
             output_img = gr.Image(label="Edited Image")
-            format_dropdown = gr.Dropdown(
-                choices=["PNG", "JPEG"],
-                value="PNG",
-                label="Select Download Format"
-            )
+            format_dropdown = gr.Dropdown(choices=["PNG", "JPEG"], value="PNG", label="Select Download Format")
             download_btn = gr.Button("Download")
 
     # Connect controls
@@ -129,9 +125,7 @@ with gr.Blocks(css="body {background: #f7f9fc;}", analytics_enabled=False) as gr
 
     reset_btn.click(fn=reset_image, outputs=[grayscale, brightness, contrast, rotation])
     download_btn.click(
-        fn=save_image,
-        inputs=[output_img, format_dropdown],
-        outputs=gr.File(label="Download Edited Image")
+        fn=save_image, inputs=[output_img, format_dropdown], outputs=gr.File(label="Download Edited Image")
     )
 
 

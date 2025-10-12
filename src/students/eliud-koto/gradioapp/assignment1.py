@@ -53,6 +53,7 @@ def save_temp_image(img):
     img.save(temp_file.name)
     return temp_file.name
 
+
 # Gradio App Definition i
 
 
@@ -87,8 +88,4 @@ with gr.Blocks() as app:
     def reset_to_original(image):
         return image, False, 1.0, 1.0, 0, "", image
 
-    reset_btn.click(
-        fn=reset_to_original,
-        inputs=[input_image],
-        outputs=inputs + [output_image]
-    )
+    reset_btn.click(fn=reset_to_original, inputs=[input_image], outputs=inputs + [output_image])

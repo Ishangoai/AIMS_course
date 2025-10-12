@@ -9,12 +9,44 @@ except ImportError:
 
 
 def edit_image(
-    original, grayscale, brightness, contrast, rotation, flip, blur, sharpness, saturation, crop, pixelate,
-    sepia, edge_detect, cartoon, glitch, invert, emboss, opacity, remove_bg, make_gif, gif_frames,
-    text_overlay, text_color, text_font_size, text_position, font_type,
-    apply_kaleidoscope, segments, apply_wave, wave_amplitude, wave_length,
-    channel_swap_type, apply_mosaic, tile_size, apply_noise, noise_level,
-    apply_vignette, vignette_intensity
+    original,
+    grayscale,
+    brightness,
+    contrast,
+    rotation,
+    flip,
+    blur,
+    sharpness,
+    saturation,
+    crop,
+    pixelate,
+    sepia,
+    edge_detect,
+    cartoon,
+    glitch,
+    invert,
+    emboss,
+    opacity,
+    remove_bg,
+    make_gif,
+    gif_frames,
+    text_overlay,
+    text_color,
+    text_font_size,
+    text_position,
+    font_type,
+    apply_kaleidoscope,
+    segments,
+    apply_wave,
+    wave_amplitude,
+    wave_length,
+    channel_swap_type,
+    apply_mosaic,
+    tile_size,
+    apply_noise,
+    noise_level,
+    apply_vignette,
+    vignette_intensity,
 ):
     """Applies multiple image transformations and effects in a structured, modular way."""
     if original is None:
@@ -33,13 +65,22 @@ def edit_image(
     img = apply_intermediate_edits(img, sharpness, saturation)
     img = apply_advanced_edits(img, sepia, edge_detect, cartoon, glitch, invert, emboss)
     img = apply_effects(
-        img, apply_kaleidoscope, segments, apply_wave, wave_amplitude, wave_length,
-        channel_swap_type, apply_mosaic, tile_size, apply_noise, noise_level,
-        apply_vignette, vignette_intensity
+        img,
+        apply_kaleidoscope,
+        segments,
+        apply_wave,
+        wave_amplitude,
+        wave_length,
+        channel_swap_type,
+        apply_mosaic,
+        tile_size,
+        apply_noise,
+        noise_level,
+        apply_vignette,
+        vignette_intensity,
     )
     img = apply_misc(
-        img, rotation, opacity, text_overlay, text_color, text_font_size,
-        text_position, font_type, make_gif, gif_frames
+        img, rotation, opacity, text_overlay, text_color, text_font_size, text_position, font_type, make_gif, gif_frames
     )
 
     # Placeholder for ASCII output

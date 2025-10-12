@@ -28,31 +28,11 @@ with gr.Blocks() as demo:
         brightness = gr.Slider(0.5, 1.5, value=1.0, label="Brightness")
         contrast = gr.Slider(0.5, 1.5, value=1.0, label="Contrast")
         rotate = gr.Slider(-180, 180, value=0, label="Rotate (degrees)")
-    input_img.change(
-        fn=edit_image,
-        inputs=[input_img, grayscale, brightness, contrast, rotate],
-        outputs=output_img
-    )
-    grayscale.change(
-        fn=edit_image,
-        inputs=[input_img, grayscale, brightness, contrast, rotate],
-        outputs=output_img
-    )
-    brightness.change(
-        fn=edit_image,
-        inputs=[input_img, grayscale, brightness, contrast, rotate],
-        outputs=output_img
-    )
-    contrast.change(
-        fn=edit_image,
-        inputs=[input_img, grayscale, brightness, contrast, rotate],
-        outputs=output_img
-    )
-    rotate.change(
-        fn=edit_image,
-        inputs=[input_img, grayscale, brightness, contrast, rotate],
-        outputs=output_img
-    )
+    input_img.change(fn=edit_image, inputs=[input_img, grayscale, brightness, contrast, rotate], outputs=output_img)
+    grayscale.change(fn=edit_image, inputs=[input_img, grayscale, brightness, contrast, rotate], outputs=output_img)
+    brightness.change(fn=edit_image, inputs=[input_img, grayscale, brightness, contrast, rotate], outputs=output_img)
+    contrast.change(fn=edit_image, inputs=[input_img, grayscale, brightness, contrast, rotate], outputs=output_img)
+    rotate.change(fn=edit_image, inputs=[input_img, grayscale, brightness, contrast, rotate], outputs=output_img)
 
 if __name__ == "__main__":
     demo.launch()

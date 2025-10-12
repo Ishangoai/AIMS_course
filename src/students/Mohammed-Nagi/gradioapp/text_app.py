@@ -26,10 +26,7 @@ def case_converter(text, case_option):
     elif case_option == "Titlecase":
         text = text.title()
     elif case_option == "Squigglecase":
-        text = "".join(
-            c.upper() if i % 2 == 0 else c.lower()
-            for i, c in enumerate(text)
-        )
+        text = "".join(c.upper() if i % 2 == 0 else c.lower() for i, c in enumerate(text))
 
     return text
 
@@ -107,7 +104,7 @@ def pyramid_text(text):
 
     words = text.split()
     pyramid_lines = []
-    count = 1   # start with 1 word on the first line
+    count = 1  # start with 1 word on the first line
     index = 0
 
     while index < len(words):
@@ -175,9 +172,8 @@ with gr.Blocks(theme=gr.Theme()) as text_app:
     with gr.Tabs():
         with gr.Tab("Case Converter"):
             case_option = gr.Radio(
-                ["Uppercase", "Lowercase", "Titlecase", "Squigglecase"],
-                label="Choose Case",
-                value="Uppercase")
+                ["Uppercase", "Lowercase", "Titlecase", "Squigglecase"], label="Choose Case", value="Uppercase"
+            )
 
         with gr.Tab("Text Reverser"):
             reverse_word = gr.Checkbox(label="Reverse Word Order")
@@ -199,7 +195,11 @@ with gr.Blocks(theme=gr.Theme()) as text_app:
     input_text.input(fn=text_analyser, inputs=input_text, outputs=[word_count, char_count, avg_len])
 
     # Output Box
-    output_text = gr.Textbox(label="Output Text", lines=5, interactive=False,)
+    output_text = gr.Textbox(
+        label="Output Text",
+        lines=5,
+        interactive=False,
+    )
 
     # Pyramid Visual
     pyramid_button.click(fn=pyramid_text, inputs=input_text, outputs=output_text)
@@ -210,14 +210,10 @@ with gr.Blocks(theme=gr.Theme()) as text_app:
     run_button.click(
         fn=process_and_analyse,
         inputs=[input_text, case_option, reverse_word, reverse_char],
-        outputs=[output_text, word_count, char_count, avg_len]
+        outputs=[output_text, word_count, char_count, avg_len],
     )
 
     # Clear Button
     clear_button = gr.Button("Clear")
 
-    clear_button.click(
-        fn=clear_all,
-        inputs=None,
-        outputs=[input_text, output_text, word_count, char_count, avg_len]
-    )
+    clear_button.click(fn=clear_all, inputs=None, outputs=[input_text, output_text, word_count, char_count, avg_len])

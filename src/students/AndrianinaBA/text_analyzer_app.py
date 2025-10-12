@@ -1,5 +1,3 @@
-
-
 import gradio as gr
 from gradioapp.utils.text_analyzer import case_converter, text_analyzer, text_reverser_all_character, text_reverser_word
 
@@ -13,10 +11,9 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as text_analyzer_app_instance:
         For the first tab, where we select the case conversion option.
         """
         gr.Markdown("Convert text to different cases.")
-        case_option = gr.Radio(choices=["Upper Case", "Lower Case", "Title Case"]
-                                , value="Upper Case"
-                                , label="Select Case"
-                               )
+        case_option = gr.Radio(
+            choices=["Upper Case", "Lower Case", "Title Case"], value="Upper Case", label="Select Case"
+        )
 
     with gr.Tab("Text Reverser"):
         """
@@ -35,12 +32,13 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as text_analyzer_app_instance:
         char_count_output = gr.Textbox(label="Character Count")
         average_count_output = gr.Textbox(label="Average Characters per Word")
 
-        analyze_button.click(fn=text_analyzer, inputs=input_text, outputs=[word_count_output,
-                                                                             char_count_output,
-                                                                             average_count_output])
+        analyze_button.click(
+            fn=text_analyzer, inputs=input_text, outputs=[word_count_output, char_count_output, average_count_output]
+        )
 
     with gr.Blocks():
         gr.Markdown("## Your actions here")
+
         def delete_text():
             print("Deleting the text...")
             return
@@ -56,11 +54,11 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as text_analyzer_app_instance:
 
         result_button = gr.Button("Result")
         output_text_box = gr.Textbox(value="Your processed text here", lines=3)
-        result_button.click(fn=finally_process_text, inputs=[input_text,
-                                                              case_option,
-                                                              reverse_word,
-                                                              reverse_all],
-                                                              outputs=output_text_box)
+        result_button.click(
+            fn=finally_process_text,
+            inputs=[input_text, case_option, reverse_word, reverse_all],
+            outputs=output_text_box,
+        )
         delete_button = gr.Button("Clear Text")
         delete_button.click(fn=delete_text, inputs=None, outputs=input_text)
 

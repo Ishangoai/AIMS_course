@@ -57,9 +57,7 @@ with gr.Blocks() as text_app:
         input_text = gr.Textbox(label="Enter your text here")
 
     with gr.Row():
-
         with gr.Tab("Case Converter"):
-
             with gr.Row():
                 with gr.Column():
                     uppercase_button = gr.Button("Uppercase")
@@ -69,18 +67,14 @@ with gr.Blocks() as text_app:
                     titlecase_button = gr.Button("Titlecase")
 
         with gr.Tab("Text Reverser"):
-
             with gr.Row():
-
                 with gr.Column():
                     reversed_words_checkbox = gr.Checkbox(label="Reverse Word Order")
                 with gr.Column():
                     reversed_characters_checkbox = gr.Checkbox(label="Reverse All Characters")
 
         with gr.Tab("Text Analyzer"):
-
             with gr.Row():
-
                 with gr.Column():
                     words_count = gr.Textbox(value="0", label="Word Count")
                 with gr.Column():
@@ -103,12 +97,12 @@ with gr.Blocks() as text_app:
     clear_button.click(fn=lambda: None, inputs=None, outputs=output_text)
     reset_button.click(fn=reset, inputs=input_text, outputs=output_text)
 
-    reversed_words_checkbox.change(fn=reverse_words_order,
-                                   inputs=[input_text, reversed_words_checkbox],
-                                   outputs=output_text)
-    reversed_characters_checkbox.change(fn=reverse_all_characters,
-                                        inputs=[input_text, reversed_characters_checkbox],
-                                        outputs=output_text)
+    reversed_words_checkbox.change(
+        fn=reverse_words_order, inputs=[input_text, reversed_words_checkbox], outputs=output_text
+    )
+    reversed_characters_checkbox.change(
+        fn=reverse_all_characters, inputs=[input_text, reversed_characters_checkbox], outputs=output_text
+    )
 
     input_text.change(fn=word_counter, inputs=input_text, outputs=words_count)
     input_text.change(fn=charater_counter, inputs=input_text, outputs=character_count)

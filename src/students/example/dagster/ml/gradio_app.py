@@ -25,12 +25,9 @@ model = mlflow.pyfunc.load_model(model_uri)
 # Prediction Function
 # This function is what Gradio will call when a user interacts with the UI
 def predict_temperature(lagged_temp):
-
     # Create a Pandas DataFrame that matches the model's expected input format
-    input_df = pd.DataFrame(
-        data={"t2m_celsius_lag1": [lagged_temp]}
-    )
-    input_df['t2m_celsius_lag1'] = input_df['t2m_celsius_lag1'].astype('float32')
+    input_df = pd.DataFrame(data={"t2m_celsius_lag1": [lagged_temp]})
+    input_df["t2m_celsius_lag1"] = input_df["t2m_celsius_lag1"].astype("float32")
 
     prediction_result = model.predict(input_df)
 
@@ -54,20 +51,16 @@ with gr.Blocks() as iface:
     with gr.Row():
         input_temp = gr.Number(
             label="Previous Temperature (°C)",
-            value=10.0  # Default example value
+            value=10.0,  # Default example value
         )
         output_temp = gr.Textbox(
             label="Predicted Temperature",
-            interactive=False  # User cannot edit this box
+            interactive=False,  # User cannot edit this box
         )
 
     # Button to trigger the prediction
     predict_btn = gr.Button("Predict")
-    predict_btn.click(
-        fn=predict_temperature,
-        inputs=input_temp,
-        outputs=output_temp
-    )
+    predict_btn.click(fn=predict_temperature, inputs=input_temp, outputs=output_temp)
 
 # Launch the App
 if __name__ == "__main__":

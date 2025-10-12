@@ -17,11 +17,7 @@ def chat_with_graph(message, history):
 
 with gr.Blocks() as llm_chat:
     gr.Markdown("# AI general assistant.\nThis bot uses search tools to find current information.")
-    gr.ChatInterface(
-        fn=chat_with_graph,
-        title="Simple AI Assistant",
-        type="messages"
-    )
+    gr.ChatInterface(fn=chat_with_graph, title="Simple AI Assistant", type="messages")
 
 
 if __name__ == "__main__":

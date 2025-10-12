@@ -68,8 +68,9 @@ def mosaic(img, tile_size=50):
             if random.random() > 0.5:
                 x = random.randint(0, tiles_x - 1) * tile_size
                 y = random.randint(0, tiles_y - 1) * tile_size
-                result[i * tile_size:(i + 1) * tile_size, j *
-                       tile_size:(j + 1) * tile_size] = img_arr[y:y + tile_size, x:x + tile_size]
+                result[i * tile_size : (i + 1) * tile_size, j * tile_size : (j + 1) * tile_size] = img_arr[
+                    y : y + tile_size, x : x + tile_size
+                ]
     return Image.fromarray(result)
 
 
@@ -94,9 +95,21 @@ def vignette(img, intensity=0.5):
     return Image.fromarray(result)
 
 
-def apply_effects(img, apply_kaleidoscope, segments, apply_wave, wave_amplitude, wave_length,
-                  channel_swap_type, apply_mosaic, tile_size, apply_noise, noise_level,
-                  apply_vignette, vignette_intensity):
+def apply_effects(
+    img,
+    apply_kaleidoscope,
+    segments,
+    apply_wave,
+    wave_amplitude,
+    wave_length,
+    channel_swap_type,
+    apply_mosaic,
+    tile_size,
+    apply_noise,
+    noise_level,
+    apply_vignette,
+    vignette_intensity,
+):
     """Apply all effects to image."""
     if apply_kaleidoscope:
         img = kaleidoscope(img, segments)

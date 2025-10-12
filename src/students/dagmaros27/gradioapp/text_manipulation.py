@@ -25,10 +25,7 @@ def case_converter(text: str, case_type: str) -> str:
     elif case_type == "Title Case":
         return text.title()
     elif case_type == "Alternate Case":
-        return ''.join(
-            c.upper() if i % 2 == 0 else c.lower()
-            for i, c in enumerate(text)
-        )
+        return "".join(c.upper() if i % 2 == 0 else c.lower() for i, c in enumerate(text))
     return text
 
 
@@ -45,13 +42,13 @@ def text_reverser(text: str, reverse_type: str) -> str:
         str: The reversed text.
     """
     if reverse_type == "Word-wise":
-        return ' '.join(text.split()[::-1])
+        return " ".join(text.split()[::-1])
     elif reverse_type == "Character-wise":
         return text[::-1]
     elif reverse_type == "Scrambled":
         text_list = list(text)
         random.shuffle(text_list)
-        return ''.join(text_list)
+        return "".join(text_list)
     return text
 
 
@@ -67,7 +64,7 @@ def text_cleanup(text: str) -> str:
             capitalization.
     """
     words = text.split()
-    text = ' '.join(words)
+    text = " ".join(words)
     text = text.strip()
 
     if not text:
@@ -82,10 +79,10 @@ def text_cleanup(text: str) -> str:
             new_sentence = False
         else:
             result.append(char)
-            if char in '.!?':
+            if char in ".!?":
                 new_sentence = True
 
-    return ''.join(result)
+    return "".join(result)
 
 
 def extract_words(text: str) -> List[str]:
@@ -105,11 +102,11 @@ def extract_words(text: str) -> List[str]:
         if char.isalnum():
             current_word.append(char)
         elif current_word:
-            words.append(''.join(current_word))
+            words.append("".join(current_word))
             current_word = []
 
     if current_word:
-        words.append(''.join(current_word))
+        words.append("".join(current_word))
 
     return words
 
@@ -138,7 +135,7 @@ def word_frequency_analyzer(text: str) -> str:
     for word, count in word_counts.most_common():
         result.append(f"{word}: {count}")
 
-    return '\n'.join(result)
+    return "\n".join(result)
 
 
 def top_words_analyzer(text: str, top_n: int = 5) -> str:
@@ -171,7 +168,7 @@ def top_words_analyzer(text: str, top_n: int = 5) -> str:
     for i, (word, count) in enumerate(top_words, 1):
         result.append(f"{i}. {word}: {count}")
 
-    return '\n'.join(result)
+    return "\n".join(result)
 
 
 def unique_words_count(text: str) -> int:
@@ -206,7 +203,7 @@ def remove_punctuation(text: str) -> str:
     for char in text:
         if char.isalnum() or char.isspace():
             result.append(char)
-    return ''.join(result)
+    return "".join(result)
 
 
 def extract_emails(text: str) -> str:
@@ -220,11 +217,11 @@ def extract_emails(text: str) -> str:
         str: A formatted list of email addresses found, or a message
             if none found.
     """
-    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
     emails = re.findall(email_pattern, text)
 
     if emails:
-        return '\n'.join(emails)
+        return "\n".join(emails)
     return "No email addresses found."
 
 
@@ -247,7 +244,7 @@ def text_analyzer(text: str) -> Tuple[int, int, int, float]:
 
     num_sentences = 0
     for char in text:
-        if char in '.!?':
+        if char in ".!?":
             num_sentences += 1
 
     avg_len = num_chars / num_words if num_words > 0 else 0
@@ -317,21 +314,13 @@ with gr.Blocks(theme="soft", css=CUSTOM_CSS) as text_manipulation_app:
         )
 
         input_text = gr.Textbox(
-            label="✏️ Input Text",
-            placeholder="Enter your text here...",
-            lines=4,
-            elem_id="input-box"
+            label="✏️ Input Text", placeholder="Enter your text here...", lines=4, elem_id="input-box"
         )
 
         with gr.Tabs(elem_id="tabs"):
             with gr.Tab("🔠 Case Converter"):
                 case_type = gr.Radio(
-                    choices=[
-                        "Uppercase",
-                        "Lowercase",
-                        "Title Case",
-                        "Alternate Case"
-                    ],
+                    choices=["Uppercase", "Lowercase", "Title Case", "Alternate Case"],
                     label="Select Case Type",
                     value="Uppercase",
                 )
@@ -346,43 +335,23 @@ with gr.Blocks(theme="soft", css=CUSTOM_CSS) as text_manipulation_app:
                 reverse_button = gr.Button("Reverse Text", variant="primary")
 
             with gr.Tab("🧹 Text Cleanup"):
-                gr.Markdown(
-                    "**Normalize whitespace**, capitalize sentences, "
-                    "and clean up your text."
-                )
+                gr.Markdown("**Normalize whitespace**, capitalize sentences, and clean up your text.")
                 cleanup_button = gr.Button("Clean Up Text", variant="primary")
 
             with gr.Tab("📊 Word Frequency"):
                 gr.Markdown("Analyze word frequency in your text.")
                 with gr.Row():
-                    freq_button = gr.Button(
-                        "Show All Word Frequencies",
-                        variant="primary"
-                    )
-                    top_words_button = gr.Button(
-                        "Show Top 5 Words",
-                        variant="secondary"
-                    )
+                    freq_button = gr.Button("Show All Word Frequencies", variant="primary")
+                    top_words_button = gr.Button("Show Top 5 Words", variant="secondary")
 
             with gr.Tab("🔧 Other Tools"):
                 gr.Markdown("Additional text processing utilities.")
                 with gr.Row():
-                    remove_punct_button = gr.Button(
-                        "Remove Punctuation",
-                        variant="primary"
-                    )
-                    extract_emails_button = gr.Button(
-                        "Extract Emails",
-                        variant="secondary"
-                    )
+                    remove_punct_button = gr.Button("Remove Punctuation", variant="primary")
+                    extract_emails_button = gr.Button("Extract Emails", variant="secondary")
 
         # Shared output box
-        output_textbox = gr.Textbox(
-            label="🧾 Output",
-            lines=6,
-            interactive=False,
-            elem_id="output-box"
-        )
+        output_textbox = gr.Textbox(label="🧾 Output", lines=6, interactive=False, elem_id="output-box")
 
         clear_button = gr.Button("Clear All", variant="stop")
 
@@ -396,7 +365,7 @@ with gr.Blocks(theme="soft", css=CUSTOM_CSS) as text_manipulation_app:
                     interactive=False,
                     show_label=True,
                     scale=1,
-                    container=True
+                    container=True,
                 )
                 word_box = gr.Number(
                     label="Words",
@@ -404,7 +373,7 @@ with gr.Blocks(theme="soft", css=CUSTOM_CSS) as text_manipulation_app:
                     interactive=False,
                     show_label=True,
                     scale=1,
-                    container=True
+                    container=True,
                 )
                 sentence_box = gr.Number(
                     label="Sentences",
@@ -412,7 +381,7 @@ with gr.Blocks(theme="soft", css=CUSTOM_CSS) as text_manipulation_app:
                     interactive=False,
                     show_label=True,
                     scale=1,
-                    container=True
+                    container=True,
                 )
                 avgword_box = gr.Number(
                     label="Avg. Word Length",
@@ -420,71 +389,32 @@ with gr.Blocks(theme="soft", css=CUSTOM_CSS) as text_manipulation_app:
                     interactive=False,
                     show_label=True,
                     scale=1,
-                    container=True
+                    container=True,
                 )
 
-        convert_button.click(
-            fn=case_converter,
-            inputs=[input_text, case_type],
-            outputs=output_textbox
-        )
+        convert_button.click(fn=case_converter, inputs=[input_text, case_type], outputs=output_textbox)
 
-        reverse_button.click(
-            fn=text_reverser,
-            inputs=[input_text, reverse_type],
-            outputs=output_textbox
-        )
+        reverse_button.click(fn=text_reverser, inputs=[input_text, reverse_type], outputs=output_textbox)
 
-        cleanup_button.click(
-            fn=text_cleanup,
-            inputs=input_text,
-            outputs=output_textbox
-        )
+        cleanup_button.click(fn=text_cleanup, inputs=input_text, outputs=output_textbox)
 
-        freq_button.click(
-            fn=word_frequency_analyzer,
-            inputs=input_text,
-            outputs=output_textbox
-        )
+        freq_button.click(fn=word_frequency_analyzer, inputs=input_text, outputs=output_textbox)
 
-        top_words_button.click(
-            fn=top_words_analyzer,
-            inputs=input_text,
-            outputs=output_textbox
-        )
+        top_words_button.click(fn=top_words_analyzer, inputs=input_text, outputs=output_textbox)
 
-        remove_punct_button.click(
-            fn=remove_punctuation,
-            inputs=input_text,
-            outputs=output_textbox
-        )
+        remove_punct_button.click(fn=remove_punctuation, inputs=input_text, outputs=output_textbox)
 
-        extract_emails_button.click(
-            fn=extract_emails,
-            inputs=input_text,
-            outputs=output_textbox
-        )
+        extract_emails_button.click(fn=extract_emails, inputs=input_text, outputs=output_textbox)
 
         clear_button.click(
             fn=clear_all,
             inputs=None,
-            outputs=[
-                input_text,
-                output_textbox,
-                char_box,
-                word_box,
-                sentence_box,
-                avgword_box
-            ],
-            queue=False
+            outputs=[input_text, output_textbox, char_box, word_box, sentence_box, avgword_box],
+            queue=False,
         )
 
         # text analyzer updates
-        input_text.change(
-            fn=text_analyzer,
-            inputs=input_text,
-            outputs=[char_box, word_box, sentence_box, avgword_box]
-        )
+        input_text.change(fn=text_analyzer, inputs=input_text, outputs=[char_box, word_box, sentence_box, avgword_box])
 
 
 if __name__ == "__main__":

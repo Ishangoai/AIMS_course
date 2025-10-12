@@ -25,7 +25,7 @@ era5_full_pipeline_job = dg.define_asset_job(
 era5_daily_schedule = dg.ScheduleDefinition(
     job=era5_full_pipeline_job,
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
-    name="era5_daily_schedule"
+    name="era5_daily_schedule",
 )
 
 # Define all assets and resources for Dagster to discover
@@ -35,5 +35,5 @@ defs = dg.Definitions(
         "mlflow_tracking": mlflow_resource,  # Ensure this points to your configured MLflow resource
     },
     jobs=[era5_full_pipeline_job],
-    schedules=[era5_daily_schedule]
+    schedules=[era5_daily_schedule],
 )

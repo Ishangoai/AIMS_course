@@ -23,10 +23,10 @@ def divide(a, b):
 # class name should use CapWords convention; inconsistent indentation
 class Sample:
     def __init__(self, val):  # extra space, no docstring
-        self.value = val               # no space around =
+        self.value = val  # no space around =
 
-    def show(self):              # method name should be lowercase
-        print('The Value is: ', self.value)  # excessive spacing
+    def show(self):  # method name should be lowercase
+        print("The Value is: ", self.value)  # excessive spacing
 
     def update_value(self, newval):
         self.value = newval
@@ -36,7 +36,7 @@ class Sample:
 # file operations without context manager; missing exception specification
 def readfile(file_path):
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             lines = f.readlines()
 
         for line in lines:
@@ -51,7 +51,7 @@ def compute_fibonacci(limit):
     b = 1
 
     while a < limit:
-        print(a, end='  ')
+        print(a, end="  ")
         a, b = b, a + b  # no spaces around commas
 
 
@@ -69,6 +69,7 @@ def factorial(num):
 #     a = 10
 #     b = 15
 #     c = a * b
+
 
 # statements on same line, inconsistent spacing
 def compare_values(a, b):
@@ -151,7 +152,7 @@ def main():
     s = Sample(100)
     s.show()
     s.update_value(200)
-    readfile('example.txt')
+    readfile("example.txt")
     compute_fibonacci(50)
     print(factorial(5))
     compare_values(4, 4)
@@ -177,7 +178,7 @@ def main():
     # Very long line that violates the max line length rule from PEP 8
     print(
         "This is a very long print statement that goes beyond the recommended line length by PEP 8",
-        "and should be split into multiple lines using backslashes or parentheses"
+        "and should be split into multiple lines using backslashes or parentheses",
     )
 
 
@@ -203,11 +204,11 @@ class BadClass0:
 def long_line_func_0():
     print(
         "this line is also overly long and should not be written this way but it's here",
-        "to test the PEP 8 checker like ruff or flake8 in our teaching example"
+        "to test the PEP 8 checker like ruff or flake8 in our teaching example",
     )
 
 
 def complicated_expression_0():
-    x = (((((((7 * 4)))))))
+    x = 7 * 4
     y = x * 2
     print("Complicated: ", y)

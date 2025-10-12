@@ -22,10 +22,10 @@ def divide(a, b):
 # class name should use CapWords convention; inconsistent indentation
 class Sample:
     def __init__(self, val):  # extra space, no docstring
-        self.value = val               # no space around =
+        self.value = val  # no space around =
 
-    def show(self):              # method name should be lowercase
-        print('The Value is: ', self.value)  # excessive spacing
+    def show(self):  # method name should be lowercase
+        print("The Value is: ", self.value)  # excessive spacing
 
     def updateValue(self, newval):
         self.value = newval
@@ -35,7 +35,7 @@ class Sample:
 # file operations without context manager; missing exception specification
 def readfile(file_path):
     try:
-        f = open(file_path, 'r')  # should use 'with' statement
+        f = open(file_path, "r")  # should use 'with' statement
         lines = f.readlines()
         for line in lines:
             print(line)
@@ -48,7 +48,7 @@ def compute_fibonacci(limit):
     a = 0
     b = 1
     while a < limit:
-        print(a, end='  ')
+        print(a, end="  ")
         a, b = b, a + b  # no spaces around commas
 
 
@@ -78,7 +78,8 @@ def compare_values(a, b):
 
 
 # excessive space before def, one-liner function, no docstring
-def average(numbers): return sum(numbers) / len(numbers)
+def average(numbers):
+    return sum(numbers) / len(numbers)
 
 
 # multiple statements on same line, no docstring, inconsistent spacing
@@ -139,7 +140,7 @@ def main():
     s.show()
     s.updateValue(200)
 
-    readfile('example.txt')
+    readfile("example.txt")
 
     compute_fibonacci(50)
     print(factorial(5))
@@ -166,8 +167,10 @@ def main():
     print(nestedFunction(5))
 
     # Very long line that violates the max line length rule from PEP 8
-    print("This is a very long print statement that goes beyond the recommended line length by ",
-          "PEP 8 and should be split into multiple lines using backslashes or parentheses")
+    print(
+        "This is a very long print statement that goes beyond the recommended line length by ",
+        "PEP 8 and should be split into multiple lines using backslashes or parentheses",
+    )
 
 
 if __name__ == "__main__":
@@ -189,8 +192,10 @@ class BadClass0:
 
 
 def long_line_func_0():
-    print("this line is also overly long and should not be written this way but it's here"
-          "to test the PEP 8 checker like ruff or flake8 in our teaching example")
+    print(
+        "this line is also overly long and should not be written this way but it's here"
+        "to test the PEP 8 checker like ruff or flake8 in our teaching example"
+    )
 
 
 def complicated_expression_0():

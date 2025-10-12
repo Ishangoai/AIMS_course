@@ -479,9 +479,9 @@ class FileExporter:
         for line in lines:
             try:
                 line_encoded = line.encode("latin-1", "replace").decode("latin-1")
-                pdf.multi_cell(0, 6, txt=line_encoded)
+                pdf.multi_cell(0, 6, text=line_encoded)
             except Exception:
-                pdf.multi_cell(0, 6, txt=line.encode("ascii", "ignore").decode("ascii"))
+                pdf.multi_cell(0, 6, text=line.encode("ascii", "ignore").decode("ascii"))
 
         pdf.output(path)
         return path

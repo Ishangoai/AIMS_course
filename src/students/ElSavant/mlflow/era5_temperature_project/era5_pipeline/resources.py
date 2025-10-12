@@ -32,9 +32,7 @@ mlflow_resource = mlflow_tracking.configured(
         "experiment_name": DEFAULT_EXPERIMENT_NAME,
         # Configuration for creating the experiment if it doesn't exist.
         # "artifact_location": DEFAULT_EXPERIMENT_ARTIFACT_LOCATION,
-
         # "save_lifecycle_data": True,
-
         # "mlflow_tracking_uri": "http://localhost:5000",
         # For local file-based tracking, you can also point to "file:./mlruns"
         # or omit if MLflow is already configured globally to use local tracking.

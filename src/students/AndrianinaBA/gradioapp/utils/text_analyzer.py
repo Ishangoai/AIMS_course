@@ -35,7 +35,7 @@ def text_reverser_word(text, reverse=False) -> str:
 
 
 def text_reverser_all_character(text, reverse=False) -> str:
-    """"
+    """ "
     Do we want to reverse all the charachters in the text or not?
     Args :
         - text (str): the text that we want to convert to a certain style
@@ -74,7 +74,7 @@ def text_analyzer(text):
     stripped = text.strip()
     char_count = 0
     for char in stripped:
-        if char == ' ':
+        if char == " ":
             continue
         char_count += 1
 

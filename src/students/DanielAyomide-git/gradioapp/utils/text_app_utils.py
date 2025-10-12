@@ -27,11 +27,7 @@ def load_dictionary() -> set[str]:
     """
     dict_path = Path(__file__).parent / "dict.txt"
     if dict_path.exists():
-        words = {
-            w.strip().upper()
-            for w in dict_path.read_text(encoding="utf-8").splitlines()
-            if w.strip().isalpha()
-        }
+        words = {w.strip().upper() for w in dict_path.read_text(encoding="utf-8").splitlines() if w.strip().isalpha()}
         print(f"✅ Loaded {len(words):,} words from {dict_path}")
         return words
     print("⚠️ Dictionary file not found — using fallback list.")
@@ -43,10 +39,33 @@ DICTIONARY = load_dictionary()
 
 # Scoring for each letter based on the scrabble game
 LETTER_VALUES: dict[str, int] = {
-    "A": 1, "B": 3, "C": 3, "D": 2, "E": 1, "F": 4, "G": 2, "H": 4,
-    "I": 1, "J": 8, "K": 5, "L": 1, "M": 3, "N": 1, "O": 1, "P": 3,
-    "Q": 10, "R": 1, "S": 1, "T": 1, "U": 1, "V": 4, "W": 4, "X": 8,
-    "Y": 4, "Z": 10, "#": 0
+    "A": 1,
+    "B": 3,
+    "C": 3,
+    "D": 2,
+    "E": 1,
+    "F": 4,
+    "G": 2,
+    "H": 4,
+    "I": 1,
+    "J": 8,
+    "K": 5,
+    "L": 1,
+    "M": 3,
+    "N": 1,
+    "O": 1,
+    "P": 3,
+    "Q": 10,
+    "R": 1,
+    "S": 1,
+    "T": 1,
+    "U": 1,
+    "V": 4,
+    "W": 4,
+    "X": 8,
+    "Y": 4,
+    "Z": 10,
+    "#": 0,
 }
 
 # ============================================================
@@ -79,10 +98,33 @@ class Bag:
     def _initialize_bag(self) -> None:
         """Populate the bag with tiles according to standard Scrabble frequencies."""
         frequencies = {
-            "A": 9, "B": 2, "C": 2, "D": 4, "E": 12, "F": 2, "G": 3, "H": 2,
-            "I": 9, "J": 1, "K": 1, "L": 4, "M": 2, "N": 6, "O": 8, "P": 2,
-            "Q": 1, "R": 6, "S": 4, "T": 6, "U": 4, "V": 2, "W": 2, "X": 1,
-            "Y": 2, "Z": 1, "#": 2
+            "A": 9,
+            "B": 2,
+            "C": 2,
+            "D": 4,
+            "E": 12,
+            "F": 2,
+            "G": 3,
+            "H": 2,
+            "I": 9,
+            "J": 1,
+            "K": 1,
+            "L": 4,
+            "M": 2,
+            "N": 6,
+            "O": 8,
+            "P": 2,
+            "Q": 1,
+            "R": 6,
+            "S": 4,
+            "T": 6,
+            "U": 4,
+            "V": 2,
+            "W": 2,
+            "X": 1,
+            "Y": 2,
+            "Z": 1,
+            "#": 2,
         }
         for letter, count in frequencies.items():
             self.tiles.extend(Tile(letter) for _ in range(count))
@@ -164,10 +206,7 @@ class Player:
             str | None: Word played, or None if no valid word found.
         """
         rack_letters = self.rack.letters()
-        possible_words = [
-            w for w in DICTIONARY
-            if all(w.count(c) <= rack_letters.count(c) for c in w)
-        ]
+        possible_words = [w for w in DICTIONARY if all(w.count(c) <= rack_letters.count(c) for c in w)]
         if not possible_words:
             return None
         # Choose the highest scoring word
@@ -280,6 +319,7 @@ class Game:
             f"Round: {min(self.round, self.max_rounds)}/{self.max_rounds}"
         )
 
+
 # ============================================================
 # 🎮 Gradio Interface Wrappers
 # ============================================================
@@ -313,13 +353,13 @@ def new_game() -> tuple[str, str, str, str]:
     game = Game()
     return "New game started!", game.scores(), " ".join(game.player.rack.letters()), ""
 
+
 # ============================================================
 # 🧩 Gradio Interface
 # ============================================================
 
 
 with gr.Blocks() as scrabble_demo:
-
     gr.Markdown("## Game Rules")
 
     gr.Markdown(
@@ -356,18 +396,11 @@ with gr.Blocks() as scrabble_demo:
     result_box = gr.Textbox(label="Game Log", interactive=False)
 
     # Attach events
-    submit_btn.click(
-        gr_play_turn,
-        inputs=word_input,
-        outputs=[result_box, scores_box, rack_box, word_input]
-    )
+    submit_btn.click(gr_play_turn, inputs=word_input, outputs=[result_box, scores_box, rack_box, word_input])
 
     skip_btn.click(
         lambda: (game.skip_turn(), game.scores(), " ".join(game.player.rack.letters()), ""),
-        outputs=[result_box, scores_box, rack_box, word_input]
+        outputs=[result_box, scores_box, rack_box, word_input],
     )
 
-    new_btn.click(
-        new_game,
-        outputs=[result_box, scores_box, rack_box, word_input]
-    )
+    new_btn.click(new_game, outputs=[result_box, scores_box, rack_box, word_input])

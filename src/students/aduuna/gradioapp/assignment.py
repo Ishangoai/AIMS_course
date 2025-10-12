@@ -35,7 +35,6 @@ def format(text, reverse_order, reverse_chars, case):
 
 
 with gr.Blocks() as demo:
-
     textbox = gr.Textbox(label="Enter your name")
     output_box = gr.Textbox(label="Output", interactive=False)
 
@@ -50,11 +49,9 @@ with gr.Blocks() as demo:
     with gr.Accordion("Text analyzer"):
         analyzer = gr.Textbox(label="Word Count, Character Count, Average word length", interactive=True)
 
-    textbox.change(
-        fn=format,
-        inputs=[textbox, reverse_order, reverse_order, converter],
-        outputs=output_box
-    ).then(fn=analyze, inputs=textbox, outputs=analyzer)
+    textbox.change(fn=format, inputs=[textbox, reverse_order, reverse_order, converter], outputs=output_box).then(
+        fn=analyze, inputs=textbox, outputs=analyzer
+    )
 
 if __name__ == "__main__":
     demo.launch()

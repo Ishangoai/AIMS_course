@@ -17,15 +17,9 @@ from numpy.typing import NDArray
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 
 # Constants
-DEFAULT_TEXT_POSITIONS: dict[str, float] = {
-    "Top": 0.05,
-    "Center": 0.5,
-    "Bottom": 0.9
-}
+DEFAULT_TEXT_POSITIONS: dict[str, float] = {"Top": 0.05, "Center": 0.5, "Bottom": 0.9}
 DEFAULT_COLOR: Tuple[int, int, int] = (255, 255, 255)
-FONT_PATH: str = os.path.join(
-    os.path.dirname(ImageFont.__file__), "Fonts/DejaVuSans.ttf"
-)
+FONT_PATH: str = os.path.join(os.path.dirname(ImageFont.__file__), "Fonts/DejaVuSans.ttf")
 
 
 def parse_color(color: Optional[str]) -> Tuple[int, int, int]:
@@ -60,25 +54,14 @@ def parse_color(color: Optional[str]) -> Tuple[int, int, int]:
             color = "".join([c * 2 for c in color])
         if len(color) == 6:
             try:
-                return (
-                    int(color[0:2], 16),
-                    int(color[2:4], 16),
-                    int(color[4:6], 16)
-                )
+                return (int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16))
             except ValueError:
                 pass
 
     # RGB/RGBA format: rgb(R,G,B) or rgba(R,G,B,A)
-    match = re.match(
-        r"rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*[\d.]+)?\)",
-        color
-    )
+    match = re.match(r"rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*[\d.]+)?\)", color)
     if match:
-        return (
-            int(round(float(match.group(1)))),
-            int(round(float(match.group(2)))),
-            int(round(float(match.group(3))))
-        )
+        return (int(round(float(match.group(1)))), int(round(float(match.group(2)))), int(round(float(match.group(3)))))
 
     return DEFAULT_COLOR
 
@@ -121,11 +104,7 @@ def to_pil_image(image: Union[NDArray[np.uint8], Image.Image]) -> Image.Image:
 
 
 def apply_transformations(
-    img: Image.Image,
-    grayscale: bool,
-    brightness: float,
-    contrast: float,
-    rotation: float
+    img: Image.Image, grayscale: bool, brightness: float, contrast: float, rotation: float
 ) -> Image.Image:
     """
     Apply color and geometric transformations to image.
@@ -156,12 +135,7 @@ def apply_transformations(
 
 
 def calculate_text_position(
-    img_size: Tuple[int, int],
-    text_size: Tuple[int, int],
-    use_custom: bool,
-    x: float,
-    y: float,
-    position: str
+    img_size: Tuple[int, int], text_size: Tuple[int, int], use_custom: bool, x: float, y: float, position: str
 ) -> Tuple[int, int]:
     """
     Calculate text overlay position based on user preferences.
@@ -196,14 +170,7 @@ def calculate_text_position(
 
 
 def add_text(
-    img: Image.Image,
-    text: str,
-    color: str,
-    font_size: int,
-    use_custom: bool,
-    x: float,
-    y: float,
-    position: str
+    img: Image.Image, text: str, color: str, font_size: int, use_custom: bool, x: float, y: float, position: str
 ) -> Image.Image:
     """
     Add text overlay to image at specified position.
@@ -232,9 +199,7 @@ def add_text(
     text_size = (int(bbox[2] - bbox[0]), int(bbox[3] - bbox[1]))
 
     # Calculate position
-    x_pos, y_pos = calculate_text_position(
-        (img.width, img.height), text_size, use_custom, x, y, position
-    )
+    x_pos, y_pos = calculate_text_position((img.width, img.height), text_size, use_custom, x, y, position)
 
     # Draw text
     draw.text((x_pos, y_pos), text, font=font, fill=parse_color(color))
@@ -253,7 +218,7 @@ def edit_image(
     y: float = 0,
     position: str = "Top",
     color: str = "#FFFFFF",
-    font_size: int = 30
+    font_size: int = 30,
 ) -> Optional[Image.Image]:
     """
     Apply all image edits and text overlay.
@@ -290,9 +255,7 @@ def edit_image(
     return img
 
 
-def save_temp_image(
-    img: Optional[Union[NDArray[np.uint8], Image.Image]]
-) -> Optional[str]:
+def save_temp_image(img: Optional[Union[NDArray[np.uint8], Image.Image]]) -> Optional[str]:
     """
     Save image to temporary file for download.
 
@@ -316,13 +279,21 @@ def save_temp_image(
 
 
 def reset_to_original(
-    image: Optional[Union[NDArray[np.uint8], Image.Image]]
+    image: Optional[Union[NDArray[np.uint8], Image.Image]],
 ) -> Tuple[
     Optional[Union[NDArray[np.uint8], Image.Image]],
-    bool, float, float, float,
-    str, bool, float, float,
-    str, str, int,
-    Optional[Union[NDArray[np.uint8], Image.Image]]
+    bool,
+    float,
+    float,
+    float,
+    str,
+    bool,
+    float,
+    float,
+    str,
+    str,
+    int,
+    Optional[Union[NDArray[np.uint8], Image.Image]],
 ]:
     """
     Reset all controls to default values and restore original image.
@@ -359,9 +330,7 @@ with gr.Blocks(title="Image Editor") as image_app:
                 with gr.Row():
                     color_picker = gr.ColorPicker(value="#FFFFFF", label="Color")
                     font_size_slider = gr.Slider(10, 100, 30, step=1, label="Size")
-                position_dropdown = gr.Dropdown(
-                    list(DEFAULT_TEXT_POSITIONS.keys()), value="Top", label="Position"
-                )
+                position_dropdown = gr.Dropdown(list(DEFAULT_TEXT_POSITIONS.keys()), value="Top", label="Position")
                 use_custom_pos = gr.Checkbox(label="Custom Position", value=False)
                 with gr.Row(visible=False) as custom_pos_row:
                     x_slider = gr.Slider(0, 512, 50, label="X")
@@ -377,25 +346,26 @@ with gr.Blocks(title="Image Editor") as image_app:
 
     # Define inputs list
     inputs = [
-        image_input, grayscale, brightness, contrast, rotation,
-        text_input, use_custom_pos, x_slider, y_slider,
-        position_dropdown, color_picker, font_size_slider
+        image_input,
+        grayscale,
+        brightness,
+        contrast,
+        rotation,
+        text_input,
+        use_custom_pos,
+        x_slider,
+        y_slider,
+        position_dropdown,
+        color_picker,
+        font_size_slider,
     ]
 
     # Event Handlers
-    use_custom_pos.change(
-        fn=lambda x: gr.update(visible=x),
-        inputs=use_custom_pos,
-        outputs=custom_pos_row
-    )
+    use_custom_pos.change(fn=lambda x: gr.update(visible=x), inputs=use_custom_pos, outputs=custom_pos_row)
 
     for inp in inputs:
         inp.change(fn=edit_image, inputs=inputs, outputs=image_output)
 
-    reset_btn.click(
-        fn=reset_to_original,
-        inputs=[image_input],
-        outputs=inputs + [image_output]
-    )
+    reset_btn.click(fn=reset_to_original, inputs=[image_input], outputs=inputs + [image_output])
 
     download_btn.click(fn=save_temp_image, inputs=image_output, outputs=download_btn)

@@ -7,11 +7,7 @@ import pandas as pd
 from matplotlib.figure import Figure
 
 # Global configuration
-text_configs = {
-    "text_case": None,
-    "reverse_word_order": False,
-    "reverse_char_order": False
-}
+text_configs = {"text_case": None, "reverse_word_order": False, "reverse_char_order": False}
 
 
 def to_uppercase(text: str) -> str:
@@ -92,10 +88,12 @@ def get_character_frequency(text: str) -> Counter:
 
 def generate_table(word_count_val: int, char_count_val: int, avg_word_length_val: float) -> pd.DataFrame:
     """Generate statistics table."""
-    data = pd.DataFrame({
-        "Metric": ["Word Count", "Character Count", "Average Word Length"],
-        "Value": [word_count_val, char_count_val, avg_word_length_val]
-    })
+    data = pd.DataFrame(
+        {
+            "Metric": ["Word Count", "Character Count", "Average Word Length"],
+            "Value": [word_count_val, char_count_val, avg_word_length_val],
+        }
+    )
     return data
 
 
@@ -107,27 +105,24 @@ def create_statistics_visualizations(text: str) -> Tuple[Figure, Figure, Figure]
         Tuple containing: basic stats figure, word length distribution figure, character frequency figure
     """
     # Create figures with consistent styling
-    plt.style.use('seaborn-v0_8')
+    plt.style.use("seaborn-v0_8")
 
     # Initialize empty figures for the case of no data
     if not text or text.isspace():
         fig1, ax1 = plt.subplots(figsize=(6, 4))
-        ax1.text(0.5, 0.5, "No data to display",
-                ha='center', va='center', transform=ax1.transAxes, fontsize=12)
+        ax1.text(0.5, 0.5, "No data to display", ha="center", va="center", transform=ax1.transAxes, fontsize=12)
         ax1.set_title("Basic Text Statistics")
-        ax1.axis('off')
+        ax1.axis("off")
 
         fig2, ax2 = plt.subplots(figsize=(6, 4))
-        ax2.text(0.5, 0.5, "No data to display",
-                ha='center', va='center', transform=ax2.transAxes, fontsize=12)
+        ax2.text(0.5, 0.5, "No data to display", ha="center", va="center", transform=ax2.transAxes, fontsize=12)
         ax2.set_title("Word Length Distribution")
-        ax2.axis('off')
+        ax2.axis("off")
 
         fig3, ax3 = plt.subplots(figsize=(6, 4))
-        ax3.text(0.5, 0.5, "No data to display",
-                ha='center', va='center', transform=ax3.transAxes, fontsize=12)
+        ax3.text(0.5, 0.5, "No data to display", ha="center", va="center", transform=ax3.transAxes, fontsize=12)
         ax3.set_title("Character Frequency")
-        ax3.axis('off')
+        ax3.axis("off")
 
         return fig1, fig2, fig3
 
@@ -138,19 +133,20 @@ def create_statistics_visualizations(text: str) -> Tuple[Figure, Figure, Figure]
 
     # Figure 1: Basic Statistics Bar Chart
     fig1, ax1 = plt.subplots(figsize=(8, 5))
-    metrics = ['Words', 'Characters', 'Avg Word Length']
+    metrics = ["Words", "Characters", "Avg Word Length"]
     values = [wc, cc, awl]
-    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1']
+    colors = ["#FF6B6B", "#4ECDC4", "#45B7D1"]
 
     bars = ax1.bar(metrics, values, color=colors, alpha=0.8)
-    ax1.set_title("Basic Text Statistics", fontsize=14, fontweight='bold')
+    ax1.set_title("Basic Text Statistics", fontsize=14, fontweight="bold")
     ax1.set_ylabel("Count", fontsize=12)
 
     # Add value labels on bars
     for bar, value in zip(bars, values):
         height = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width() / 2., height + 0.1,
-                f'{value}', ha='center', va='bottom', fontweight='bold')
+        ax1.text(
+            bar.get_x() + bar.get_width() / 2.0, height + 0.1, f"{value}", ha="center", va="bottom", fontweight="bold"
+        )
 
     plt.setp(ax1.xaxis.get_majorticklabels(), rotation=0)
     fig1.tight_layout()
@@ -163,8 +159,8 @@ def create_statistics_visualizations(text: str) -> Tuple[Figure, Figure, Figure]
         lengths = list(word_length_dist.keys())
         counts = list(word_length_dist.values())
 
-        bars = ax2.bar(lengths, counts, color='#96CEB4', alpha=0.8)
-        ax2.set_title("Word Length Distribution", fontsize=14, fontweight='bold')
+        bars = ax2.bar(lengths, counts, color="#96CEB4", alpha=0.8)
+        ax2.set_title("Word Length Distribution", fontsize=14, fontweight="bold")
         ax2.set_xlabel("Word Length", fontsize=12)
         ax2.set_ylabel("Frequency", fontsize=12)
         ax2.set_xticks(lengths)
@@ -172,11 +168,11 @@ def create_statistics_visualizations(text: str) -> Tuple[Figure, Figure, Figure]
         # Add value labels on bars
         for bar, count in zip(bars, counts):
             height = bar.get_height()
-            ax2.text(bar.get_x() + bar.get_width() / 2., height + 0.1,
-                    f'{count}', ha='center', va='bottom', fontsize=9)
+            ax2.text(
+                bar.get_x() + bar.get_width() / 2.0, height + 0.1, f"{count}", ha="center", va="bottom", fontsize=9
+            )
     else:
-        ax2.text(0.5, 0.5, "No words to analyze",
-                ha='center', va='center', transform=ax2.transAxes, fontsize=12)
+        ax2.text(0.5, 0.5, "No words to analyze", ha="center", va="center", transform=ax2.transAxes, fontsize=12)
         ax2.set_title("Word Length Distribution")
 
     fig2.tight_layout()
@@ -191,8 +187,8 @@ def create_statistics_visualizations(text: str) -> Tuple[Figure, Figure, Figure]
         chars, freqs = zip(*common_chars) if common_chars else ([], [])
 
         if chars and freqs:
-            bars = ax3.bar(range(len(chars)), freqs, color='#FFA07A', alpha=0.8)
-            ax3.set_title("Top 10 Character Frequency", fontsize=14, fontweight='bold')
+            bars = ax3.bar(range(len(chars)), freqs, color="#FFA07A", alpha=0.8)
+            ax3.set_title("Top 10 Character Frequency", fontsize=14, fontweight="bold")
             ax3.set_xlabel("Characters", fontsize=12)
             ax3.set_ylabel("Frequency", fontsize=12)
             ax3.set_xticks(range(len(chars)))
@@ -201,14 +197,15 @@ def create_statistics_visualizations(text: str) -> Tuple[Figure, Figure, Figure]
             # Add value labels on bars
             for bar, freq in zip(bars, freqs):
                 height = bar.get_height()
-                ax3.text(bar.get_x() + bar.get_width() / 2., height + 0.1,
-                        f'{freq}', ha='center', va='bottom', fontsize=9)
+                ax3.text(
+                    bar.get_x() + bar.get_width() / 2.0, height + 0.1, f"{freq}", ha="center", va="bottom", fontsize=9
+                )
         else:
-            ax3.text(0.5, 0.5, "No characters to analyze",
-                    ha='center', va='center', transform=ax3.transAxes, fontsize=12)
+            ax3.text(
+                0.5, 0.5, "No characters to analyze", ha="center", va="center", transform=ax3.transAxes, fontsize=12
+            )
     else:
-        ax3.text(0.5, 0.5, "No characters to analyze",
-                ha='center', va='center', transform=ax3.transAxes, fontsize=12)
+        ax3.text(0.5, 0.5, "No characters to analyze", ha="center", va="center", transform=ax3.transAxes, fontsize=12)
 
     fig3.tight_layout()
 
@@ -220,51 +217,47 @@ def create_advanced_visualizations(text: str) -> Figure:
     fig, ax = plt.subplots(figsize=(10, 6))
 
     if not text or text.isspace():
-        ax.text(0.5, 0.5, "No data to display",
-                ha='center', va='center', transform=ax.transAxes, fontsize=12)
+        ax.text(0.5, 0.5, "No data to display", ha="center", va="center", transform=ax.transAxes, fontsize=12)
         ax.set_title("Word Frequency Analysis")
-        ax.axis('off')
+        ax.axis("off")
         return fig
 
     tokens = get_word_tokens(text)
     if not tokens:
-        ax.text(0.5, 0.5, "No words to analyze",
-                ha='center', va='center', transform=ax.transAxes, fontsize=12)
+        ax.text(0.5, 0.5, "No words to analyze", ha="center", va="center", transform=ax.transAxes, fontsize=12)
         ax.set_title("Word Frequency Analysis")
-        ax.axis('off')
+        ax.axis("off")
         return fig
 
     word_freq = Counter(tokens)
     common_words = word_freq.most_common(8)
 
     if not common_words:
-        ax.text(0.5, 0.5, "No frequent words found",
-                ha='center', va='center', transform=ax.transAxes, fontsize=12)
+        ax.text(0.5, 0.5, "No frequent words found", ha="center", va="center", transform=ax.transAxes, fontsize=12)
         ax.set_title("Word Frequency Analysis")
-        ax.axis('off')
+        ax.axis("off")
         return fig
 
     words, counts = zip(*common_words)
 
     # Create line plot with markers
     x_pos = range(len(words))
-    ax.plot(x_pos, counts, marker='o', linestyle='-',
-            color='#6A0DAD', linewidth=2, markersize=8, markerfacecolor='#FFA07A')
+    ax.plot(
+        x_pos, counts, marker="o", linestyle="-", color="#6A0DAD", linewidth=2, markersize=8, markerfacecolor="#FFA07A"
+    )
 
-    ax.set_title("Most Frequent Words", fontsize=14, fontweight='bold')
+    ax.set_title("Most Frequent Words", fontsize=14, fontweight="bold")
     ax.set_xlabel("Words", fontsize=12)
     ax.set_ylabel("Frequency", fontsize=12)
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(words, rotation=45, ha='right')
+    ax.set_xticklabels(words, rotation=45, ha="right")
 
     # Add grid for better readability
-    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.grid(True, alpha=0.3, linestyle="--")
 
     # Add value labels on points
     for i, (word, count) in enumerate(common_words):
-        ax.annotate(f'{count}', (i, count),
-                   textcoords="offset points", xytext=(0, 10),
-                   ha='center', fontweight='bold')
+        ax.annotate(f"{count}", (i, count), textcoords="offset points", xytext=(0, 10), ha="center", fontweight="bold")
 
     fig.tight_layout()
     return fig
@@ -379,19 +372,13 @@ with gr.Blocks(
 
             with gr.Accordion("Case Converter", open=False):
                 case_choice = gr.Radio(
-                    ["Uppercase", "Lowercase", "Titlecase"],
-                    label="Select Case",
-                    info="Choose text case transformation"
+                    ["Uppercase", "Lowercase", "Titlecase"], label="Select Case", info="Choose text case transformation"
                 )
 
             with gr.Accordion("Reverse Operations", open=False):
-                reverse_word_checkbox = gr.Checkbox(
-                    label="Reverse Word Order",
-                    info="Reverse the order of words"
-                )
+                reverse_word_checkbox = gr.Checkbox(label="Reverse Word Order", info="Reverse the order of words")
                 reverse_char_checkbox = gr.Checkbox(
-                    label="Reverse All Characters",
-                    info="Reverse characters in each word"
+                    label="Reverse All Characters", info="Reverse characters in each word"
                 )
 
             with gr.Row():
@@ -402,9 +389,7 @@ with gr.Blocks(
             with gr.Row():
                 with gr.Column():
                     user_input = gr.TextArea(
-                        label="Input Text",
-                        placeholder="Enter or paste your text here...",
-                        lines=5
+                        label="Input Text", placeholder="Enter or paste your text here...", lines=5
                     )
 
                     with gr.Row():
@@ -412,21 +397,17 @@ with gr.Blocks(
                         clear_text_btn = gr.Button("Clear Text", variant="secondary")
 
                 with gr.Column():
-                    output = gr.TextArea(
-                        label="Processed Output",
-                        lines=5,
-                        interactive=False
-                    )
+                    output = gr.TextArea(label="Processed Output", lines=5, interactive=False)
 
             with gr.Row():
                 with gr.Column():
                     stats_display = gr.Dataframe(
-                        label='Basic Statistics',
+                        label="Basic Statistics",
                         headers=["Metric", "Value"],
                         datatype=["str", "number"],
                         row_count=3,
                         col_count=2,
-                        value=generate_table(0, 0, 0)
+                        value=generate_table(0, 0, 0),
                     )
 
             with gr.Tabs():
@@ -444,28 +425,19 @@ with gr.Blocks(
     user_input.change(
         fn=update_statistics,
         inputs=user_input,
-        outputs=[stats_display, stats_plot, word_len_plot, char_freq_plot, advanced_plot]
+        outputs=[stats_display, stats_plot, word_len_plot, char_freq_plot, advanced_plot],
     )
 
-    case_choice.change(
-        fn=selected_textcase,
-        inputs=case_choice
-    )
+    case_choice.change(fn=selected_textcase, inputs=case_choice)
 
-    reverse_word_checkbox.change(
-        fn=set_reverse_word,
-        inputs=reverse_word_checkbox
-    )
+    reverse_word_checkbox.change(fn=set_reverse_word, inputs=reverse_word_checkbox)
 
-    reverse_char_checkbox.change(
-        fn=set_reverse_char,
-        inputs=reverse_char_checkbox
-    )
+    reverse_char_checkbox.change(fn=set_reverse_char, inputs=reverse_char_checkbox)
 
     send_btn.click(
         fn=text_actions,
         inputs=user_input,
-        outputs=[output, stats_display, stats_plot, word_len_plot, char_freq_plot, advanced_plot]
+        outputs=[output, stats_display, stats_plot, word_len_plot, char_freq_plot, advanced_plot],
     )
 
     clear_text_btn.click(
@@ -473,22 +445,26 @@ with gr.Blocks(
             "",
             generate_table(0, 0, 0),
             *create_statistics_visualizations(""),
-            create_advanced_visualizations("")
+            create_advanced_visualizations(""),
         ),
-        outputs=[user_input, stats_display, stats_plot, word_len_plot, char_freq_plot, advanced_plot]
+        outputs=[user_input, stats_display, stats_plot, word_len_plot, char_freq_plot, advanced_plot],
     )
 
-    clear_actions_btn.click(
-        fn=clear_actions,
-        outputs=[case_choice, reverse_word_checkbox, reverse_char_checkbox]
-    )
+    clear_actions_btn.click(fn=clear_actions, outputs=[case_choice, reverse_word_checkbox, reverse_char_checkbox])
 
     clear_all_btn.click(
         fn=clear_all,
         outputs=[
-            user_input, stats_display, stats_plot, word_len_plot, char_freq_plot,
-            advanced_plot, case_choice, reverse_word_checkbox, reverse_char_checkbox
-        ]
+            user_input,
+            stats_display,
+            stats_plot,
+            word_len_plot,
+            char_freq_plot,
+            advanced_plot,
+            case_choice,
+            reverse_word_checkbox,
+            reverse_char_checkbox,
+        ],
     )
 
 if __name__ == "__main__":

@@ -52,11 +52,7 @@ def text_tool(text, case_option, reverse_words, reverse_chars):
     processed = process_text(text, case_option, reverse_words, reverse_chars)
     word_count, char_count, avg_word_len = analyze_text(text)
 
-    stats = (
-        f"**Word Count:** {word_count}\n"
-        f"**Character Count:** {char_count}\n"
-        f"**Average Word Length:** {avg_word_len}"
-    )
+    stats = f"**Word Count:** {word_count}\n**Character Count:** {char_count}\n**Average Word Length:** {avg_word_len}"
 
     return processed, stats
 
@@ -72,9 +68,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as demo:
         with gr.Tabs():
             with gr.Tab("Case Converter"):
                 case_option = gr.Radio(
-                    ["Uppercase", "Lowercase", "Title Case"],
-                    label="Choose Case Conversion",
-                    value="Uppercase"
+                    ["Uppercase", "Lowercase", "Title Case"], label="Choose Case Conversion", value="Uppercase"
                 )
 
             with gr.Tab("Text Reverser"):
@@ -92,32 +86,24 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as demo:
 
     # --- Interactivity ---
     text_input.change(
-        text_tool,
-        inputs=[text_input, case_option, reverse_words, reverse_chars],
-        outputs=[result_output, stats_output]
+        text_tool, inputs=[text_input, case_option, reverse_words, reverse_chars], outputs=[result_output, stats_output]
     )
 
     case_option.change(
-        text_tool,
-        inputs=[text_input, case_option, reverse_words, reverse_chars],
-        outputs=[result_output, stats_output]
+        text_tool, inputs=[text_input, case_option, reverse_words, reverse_chars], outputs=[result_output, stats_output]
     )
 
     reverse_words.change(
-        text_tool,
-        inputs=[text_input, case_option, reverse_words, reverse_chars],
-        outputs=[result_output, stats_output]
+        text_tool, inputs=[text_input, case_option, reverse_words, reverse_chars], outputs=[result_output, stats_output]
     )
 
     reverse_chars.change(
-        text_tool,
-        inputs=[text_input, case_option, reverse_words, reverse_chars],
-        outputs=[result_output, stats_output]
+        text_tool, inputs=[text_input, case_option, reverse_words, reverse_chars], outputs=[result_output, stats_output]
     )
 
     clear_btn.click(
         fn=lambda: ("", "", "**Word Count:** 0\n**Character Count:** 0\n**Average Word Length:** 0.0"),
-        outputs=[text_input, result_output, stats_output]
+        outputs=[text_input, result_output, stats_output],
     )
 
 # --- Launch ---

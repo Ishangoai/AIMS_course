@@ -22,12 +22,9 @@ from .resources import RandomForestConfig, fraud_data_resource
 
 @dg.asset(
     description="Loads credit card fraud detection dataset from URL.",
-    resource_defs={
-        "mlflow_tracking": mlflow_resource,
-        "fraud_data": fraud_data_resource
-    },
+    resource_defs={"mlflow_tracking": mlflow_resource, "fraud_data": fraud_data_resource},
     compute_kind="python",
-    group_name="fraud_ingest"
+    group_name="fraud_ingest",
 )
 def raw_fraud_data(
     context: dg.AssetExecutionContext,
@@ -43,20 +40,22 @@ def raw_fraud_data(
     # Load the dataset
     df: pd.DataFrame = pd.read_csv(fraud_data_resource.data_url)
     # Sample the data while preserving the fraud cases
-    fraud_df = df[df['Class'] == 1]
-    normal_df = df[df['Class'] == 0].sample(n=1000 - len(fraud_df), random_state=42)
+    fraud_df = df[df["Class"] == 1]
+    normal_df = df[df["Class"] == 0].sample(n=1000 - len(fraud_df), random_state=42)
     df = pd.DataFrame(pd.concat([fraud_df, normal_df]).sample(frac=1, random_state=42).reset_index(drop=True))
 
     context.log.info(f"Loaded dataset with shape: {df.shape}")
 
     # Log basic dataset information to MLflow
-    mlflow_client.log_params({
-        "dataset_rows": len(df),
-        "dataset_columns": len(df.columns),
-        "fraud_cases": int(df['Class'].sum()),
-        "normal_cases": int(len(df) - df['Class'].sum()),
-        "fraud_percentage": float(df['Class'].mean() * 100)
-    })
+    mlflow_client.log_params(
+        {
+            "dataset_rows": len(df),
+            "dataset_columns": len(df.columns),
+            "fraud_cases": int(df["Class"].sum()),
+            "normal_cases": int(len(df) - df["Class"].sum()),
+            "fraud_percentage": float(df["Class"].mean() * 100),
+        }
+    )
 
     # Log the dataset to MLflow
     dataset = mlflow_client.data.from_pandas(df, name="raw_fraud_detection_data")
@@ -70,26 +69,20 @@ def raw_fraud_data(
             "preview": dg.MetadataValue.md(df.head().to_markdown() or ""),
             "dagster/row_count": len(df),
             "dagster/column_schema": dg.TableSchema(columns=columns),
-            "fraud_cases": dg.MetadataValue.int(int(df['Class'].sum())),
-            "normal_cases": dg.MetadataValue.int(int(len(df) - df['Class'].sum())),
-            "fraud_percentage": dg.MetadataValue.float(float(df['Class'].mean() * 100))
-        }
+            "fraud_cases": dg.MetadataValue.int(int(df["Class"].sum())),
+            "normal_cases": dg.MetadataValue.int(int(len(df) - df["Class"].sum())),
+            "fraud_percentage": dg.MetadataValue.float(float(df["Class"].mean() * 100)),
+        },
     )
 
 
 @dg.asset(
     description="Preprocesses fraud data and split into training and test sets.",
-    resource_defs={
-        "mlflow_tracking": mlflow_resource,
-        "fraud_data": fraud_data_resource
-    },
+    resource_defs={"mlflow_tracking": mlflow_resource, "fraud_data": fraud_data_resource},
     compute_kind="python",
-    group_name="fraud_transform"
+    group_name="fraud_transform",
 )
-def preprocessed_fraud_data(
-    context: dg.AssetExecutionContext,
-    raw_fraud_data: pd.DataFrame
-) -> dg.MaterializeResult:
+def preprocessed_fraud_data(context: dg.AssetExecutionContext, raw_fraud_data: pd.DataFrame) -> dg.MaterializeResult:
     """
     Preprocesses the fraud data and split into training and test sets.
     """
@@ -99,15 +92,16 @@ def preprocessed_fraud_data(
     context.log.info("Starting data preprocessing and splitting")
 
     # Separate features and target
-    X = raw_fraud_data.drop('Class', axis=1)
-    y = raw_fraud_data['Class']
+    X = raw_fraud_data.drop("Class", axis=1)
+    y = raw_fraud_data["Class"]
 
     # Split data into train (80%) and test (20%)
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
+        X,
+        y,
         test_size=fraud_data_resource.test_size,
         random_state=fraud_data_resource.random_state,
-        stratify=y  # Maintain class distribution
+        stratify=y,  # Maintain class distribution
     )
 
     X_train = pd.DataFrame(X_train)
@@ -121,22 +115,19 @@ def preprocessed_fraud_data(
     context.log.info(f"Test fraud rate: {y_test.mean():.4f}")
 
     # Log split information to MLflow
-    mlflow_client.log_params({
-        "test_size": fraud_data_resource.test_size,
-        "random_state": fraud_data_resource.random_state,
-        "train_samples": len(X_train),
-        "test_samples": len(X_test),
-        "train_fraud_rate": float(y_train.mean()),
-        "test_fraud_rate": float(y_test.mean())
-    })
+    mlflow_client.log_params(
+        {
+            "test_size": fraud_data_resource.test_size,
+            "random_state": fraud_data_resource.random_state,
+            "train_samples": len(X_train),
+            "test_samples": len(X_test),
+            "train_fraud_rate": float(y_train.mean()),
+            "test_fraud_rate": float(y_test.mean()),
+        }
+    )
 
     # Create the split data dictionary
-    split_data = {
-        "X_train": X_train,
-        "X_test": X_test,
-        "y_train": y_train,
-        "y_test": y_test
-    }
+    split_data = {"X_train": X_train, "X_test": X_test, "y_train": y_train, "y_test": y_test}
 
     return dg.MaterializeResult(
         value=split_data,
@@ -145,8 +136,8 @@ def preprocessed_fraud_data(
             "test_samples": dg.MetadataValue.int(len(X_test)),
             "train_fraud_rate": dg.MetadataValue.float(float(y_train.mean())),
             "test_fraud_rate": dg.MetadataValue.float(float(y_test.mean())),
-            "feature_count": dg.MetadataValue.int(len(X.columns))
-        }
+            "feature_count": dg.MetadataValue.int(len(X.columns)),
+        },
     )
 
 
@@ -156,12 +147,10 @@ def preprocessed_fraud_data(
         "mlflow_tracking": mlflow_resource,
     },
     compute_kind="python",
-    group_name="fraud_model"
+    group_name="fraud_model",
 )
 def tune_random_forest(
-    context: dg.AssetExecutionContext,
-    config: RandomForestConfig,
-    preprocessed_fraud_data: dict
+    context: dg.AssetExecutionContext, config: RandomForestConfig, preprocessed_fraud_data: dict
 ) -> dg.MaterializeResult:
     """
     Performs hyperparameter tuning using GridSearchCV and logs all trials as nested MLflow runs.
@@ -185,25 +174,22 @@ def tune_random_forest(
     rf = RandomForestClassifier(
         random_state=config.random_state,
         n_jobs=-1,  # Use all available cores
-        class_weight="balanced"
+        class_weight="balanced",
     )
 
     # Set up GridSearchCV
     grid_search = GridSearchCV(
-        estimator=rf,
-        param_grid=config.param_grid,
-        cv=config.cv_folds,
-        scoring=config.scoring,
-        n_jobs=-1,
-        verbose=2
+        estimator=rf, param_grid=config.param_grid, cv=config.cv_folds, scoring=config.scoring, n_jobs=-1, verbose=2
     )
 
     # Log hyperparameter tuning configuration
-    mlflow_client.log_params({
-        "cv_folds": config.cv_folds,
-        "scoring_metric": config.scoring,
-        "param_grid_keys": list(config.param_grid.keys())
-    })
+    mlflow_client.log_params(
+        {
+            "cv_folds": config.cv_folds,
+            "scoring_metric": config.scoring,
+            "param_grid_keys": list(config.param_grid.keys()),
+        }
+    )
 
     # Perform grid search
     context.log.info("Performing grid search...")
@@ -218,11 +204,11 @@ def tune_random_forest(
 
     # Log all CV results metrics (without nested runs for simplicity)
     cv_results = grid_search.cv_results_
-    for i in range(len(cv_results['params'])):
-        trial_params = cv_results['params'][i]
+    for i in range(len(cv_results["params"])):
+        trial_params = cv_results["params"][i]
         # Log individual trial metrics with prefixes
-        mlflow_client.log_metric(f"trial_{i}_mean_test_score", cv_results['mean_test_score'][i])
-        mlflow_client.log_metric(f"trial_{i}_std_test_score", cv_results['std_test_score'][i])
+        mlflow_client.log_metric(f"trial_{i}_mean_test_score", cv_results["mean_test_score"][i])
+        mlflow_client.log_metric(f"trial_{i}_std_test_score", cv_results["std_test_score"][i])
         context.log.info(f"Trial {i}: {trial_params}, Score: {cv_results['mean_test_score'][i]:.4f}")
 
     return dg.MaterializeResult(
@@ -230,13 +216,13 @@ def tune_random_forest(
             "best_model": grid_search.best_estimator_,
             "best_params": grid_search.best_params_,
             "best_score": grid_search.best_score_,
-            "cv_results": cv_results
+            "cv_results": cv_results,
         },
         metadata={
             "best_params": dg.MetadataValue.json(grid_search.best_params_),
             "best_score": dg.MetadataValue.float(float(grid_search.best_score_)),
-            "cv_trials": dg.MetadataValue.int(len(cv_results['params']))
-        }
+            "cv_trials": dg.MetadataValue.int(len(cv_results["params"])),
+        },
     )
 
 
@@ -244,12 +230,10 @@ def tune_random_forest(
     description="Evaluates the tuned model on test data and generates evaluation plots.",
     resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
-    group_name="fraud_model"
+    group_name="fraud_model",
 )
 def evaluate_fraud_model(
-    context: dg.AssetExecutionContext,
-    tune_random_forest: dict,
-    preprocessed_fraud_data: dict
+    context: dg.AssetExecutionContext, tune_random_forest: dict, preprocessed_fraud_data: dict
 ) -> dg.MaterializeResult:
     """
     Evaluates the best model on test data and logs confusion matrix and other metrics to MLflow.
@@ -288,23 +272,23 @@ def evaluate_fraud_model(
     plt.figure(figsize=(8, 6))
 
     # Create confusion matrix heatmap using matplotlib only
-    plt.imshow(cm, interpolation='nearest', cmap='Blues')
+    plt.imshow(cm, interpolation="nearest", cmap="Blues")
     plt.colorbar()
 
     # Add text annotations
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
-            plt.text(j, i, str(cm[i, j]), ha='center', va='center', fontsize=14)
+            plt.text(j, i, str(cm[i, j]), ha="center", va="center", fontsize=14)
 
-    plt.xticks([0, 1], ['Normal', 'Fraud'])
-    plt.yticks([0, 1], ['Normal', 'Fraud'])
-    plt.title('Confusion Matrix - Fraud Detection')
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
+    plt.xticks([0, 1], ["Normal", "Fraud"])
+    plt.yticks([0, 1], ["Normal", "Fraud"])
+    plt.title("Confusion Matrix - Fraud Detection")
+    plt.ylabel("True Label")
+    plt.xlabel("Predicted Label")
 
     # Save and log the plot
     plot_path = "confusion_matrix.png"
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.savefig(plot_path, dpi=300, bbox_inches="tight")
     mlflow_client.log_artifact(plot_path)
     plt.close()
 
@@ -318,12 +302,12 @@ def evaluate_fraud_model(
     plt.figure(figsize=(12, 8))
     plt.title("Top 20 Feature Importances")
     plt.bar(range(20), feature_importance[indices])
-    plt.xticks(range(20), [feature_names[i] for i in indices], rotation=45, ha='right')
+    plt.xticks(range(20), [feature_names[i] for i in indices], rotation=45, ha="right")
     plt.tight_layout()
 
     # Save and log feature importance plot
     importance_path = "feature_importance.png"
-    plt.savefig(importance_path, dpi=300, bbox_inches='tight')
+    plt.savefig(importance_path, dpi=300, bbox_inches="tight")
     mlflow_client.log_artifact(importance_path)
     plt.close()
 
@@ -340,7 +324,7 @@ def evaluate_fraud_model(
         "f1_score": f1,
         "confusion_matrix": cm.tolist(),
         "classification_report": classification_rep,
-        "model_name": model_name
+        "model_name": model_name,
     }
 
     return dg.MaterializeResult(
@@ -350,8 +334,8 @@ def evaluate_fraud_model(
             "test_precision": dg.MetadataValue.float(float(precision)),
             "test_recall": dg.MetadataValue.float(float(recall)),
             "test_accuracy": dg.MetadataValue.float(float(accuracy)),
-            "model_name": dg.MetadataValue.text(model_name)
-        }
+            "model_name": dg.MetadataValue.text(model_name),
+        },
     )
 
 
@@ -361,12 +345,9 @@ def evaluate_fraud_model(
         "slack_notifier": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN")),
     },
     compute_kind="python",
-    group_name="fraud_model"
+    group_name="fraud_model",
 )
-def notify_fraud_pipeline(
-    context: dg.AssetExecutionContext,
-    evaluate_fraud_model: dict
-) -> dg.MaterializeResult:
+def notify_fraud_pipeline(context: dg.AssetExecutionContext, evaluate_fraud_model: dict) -> dg.MaterializeResult:
     """Notify the Slack channel that the pipeline completed, including the GitHub handle and an emoji."""
     slack: dagster_slack.SlackResource = context.resources.slack_notifier
     github_user = "adduna"
@@ -377,16 +358,13 @@ def notify_fraud_pipeline(
 
     text = f":sunglasses: {github_user}'s fraud Dagster pipeline successfully ran{f1_text}"
     slack.get_client().chat_postMessage(
-        channel='aims_course_october2025',
+        channel="aims_course_october2025",
         text=text,
     )
 
     context.log.info("Slack notification sent.")
 
-    return dg.MaterializeResult(
-        value={"message": text},
-        metadata={"message": dg.MetadataValue.text(text)}
-    )
+    return dg.MaterializeResult(value={"message": text}, metadata={"message": dg.MetadataValue.text(text)})
 
 
 # Define data quality checks for fraud detection pipeline
@@ -410,16 +388,16 @@ def fraud_data_quality_checks(
         check_name="no_missing_values",
         passed=bool(missing_values == 0),
         asset_key="raw_fraud_data",
-        metadata={"missing_count": dg.MetadataValue.int(int(missing_values))}
+        metadata={"missing_count": dg.MetadataValue.int(int(missing_values))},
     )
 
     # Check for valid class labels (should be 0 or 1)
-    valid_classes = raw_fraud_data['Class'].isin([0, 1]).all()
+    valid_classes = raw_fraud_data["Class"].isin([0, 1]).all()
     yield dg.AssetCheckResult(
         check_name="valid_class_labels",
         passed=bool(valid_classes),
         asset_key="raw_fraud_data",
-        metadata={"unique_classes": raw_fraud_data['Class'].unique().tolist()}
+        metadata={"unique_classes": raw_fraud_data["Class"].unique().tolist()},
     )
 
     # Check if train/test splits maintain similar class distributions
@@ -434,6 +412,6 @@ def fraud_data_quality_checks(
         metadata={
             "train_fraud_rate": float(train_fraud_rate),
             "test_fraud_rate": float(test_fraud_rate),
-            "rate_difference": float(rate_difference)
-        }
+            "rate_difference": float(rate_difference),
+        },
     )

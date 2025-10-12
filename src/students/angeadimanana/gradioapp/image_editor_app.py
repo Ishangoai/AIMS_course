@@ -5,8 +5,20 @@ from typing import Optional, Tuple
 import gradio as gr
 from PIL import Image, ImageEnhance, ImageFilter
 
-filters_list = ['BLUR', 'CONTOUR', 'DETAIL', 'SHARPEN', 'EDGE_ENHANCE', 'EDGE_ENHANCE_MORE',
-                'EMBOSS', 'FIND_EDGES', 'SMOOTH', 'SMOOTH_MORE', 'GAUSSIAN_BLUR', 'UNSHARP_MASK']
+filters_list = [
+    "BLUR",
+    "CONTOUR",
+    "DETAIL",
+    "SHARPEN",
+    "EDGE_ENHANCE",
+    "EDGE_ENHANCE_MORE",
+    "EMBOSS",
+    "FIND_EDGES",
+    "SMOOTH",
+    "SMOOTH_MORE",
+    "GAUSSIAN_BLUR",
+    "UNSHARP_MASK",
+]
 
 
 def filter_function(img: Image.Image, filter_type: str) -> Image.Image:
@@ -33,9 +45,7 @@ def filter_function(img: Image.Image, filter_type: str) -> Image.Image:
         "SMOOTH": ImageFilter.SMOOTH,
         "SMOOTH_MORE": ImageFilter.SMOOTH_MORE,
         "GAUSSIAN_BLUR": ImageFilter.GaussianBlur(2),  # default radius
-        "UNSHARP_MASK": ImageFilter.UnsharpMask(
-            radius=2, percent=150, threshold=3
-        ),
+        "UNSHARP_MASK": ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3),
     }
 
     chosen_filter = filters.get(filter_type)
@@ -43,6 +53,7 @@ def filter_function(img: Image.Image, filter_type: str) -> Image.Image:
         return img.filter(chosen_filter)
     else:
         return img
+
 
 # def filter_function(img: Image.Image, choice) -> Image.Image:
 
@@ -219,29 +230,23 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
             Modify = gr.Button("Modify Image")
 
             Modify.click(
-            combined_effects,
-            inputs=[input_image, brightness, contrast, rotate, grayscale],
-            outputs=output_image
+                combined_effects, inputs=[input_image, brightness, contrast, rotate, grayscale], outputs=output_image
             )
 
             # --- Reset button ---
             gr.Markdown("Reset to Original Image")
             reset_button = gr.Button("Reset to Original")
             reset_button.click(
-            fn=lambda x: x,
-            inputs=input_image,
-            outputs=[output_image],
+                fn=lambda x: x,
+                inputs=input_image,
+                outputs=[output_image],
             )
 
             # Save button
             gr.Markdown("### Download Image")
             save_button = gr.Button("Save Image")
             file_output = gr.File(label="Download your edited image")
-            save_button.click(
-                save_image,
-                inputs=[output_image],
-                outputs=file_output
-            )
+            save_button.click(save_image, inputs=[output_image], outputs=file_output)
 
         with gr.Tab(label="Filter Image"):
             gr.Markdown("# Choose filter Option: blur or contour or detail")
@@ -250,23 +255,19 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
                 with gr.Column(scale=2):
                     filter_input_image = gr.Image(type="pil", label="Original Image", interactive=False)
                 with gr.Column(scale=2):
-                    filter_output_image = gr.Image(type='pil', label="Filtered image", interactive=False)
+                    filter_output_image = gr.Image(type="pil", label="Filtered image", interactive=False)
             filter_radio = gr.Radio(filters_list, label="Filters")
             filter_button = gr.Button("Filter")
 
-            filter_button.click(
-            filter_function,
-            inputs=[input_image, filter_radio],
-            outputs=filter_output_image
-            )
+            filter_button.click(filter_function, inputs=[input_image, filter_radio], outputs=filter_output_image)
 
             # --- Reset button ---
             gr.Markdown("### Reset to Original Image")
             reset_button_filter = gr.Button("Reset to Original")
             reset_button_filter.click(
-            fn=lambda x: x,
-            inputs=input_image,
-            outputs=[filter_output_image],
+                fn=lambda x: x,
+                inputs=input_image,
+                outputs=[filter_output_image],
             )
 
             # Save button
@@ -274,14 +275,13 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
             save_button_filter = gr.Button("Save Image")
             file_output_filter = gr.File(label="Download your filter image")
 
-            save_button_filter.click(
-                save_image,
-                inputs=[filter_output_image, filter_radio],
-                outputs=file_output_filter
-            )
+            save_button_filter.click(save_image, inputs=[filter_output_image, filter_radio], outputs=file_output_filter)
 
-    upload_btn.upload(fn=wrapped_upload_image, inputs=upload_btn,
-                    outputs=[input_image, output_image, filter_input_image, filter_output_image])
+    upload_btn.upload(
+        fn=wrapped_upload_image,
+        inputs=upload_btn,
+        outputs=[input_image, output_image, filter_input_image, filter_output_image],
+    )
 
 
 if __name__ == "__main__":

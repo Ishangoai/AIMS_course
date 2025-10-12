@@ -93,8 +93,9 @@ def apply_advanced_edits(img, sepia, edge_detect, cartoon, glitch, invert, embos
     return img
 
 
-def apply_misc(img, rotation, opacity, text_overlay, text_color, text_font_size,
-               text_position, font_type, make_gif, gif_frames):
+def apply_misc(
+    img, rotation, opacity, text_overlay, text_color, text_font_size, text_position, font_type, make_gif, gif_frames
+):
     """Apply miscellaneous transformations."""
     try:
         from .image_utils import generate_gif
@@ -111,8 +112,9 @@ def apply_misc(img, rotation, opacity, text_overlay, text_color, text_font_size,
         bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
         img = Image.blend(bg, img, opacity)
 
-    img = add_text_overlay(img, text_overlay, color=text_color, font_size=text_font_size,
-                           position=text_position, font_type=font_type)
+    img = add_text_overlay(
+        img, text_overlay, color=text_color, font_size=text_font_size, position=text_position, font_type=font_type
+    )
 
     if make_gif and gif_frames > 1:
         img = generate_gif(img, gif_frames)

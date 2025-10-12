@@ -25,9 +25,7 @@ def _send_image_to_api(
 
     response = req.post(f"{API_BASE_URL}/{endpoint}", files=files, data=data)
     if response.status_code != 200:
-        raise RuntimeError(
-            f"API request failed: {response.status_code} - {response.text}"
-        )
+        raise RuntimeError(f"API request failed: {response.status_code} - {response.text}")
 
     return Image.open(io.BytesIO(response.content))
 
@@ -69,9 +67,7 @@ def apply_modification(
 
     # Create new param snapshot (copy last or defaults)
     new_params: Dict[str, float] = (
-        param_hist[-1].copy()
-        if param_hist
-        else {"brightness": 1.0, "contrast": 1.0, "rotation": 0.0}
+        param_hist[-1].copy() if param_hist else {"brightness": 1.0, "contrast": 1.0, "rotation": 0.0}
     )
 
     # Update only the changed parameter
@@ -166,9 +162,7 @@ def create_app() -> gr.Blocks:
 
         # Grayscale modification
         grayscale.change(
-            fn=lambda img, imgs, params: apply_modification(
-                img, imgs, params, to_grayscale, None
-            ),
+            fn=lambda img, imgs, params: apply_modification(img, imgs, params, to_grayscale, None),
             inputs=[input_image, image_history, param_history],
             outputs=[input_image, image_history, param_history],
         )
