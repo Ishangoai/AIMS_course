@@ -99,4 +99,3 @@ with gr.Blocks() as app:
         inputs=[text_input, case_option, reverse_words, reverse_chars, analyze],
         outputs=output_box
     )
-
