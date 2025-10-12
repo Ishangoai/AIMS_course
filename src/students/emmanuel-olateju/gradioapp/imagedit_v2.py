@@ -1,4 +1,3 @@
-
 import gradio as gr
 from PIL import Image, ImageEnhance
 
@@ -72,7 +71,7 @@ def download_image():
     return temp_path
 
 
-with gr.Blocks(css="body {background: #f2f7ff;}") as image_edit_app:
+with gr.Blocks(css="body {background: #f2f7ff;}") as image_edit_v2_app:
     gr.Markdown("# Imagedit 🖼️")
     gr.Markdown("Choose a picture you want to edit below")
 
@@ -133,4 +132,4 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_edit_app:
     download_button.click(fn=download_image, inputs=[], outputs=download_button)
 
 if __name__ == "__main__":
-    image_edit_app.launch()
+    image_edit_v2_app.launch()
