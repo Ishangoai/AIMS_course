@@ -1,6 +1,6 @@
 """Operations for Text Processing App.
 
-Location: khadijaedarzi9/gradio_app/operations.py
+Location: MELAI-1/gradio_app/operations.py
 Contains functional utilities used by app.py
 """
 
@@ -481,7 +481,7 @@ class FileExporter:
                 line_encoded = line.encode("latin-1", "replace").decode("latin-1")
                 pdf.multi_cell(0, 6, text=line_encoded)
             except Exception:
-                pdf.multi_cell(0, 6, text=line.encode("ascii", "ignore").decode("ascii"))
+                pdf.multi_cell(0, 6, txt=line.encode("ascii", "ignore").decode("ascii"))
 
         pdf.output(path)
         return path

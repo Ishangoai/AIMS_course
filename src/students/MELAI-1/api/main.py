@@ -11,7 +11,6 @@ from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.image_assigment import image_app
 
-
 app = FastAPI(
     title="AIMS Course API",
     description=textwrap.dedent("""
