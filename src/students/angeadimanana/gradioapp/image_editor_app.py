@@ -244,7 +244,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as image_transformation:
             )
 
         with gr.Tab(label="Filter Image"):
-            gr.Markdown("# Choose filter Option: blur or contour or detail")
+            gr.Markdown("# Choose filter Option")
 
             with gr.Row():
                 with gr.Column(scale=2):
