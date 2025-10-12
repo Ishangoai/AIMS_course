@@ -36,6 +36,7 @@ def process_image(image, checkbox, brightness, angle, contrast):
 def reset():
     return None, False, 1, 1, 0, None
 
+
 with gr.Blocks(theme=gr.themes.Citrus()) as image_app:
     gr.Markdown("# Image Processing App")
 
@@ -61,4 +62,3 @@ with gr.Blocks(theme=gr.themes.Citrus()) as image_app:
     reset_button.click(fn=reset, inputs=None,
                        outputs=[output_image, grayscale_box, brightness_slider,
                                 contrast_slider, rotation_slider, input_image])
-    
