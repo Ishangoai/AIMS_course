@@ -370,7 +370,7 @@ with gr.Blocks(
     #spaced-row {margin:30px 0px;}
     .viz-container {background: white; border-radius: 10px; padding: 10px; margin: 5px;}
     """
-) as demo:
+) as dard:
     gr.Markdown("# Text Processing & Analytics Tool")
 
     with gr.Row():
@@ -492,4 +492,4 @@ with gr.Blocks(
     )
 
 if __name__ == "__main__":
-    demo.launch()
+    dard.launch()
