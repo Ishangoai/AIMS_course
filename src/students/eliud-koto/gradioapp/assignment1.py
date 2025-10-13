@@ -4,7 +4,7 @@ import gradio as gr
 import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 
-# import requests#
+# import requests
 
 API_URL = "http://0.0.0.0:8080"
 
@@ -53,7 +53,8 @@ def save_temp_image(img):
     img.save(temp_file.name)
     return temp_file.name
 
-# Gradio App Definition i
+
+# Gradio App Definition
 
 
 with gr.Blocks() as app:
@@ -68,14 +69,14 @@ with gr.Blocks() as app:
 
             # sliders
             brightness_input = gr.Slider(0.5, 1.5, value=1, label="Brightness", info="Choose between 0.5 and 1.5")
-            contrast_input = gr.Slider(0.5, 1.5, value=4, label="Contrast", info="Choose between 0.5 and 1.5")
-            image_rotation_input = gr.Slider(-180, 180, value=4, label="Rotation", info="Choose between -180 and 180")
+            contrast_input = gr.Slider(0.5, 1.5, value=1, label="Contrast", info="Choose between 0.5 and 1.5")
+            image_rotation_input = gr.Slider(-180, 180, value=0, label="Rotation", info="Choose between -180 and 180")
             text_input = gr.Textbox(label="Add Text to Image", placeholder="Enter text here...", lines=1)
         # col2 = gr.Markdown("Column 2") #
         with gr.Column(scale=1):
             output_image = gr.Image(label="Edited Image", height=712)
             reset_btn = gr.Button("Reset to Original")
-            download_btn = gr.DownloadButton(label="Download Edited Image")
+            # download_btn = gr.DownloadButton(label="Download Edited Image")
 
     inputs = [input_image, grayscale, brightness_input, contrast_input, image_rotation_input, text_input]
 
