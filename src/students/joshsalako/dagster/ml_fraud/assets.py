@@ -21,14 +21,15 @@ def fraud_data(
 
     # Optionally, preview and attach simple metadata
     row_count = len(df)
+    context.log.info(f"Raw data ingested with {row_count} rows.")
     column_schema = [dg.TableColumn(name, str(dtype)) for name, dtype in df.dtypes.items()]
 
     return dg.MaterializeResult(
         value=df,
         metadata={
             "preview": dg.MetadataValue.md(df.head().to_markdown() or ""),
-            "row_count": row_count,
-            "column_schema": dg.TableSchema(columns=column_schema)
+            "dagster/row_count": row_count,
+            "dagster/column_schema": dg.TableSchema(columns=column_schema)
         }
     )
 
