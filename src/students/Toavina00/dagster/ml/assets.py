@@ -168,7 +168,7 @@ def clean_df(
         value=df_spatial_mean,
         metadata={
             "dagster/row_count": len(df_spatial_mean),
-            "dagster/column_schema": dg.TableSchema(columns=columns),
+            "dagster/column_schema": dg.TableSchema(columns=df.columns),
             "preview": dg.MetadataValue.md(df_spatial_mean.head().to_markdown() or "")
         }
     )

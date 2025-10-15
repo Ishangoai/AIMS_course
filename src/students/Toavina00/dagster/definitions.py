@@ -2,6 +2,7 @@ import dagster as dg
 
 from .de import assets as de_assets
 from .ml import assets as ml_assets
+from .ml_fraud import assets as ml_fraud_assets
 from .ml.resources import (
     Era5RequestConfig,
     PromotionConfig,
@@ -12,6 +13,8 @@ all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
 all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
+all_ml_fraud_assets = dg.load_assets_from_modules([ml_fraud_assets])
+all_ml_fraud_checks = dg.load_asset_checks_from_modules([ml_fraud_assets])
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
@@ -56,11 +59,11 @@ era5_daily_schedule = dg.ScheduleDefinition(
 
 # Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
-    assets=[*all_ml_assets, *all_de_assets],
+    assets=[*all_ml_assets, *all_de_assets, *all_ml_fraud_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
     },
     jobs=[de_job, ml_job],
     schedules=[era5_daily_schedule],
-    asset_checks=[*all_de_checks, *all_ml_checks]
+    asset_checks=[*all_de_checks, *all_ml_checks, *all_ml_fraud_checks]
 )
