@@ -35,7 +35,7 @@ def text_reverser(text, option=None):
         return treated
 
 
-def text_analyzer(text, selection=None):
+def text_analyzer(text):
     """
     Selection is a list of the analyzes that we want to do
     Args :
@@ -65,3 +65,11 @@ def text_analyzer(text, selection=None):
     word_count = len(splitted)
     average_char_per_word = avg / count
     return word_count, final_char_count, average_char_per_word
+
+
+if __name__ == "__main__":
+    text = "Your name and email addres were configured automatically based on your username and hostname"
+    print(case_converter(text,"Title Case"))
+    print('\n', text_reverser(text=text, option="Reverse Word Order"))
+    print('\n', text_reverser(text=text, option="Reverse all characters"))
+    print('\n', text_analyzer(text=text))
