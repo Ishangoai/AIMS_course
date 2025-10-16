@@ -7,8 +7,3 @@ class FraudDataConfig(dg.ConfigurableResource):
 
 
 fraud_data_source = FraudDataConfig()
-
-
-slack_resource = SlackResource(
-    token="xoxb-2422279561408-9303546575606-kvjli9hRzdk0AIUphprXpMQa"
-)

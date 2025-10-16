@@ -8,7 +8,7 @@ import mlflow
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, classification_report, confusion_matrix
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.model_selection import GridSearchCV, train_test_split, KFold
 
 from .resources import fraud_data_source
 
@@ -72,7 +72,7 @@ def clean_fraud(
 @dg.asset(
     description="Split dataset (features (X) , target (y) , 80/20 train-test split)",
     compute_kind="python",
-    group_name="ml_fraud_split"
+    group_name="ml_fraud_detection"
 )
 def split_fraud_data(
     context: dg.AssetExecutionContext,
@@ -116,6 +116,10 @@ def tune_fraud_model(
 
     context.log.info("Starting RandomForest hyperparameter tuning...")
 
+    # Define outer cross-validation (model evaluation)
+    outer_cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    # outer_scores = []
+
     # RandomForest model
     rf = RandomForestClassifier(random_state=42)
 
@@ -127,19 +131,53 @@ def tune_fraud_model(
         "min_samples_leaf": [1, 2, 4],
     }
 
-    # 3-fold GridSearchCV
-    grid_search = GridSearchCV(
-        estimator=rf,
-        param_grid=param_grid,
-        cv=3,
-        n_jobs=-1,  # Use CPU
-        scoring="accuracy",
-    )
+    # Outer loop: performance estimation
+    for fold_idx, (train_idx, test_idx) in enumerate(outer_cv.split(X_train, y_train)):
+        X_tr, X_te = X_train.iloc[train_idx], X_train.iloc[test_idx]
+        y_tr, y_te = y_train.iloc[train_idx], y_train.iloc[test_idx]
+        # X_tr, X_te = X_train[train_idx], X_train[test_idx]
+        # y_tr, y_te = y_train[train_idx], y_train[test_idx]
 
-    # Fit model to training data
-    grid_search.fit(X_train, y_train)
+        # Inner loop: hyperparameter tuning
+        inner_cv = KFold(n_splits=3, shuffle=True, random_state=42)
+        rf = RandomForestClassifier(random_state=42)
 
-    # Retrieve best model and parameters
+        grid_search = GridSearchCV(
+            estimator=rf,
+            param_grid=param_grid,
+            cv=inner_cv,
+            scoring="roc_auc",
+            n_jobs=-1
+        )
+
+        grid_search.fit(X_tr, y_tr)
+
+        # Best model on outer fold
+        # # y_pred = best_rf.predict_proba(X_te)[:, 1]
+        # auc_score = roc_auc_score(y_te, y_pred)
+
+        # outer_scores.append(auc_score) Fold {fold_idx + 1} | AUC: {auc_score:.4f} | 
+        context.log.info(
+            f"Best params: {grid_search.best_params_}"
+        )
+
+    # final_auc = np.mean(outer_scores)
+    # context.log.info(f"Final nested CV AUC: {final_auc:.4f}")
+
+
+    # # 3-fold GridSearchCV
+    # grid_search = GridSearchCV(
+    #     estimator=rf,
+    #     param_grid=param_grid,
+    #     cv=3,
+    #     n_jobs=-1,  
+    #     scoring="accuracy",
+    # )
+
+    # # Fit model to training data
+    # grid_search.fit(X_train, y_train)
+
+    # # Retrieve best model and parameters
     best_model = grid_search.best_estimator_
     best_params = grid_search.best_params_
 
@@ -221,21 +259,20 @@ def evaluate_fraud_model(
 )
 def fraud_notify_slack(context: dg.AssetExecutionContext, ml_fraud_evaluate) -> None:
     # accuracy = float(ml_fraud_evaluate["accuracy"])  # ensure plain float
-    # metric = "Accuracy"
+    accuracy = float(
+    ml_fraud_evaluate.get("test_accuracy", ml_fraud_evaluate.get("accuracy", 0.0))
+    )
+
+    metric = "Accuracy"
 
     msg = (
-        f"{os.environ.get("GITHUB_USER", "default")}'s dagster pipeline sucessfully run!!!!! :wave:!\n"
-        # f"*ML Fraud Detection Model Update*\n"
-        # f"{metric}: `{accuracy:.4f}` 🎯\n"
-        # f"Great work team!!!!!!!!!! 🚀"
+        f"{os.environ.get("GITHUB_USER", "default")}'s dagster pipeline sucessfully run!!!!! 🚀\n"
+        f"*Fraud Detection Model Update*\n"
+        f"{metric}: `{accuracy:.4f}` 🎯\n"
     )
-    slack = context.resources.slack_notify
+    slack = context.resources.slack
     slack.get_client().chat_postMessage(
         channel='aims_course_october2025',
         text=msg
     )
-
-    slack = context.resources.slack
-    slack.client.chat_postMessage(channel="#ml-fraud-alerts", text=msg)
-
     context.log.info("Slack notification sent successfully.")
