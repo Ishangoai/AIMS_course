@@ -7,11 +7,14 @@ from .ml.resources import (
     PromotionConfig,
     TuningConfig,
 )
+from .ml_fraud import assets as ml_fraud_assets
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
 all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
+all_ml_fraud_assets = dg.load_assets_from_modules([ml_fraud_assets])
+all_ml_fraud_checks = dg.load_asset_checks_from_modules([ml_fraud_assets])
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
@@ -48,6 +51,26 @@ ml_job = dg.define_asset_job(
     }
 )
 
+ml_fraud_job = dg.define_asset_job(
+    name="fraud_detection_machine_learning_with_mlflow",
+    selection=dg.AssetSelection.groups("ml_fraud_ingest", "ml_fraud_transform", "ml_fraud_model", "ml_fraud_evaluate"),
+    # hooks={mlflow_failure_hook},
+    #  config={
+    #     "ops": {
+    #         "raw_xarray_dataset": {
+    #             "config": Era5RequestConfig().model_dump()
+    #         },
+    #         "promote_model_to_production": {
+    #             "config": PromotionConfig().model_dump()
+    #         },
+    #         "tune_ridge_hyperparameters": {
+    #             "config": TuningConfig().model_dump()
+    #         }
+    #     }
+    # }
+)
+
+
 era5_daily_schedule = dg.ScheduleDefinition(
     job=ml_job,
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
@@ -56,11 +79,11 @@ era5_daily_schedule = dg.ScheduleDefinition(
 
 # Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
-    assets=[*all_ml_assets, *all_de_assets],
+    assets=[*all_ml_assets, *all_de_assets, *all_ml_fraud_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
     },
-    jobs=[de_job, ml_job],
+    jobs=[de_job, ml_job, ml_fraud_job],  # ml_fraud_job
     schedules=[era5_daily_schedule],
     asset_checks=[*all_de_checks, *all_ml_checks]
 )
