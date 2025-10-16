@@ -8,6 +8,8 @@ from .ml.resources import (
     TuningConfig,
 )
 from .ml_fraud import assets as ml_fraud_assets
+from .ml_fraud.resources import mlflow_resource as fraud_mlflow_resource
+from .ml_fraud.resources import slack_resource
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
@@ -53,7 +55,7 @@ ml_job = dg.define_asset_job(
 
 fraud_detection_job = dg.define_asset_job(
     name="fraud_detection",
-    selection=dg.AssetSelection.groups("ml_fraud_group1"),
+    selection=dg.AssetSelection.groups("ml_fraud_ingest", "ml_fraud_transform", "ml_fraud_model", "ml_fraud_deploy"),
 )
 
 era5_daily_schedule = dg.ScheduleDefinition(
