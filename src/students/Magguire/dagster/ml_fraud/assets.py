@@ -71,7 +71,8 @@ def train_test_split_data(context: dg.AssetExecutionContext, fraud_detection: pd
         mlflow_client.log_input(dataset=mlflow_client.data.from_pandas(X_train, name="X_train"), context="training")
         mlflow_client.log_input(dataset=mlflow_client.data.from_pandas(X_test, name="X_test"), context="training")
     except Exception:
-        context.log.info("Could not log train/test splits to MLflow (client may not support log_input for these objects).")
+        context.log.info("Could not log train/test splits to MLflow "
+        "(client may not support log_input for these objects).")
 
     context.log.info(f"Train/Test split sizes: X_train={X_train.shape}, X_test={X_test.shape}")  # type: ignore
 
@@ -101,7 +102,7 @@ tuned_random_forest: dict) -> dict:
     try:
         mlflow_client.log_metric("cv_mean_accuracy", mean_acc)
         for i, s in enumerate(scores.tolist()):
-            mlflow_client.log_metric(f"cv_fold_{i+1}_accuracy", float(s))
+            mlflow_client.log_metric(f"cv_fold_{i + 1}_accuracy", float(s))
     except Exception:
         context.log.info("Could not log cross-validation metrics to MLflow.")
 
