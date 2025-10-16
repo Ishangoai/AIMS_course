@@ -1,13 +1,14 @@
 import dagster as dg
+from dagster_slack import slack_resource
 
 from .de import assets as de_assets
 from .ml import assets as ml_assets
-from .ml_fraud import assets as ml_fraud_assets
 from .ml.resources import (
     Era5RequestConfig,
     PromotionConfig,
     TuningConfig,
 )
+from .ml_fraud import assets as ml_fraud_assets
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
@@ -51,8 +52,12 @@ ml_job = dg.define_asset_job(
 )
 
 ml_fraud_job = dg.define_asset_job(
-    name="ml_fraud",
-    selection=dg.AssetSelection.groups("ml_fraud_ingest")
+    name="ml_fraud_detection",
+    selection=dg.AssetSelection.groups("ml_fraud_ingest",
+                                       "ml_fraud_transform",
+                                       "ml_fraud_split",
+                                       "ml_fraud_detection",
+                                       "ml_fraud_evaluate")
 )
 
 era5_daily_schedule = dg.ScheduleDefinition(
@@ -66,6 +71,7 @@ defs = dg.Definitions(
     assets=[*all_ml_assets, *all_de_assets, *all_ml_fraud_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
+        "slack_notify": slack_resource,
     },
     jobs=[de_job, ml_job, ml_fraud_job],
     schedules=[era5_daily_schedule],
