@@ -53,7 +53,8 @@ ml_job = dg.define_asset_job(
 
 ml_fraud_job = dg.define_asset_job(
     name="fraud_detection_machine_learning_with_mlflow",
-    selection=dg.AssetSelection.groups("ml_fraud_ingest", "ml_fraud_transform", "ml_fraud_model", "ml_fraud_evaluate"),
+    selection=dg.AssetSelection.groups("ml_fraud_ingest", "ml_fraud_transform", "ml_fraud_model",
+    "ml_fraud_evaluate", "ml_fraud_promote"),
     # hooks={mlflow_failure_hook},
     #  config={
     #     "ops": {
