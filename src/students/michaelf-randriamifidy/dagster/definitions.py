@@ -21,8 +21,8 @@ all_de_checks = dg.load_asset_checks_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
 all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
 all_ml_fraud_assets = dg.load_assets_from_modules([
-    te_assets,
-    di_assets
+    di_assets,
+    te_assets
 ])
 
 
@@ -62,7 +62,7 @@ ml_job = dg.define_asset_job(
 
 fraud_detection = dg.define_asset_job(
     name="machine_learning_fraud_detection",
-    selection=dg.AssetSelection.groups("data_ingest"),
+    selection=dg.AssetSelection.groups("data_ingest", "ml_model_fraud"),
 )
 
 era5_daily_schedule = dg.ScheduleDefinition(
