@@ -6,6 +6,7 @@ import numpy as np
 
 # Load model
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "heart_model.pkl")
+print(MODEL_PATH)
 model = joblib.load(MODEL_PATH)
 
 

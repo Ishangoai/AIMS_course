@@ -37,4 +37,3 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as heart_app:
                       inputs=[age, sex, cp, trestbps, chol, fbs, restecg,
                               thalach, exang, oldpeak, slope, ca, thal],
                       outputs=result)
-                      
