@@ -1,11 +1,14 @@
+import os
+
 from itertools import product
 from typing import Optional
 
 import dagster as dg
+import dagster_slack
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score, precision_score, recall_score
 from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
 
 from ..ml.resources import mlflow_resource
@@ -79,6 +82,7 @@ def train_test_data(
     df_train, df_test = train_test_split(
         transformed_data,
         test_size=0.2,
+        random_state=42,
         stratify=transformed_data["Class"]
     )
 
@@ -128,6 +132,8 @@ def tuned_hyperparameters(
 
     best_param, best_score = None, -1.0
 
+    report = []
+
     run_num = 0
 
     for params in product(*params_val):
@@ -154,11 +160,14 @@ def tuned_hyperparameters(
             best_param = train_param
             best_score = score
 
+        report.append({**train_param, "f1-score": score})
+
     return dg.MaterializeResult(
         value=best_param,
         metadata={
-            "parameters": dg.MetadataValue.md(pd.DataFrame(best_param, index=["value"]).to_markdown() or ""),
-            "f1 score": f"{best_score:.2f}"
+            "report": dg.MetadataValue.md(pd.DataFrame(report).to_markdown() or ""),
+            "best parameters": dg.MetadataValue.md(pd.DataFrame(best_param, index=["value"]).to_markdown() or ""),
+            "best f1 score": f"{best_score:.2f}"
         }
     )
 
@@ -189,15 +198,12 @@ def tuned_model(
     acc = accuracy_score(y_train, y_pred)
     cm = confusion_matrix(y_train, y_pred)
 
-    report = classification_report(y_train, y_pred, output_dict=True)
-
     return dg.MaterializeResult(
         value=model,
         metadata={
             "f1 score": f"{f1:.2f}",
             "accuracy score": f"{acc:.2f}",
             "confusion matrix": dg.MetadataValue.md(pd.DataFrame(cm).to_markdown() or ""),
-            "classification report": dg.MetadataValue.md(pd.DataFrame(report).iloc[:, :2].to_markdown() or ""),
         }
     )
 
@@ -224,15 +230,40 @@ def model_evaluation(
     f1 = f1_score(y_test, y_pred)
     acc = accuracy_score(y_test, y_pred)
     cm = confusion_matrix(y_test, y_pred)
-
-    report = classification_report(y_test, y_pred, output_dict=True)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
 
     return dg.MaterializeResult(
-        value=f1,
+        value={"F1-Score": f1, "Accuracy": acc, "Precision": precision, "Recall": recall},
         metadata={
             "f1 score": f"{f1:.2f}",
             "accuracy score": f"{acc:.2f}",
             "confusion matrix": dg.MetadataValue.md(pd.DataFrame(cm).to_markdown() or ""),
-            "classification report": dg.MetadataValue.md(pd.DataFrame(report).iloc[:, :2].to_markdown() or ""),
         }
     )
+
+
+@dg.asset(
+    description="Slack Report",
+    resource_defs={
+        "slack_bot": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN")),
+    },
+    compute_kind="python",
+    group_name="ml_fraud_eval"
+)
+def slack_report(
+    context: dg.AssetExecutionContext,
+    model_evaluation: dict,
+) -> dg.MaterializeResult:
+
+    slack: dagster_slack.SlackResource = context.resources.slack_bot
+    slack.get_client().chat_postMessage(
+        channel='aims_course_october2025',
+        text=f"""\
+            Classification Report
+            {"\n".join(f'{k}: {v}' for (k, v) in model_evaluation.items())}
+
+            Run by: {os.environ.get("GITHUB_USER", "default")}
+            """
+    )
+
