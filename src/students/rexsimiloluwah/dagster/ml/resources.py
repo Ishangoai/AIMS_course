@@ -35,7 +35,7 @@ def mlflow_client(_):
 
 
 class CDSAPIResource(dg.ConfigurableResource):
-    host_url: str = "https://cds.climate.copernicus.eu/api"
+    host_url: str = "https://cds.climate.copernicus.eu/api/wrong"
     api_key: str = dg.EnvVar("CDS_API_KEY")
 
     @property
