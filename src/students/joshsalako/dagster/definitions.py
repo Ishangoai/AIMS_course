@@ -8,8 +8,6 @@ from .ml.resources import (
     TuningConfig,
 )
 from .ml_fraud import assets as ml_fraud_assets
-from .ml_fraud.resources import mlflow_resource as fraud_mlflow_resource
-from .ml_fraud.resources import slack_resource
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])

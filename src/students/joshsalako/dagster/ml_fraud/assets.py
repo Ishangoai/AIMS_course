@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 
 import dagster as dg
 import matplotlib.pyplot as plt
+import mlflow
 import numpy as np
 import pandas as pd
 
@@ -189,10 +190,8 @@ def check_preprocessed_fraud_data(
     # Check for nulls
     num_nulls = int(preprocessed_fraud_data.isnull().sum().sum())
 
-    # Check that we have features (more than just Class column)
+    # Check that we have features
     has_features = len(preprocessed_fraud_data.columns) > 1
-
-    # Note: No check for balanced classes
 
     passed = bool((num_nulls == 0) and has_features)
 
@@ -324,7 +323,7 @@ def check_train_test_split_data(
 
 
 @dg.asset(
-    description="Train RandomForest model with 3-fold CV, hyperparameter tuning, and MLflow nested runs",
+    description="Train RandomForest model with 3-fold CV, hyperparameter tuning",
     compute_kind="python",
     group_name="ml_fraud_model",
     resource_defs={"mlflow_fraud": mlflow_resource}
@@ -333,9 +332,7 @@ def trained_fraud_model(
     context: dg.AssetExecutionContext,
     train_test_split_data: Dict[str, Any]
 ) -> dg.MaterializeResult:
-    """Train RandomForest classifier with hyperparameter tuning and MLflow logging"""
-
-    import mlflow
+    """Train RandomForest classifier with hyperparameter tuning"""
 
     mlflow_client = context.resources.mlflow_fraud
     mlflow.set_experiment("fraud_detection_ml")
@@ -351,7 +348,6 @@ def trained_fraud_model(
         X_train = train_test_split_data['X_train']
         y_train = train_test_split_data['y_train']
         feature_names = train_test_split_data['feature_names']
-
         context.log.info(f"Training model with {X_train.shape[0]} samples, {X_train.shape[1]} features")
 
         # Apply RandomOverSampler to training data
@@ -539,7 +535,7 @@ def model_evaluation(
 
         # Make predictions
         y_pred = trained_fraud_model.predict(X_test)
-        y_pred_proba = trained_fraud_model.predict_proba(X_test)[:, 1]  # Probability of fraud
+        y_pred_proba = trained_fraud_model.predict_proba(X_test)[:, 1]
 
         # Calculate metrics
         recall = float(recall_score(y_test, y_pred))

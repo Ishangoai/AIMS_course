@@ -7,7 +7,7 @@ from dagster_slack import SlackResource
 from mlflow.tracking import MlflowClient
 
 BASE_DIR = os.path.abspath(os.getenv("DAGSTER_HOME", "."))
-SQLITE_DB_FILENAME = "mlflow_fraud_detection.db"
+SQLITE_DB_FILENAME = "mlflow_local_tracking.db"
 # Construct full paths
 SQLITE_DB_PATH = os.path.join(BASE_DIR, SQLITE_DB_FILENAME)
 
