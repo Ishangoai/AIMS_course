@@ -22,7 +22,6 @@ custom_css = """
 }
 
 body {
-  
     background-size: 400% 400%;
     animation: gradient 15s ease infinite;
     font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -56,6 +55,8 @@ body {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(5px);
     border-radius: 0 0 30px 30px;
+    font-weight:bold!important;
+    font-size:36px!important;
     margin-bottom: 2rem;
 }src/students/Aarondard/api/main.py
     font-weight: 800;
@@ -351,7 +352,7 @@ with gr.Blocks(css=custom_css, theme=gr.themes.Soft()) as fraud_app:  # type:ign
                         gr.Markdown("#### 📊 Risk Assessment")
                         risk_meter = gr.HTML("""
                         <div class="risk-meter">
-                            <div class="risk-level" style="width: 30%;"></div>
+                            <div class="risk-level" style="width: 0%;"></div>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;">
                             <span>Low</span>
@@ -517,7 +518,7 @@ with gr.Blocks(css=custom_css, theme=gr.themes.Soft()) as fraud_app:  # type:ign
             V11, V12, V13, V14, V15, V16, V17, V18, V19, V20,
             V21, V22, V23, V24, V25, V26, V27, V28, Amount
         ],
-        outputs=result,
+        outputs=[result, risk_meter],
     )
 
 if __name__ == "__main__":

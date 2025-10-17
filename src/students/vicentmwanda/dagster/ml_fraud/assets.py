@@ -1,6 +1,5 @@
 from datetime import datetime
-
-from numpy import exceptions
+from typing import Dict
 
 import dagster as dg
 import dagster_slack
@@ -41,29 +40,29 @@ def fraud_ml_raw_data(context: dg.AssetExecutionContext) -> dg.MaterializeResult
     group_name="ml_fraud_data_transform"
 )
 def fraud_ml_raw_data_split(context: dg.AssetExecutionContext,
-fraud_ml_raw_data: dg.MaterializeResult
+fraud_ml_raw_data: Dict
 ) -> dg.MaterializeResult:
 
-     raw_data: pd.DataFrame = fraud_ml_raw_data['raw_data']
+    raw_data: pd.DataFrame = fraud_ml_raw_data['raw_data']
 
-     raw_target_data = raw_data['Class']
-     raw_feature_data = raw_data.drop('Class', axis=1)
+    raw_target_data = raw_data['Class']
+    raw_feature_data = raw_data.drop('Class', axis=1)
 
-     target_data = raw_target_data.to_numpy()  # data labels
-     feature_data = raw_feature_data.to_numpy()  # features
+    target_data = raw_target_data.to_numpy()  # data labels
+    feature_data = raw_feature_data.to_numpy()  # features
 
-     return dg.MaterializeResult(value={
-        "features": feature_data,
-        "targets": target_data,
-        "feature_labels": raw_feature_data.columns,
-        "target_labels": 'Class'
-     },
-     metadata={
-        'Feature data samples': len(feature_data),
-        'Target data samples': len(target_data),
-        "Total number of samples": len(raw_data)
-     }
-     )
+    return dg.MaterializeResult(value={
+    "features": feature_data,
+    "targets": target_data,
+    "feature_labels": raw_feature_data.columns,
+    "target_labels": 'Class'
+    },
+    metadata={
+    'Feature data samples': len(feature_data),
+    'Target data samples': len(target_data),
+    "Total number of samples": len(raw_data)
+    }
+    )
 
 
 # Splitting data in to the training and test sets.
@@ -73,47 +72,47 @@ fraud_ml_raw_data: dg.MaterializeResult
     group_name="ml_fraud_data_transform"
 )
 def fraud_ml_train_test_split(context: dg.AssetExecutionContext,
-fraud_ml_raw_data_split: dg.MaterializeResult
+fraud_ml_raw_data_split: Dict
 ) -> dg.MaterializeResult:
 
-     data = fraud_ml_raw_data_split
+    data = fraud_ml_raw_data_split
 
-     features: pd.DataFrame = data["features"]
-     targets: pd.DataFrame = data["targets"]
+    features: pd.DataFrame = data["features"]
+    targets: pd.DataFrame = data["targets"]
 
-     x_train, x_test, y_train, y_test = train_test_split(
-            features, targets,
-            test_size=0.2,       # 20% test data
-            random_state=42,     # to ensure results can be repeateed
-            stratify=targets          # to a keep targets in the train/test splits
-            )
+    x_train, x_test, y_train, y_test = train_test_split(
+        features, targets,
+        test_size=0.2,       # 20% test data
+        random_state=42,     # to ensure results can be repeateed
+        stratify=targets          # to a keep targets in the train/test splits
+        )
 
-     return dg.MaterializeResult(value={
-        "x_train": x_train,
-        "y_train": y_train,
-        "x_test": x_test,
-        "y_test": y_test,
-        "feature_labels": data["feature_labels"],
-        "target_labels": data["target_labels"],
-     },
-     )
+    return dg.MaterializeResult(value={
+    "x_train": x_train,
+    "y_train": y_train,
+    "x_test": x_test,
+    "y_test": y_test,
+    "feature_labels": data["feature_labels"],
+    "target_labels": data["target_labels"],
+    },
+    )
 
 
 # function get the experiment for the mlflow
 def get_experiment(mlflow_client, name='fraud model experiment'):
-         try:
-              experiment = mlflow_client.get_experiment_by_name(name)
-              if experiment is None:
-                   experiment = mlflow_client.create_experiment(name)
-              experiment_id = experiment.experiment_id
+    try:
+        experiment = mlflow_client.get_experiment_by_name(name)
+        if experiment is None:
+            experiment = mlflow_client.create_experiment(name)
+        experiment_id = experiment.experiment_id
 
-              return experiment, experiment_id
+        return experiment, experiment_id
 
-         except Exception  e:
-              experiment = mlflow_client.create_experiment(name)
-              experiment_id = experiment.experiment_id
+    except Exception:
+        experiment = mlflow_client.create_experiment(name)
+        experiment_id = experiment.experiment_id
 
-              return experiment, experiment_id
+        return experiment, experiment_id
 
 
 # Training the classifier on the training data with 3 k-fold
@@ -124,26 +123,29 @@ def get_experiment(mlflow_client, name='fraud model experiment'):
     resource_defs={"fraud_mlflow_tracking": mlflow_resource}
 )
 def fraud_ml_model_training(context: dg.AssetExecutionContext,
-fraud_ml_train_test_split: dg.MaterializeResult
+fraud_ml_train_test_split: Dict
 ) -> dg.MaterializeResult:
 
-     mlflow_client = context.resources.fraud_mlflow_tracking
+    mlflow_client = context.resources.fraud_mlflow_tracking
 
-     data = fraud_ml_train_test_split
+    data = fraud_ml_train_test_split
 
-     x_train = data["x_train"]
-     y_train = data["y_train"]
+    x_train = data["x_train"]
+    y_train = data["y_train"]
 
-     classifier = RandomForestClassifier(n_estimators=200, min_samples_leaf=1, min_samples_split=5, max_features='sqrt', random_state=42)
+    classifier = RandomForestClassifier(n_estimators=200, min_samples_leaf=1, min_samples_split=5,
+    max_features='sqrt', random_state=42)
 
-     # parameters for k-fold using on one parameter
-     params_grid = {
-            'max_depth': [10, 20, 30, 40]  # the hyper parameters to select from during during
-     }
+    # parameters for k-fold using on one parameter
+    params_grid = {
+        'max_depth': [10, 20, 30, 40]  # the hyper parameters to select from during during
+    }
 
-     experiment, experiment_id = get_experiment(mlflow_client)
+    _, experiment_id = get_experiment(mlflow_client)
 
-     with mlflow_client.start_run(experiment_id=experiment_id, run_name="3 Fold Cross Validation Training (By Aaron & Vicent)", nested=True):
+    with mlflow_client.start_run(experiment_id=experiment_id,
+    run_name="3 Fold Cross Validation Training (By Aaron & Vicent)",
+    nested=True):
         grid_search = GridSearchCV(
                            estimator=classifier,      # model to tune
                            param_grid=params_grid,    # hyperparameter grid
@@ -157,38 +159,38 @@ fraud_ml_train_test_split: dg.MaterializeResult
 
         grid_search.fit(x_train, y_train)
         for i, params in enumerate(grid_search.cv_results_['params']):
-               with mlflow.start_run(run_name=f"Trial_{i + 1}_with_max_depth_{params['max_depth']}", nested=True):
-                     mlflow.log_params(params)
+            with mlflow.start_run(run_name=f"Trial_{i + 1}_with_max_depth_{params['max_depth']}", nested=True):
+                mlflow.log_params(params)
 
-                     mean_train_score = grid_search.cv_results_['mean_train_score'][i]
-                     mean_test_score = grid_search.cv_results_['mean_test_score'][i]
-                     mlflow.log_metric("mean_train_score", mean_train_score)
-                     mlflow.log_metric("mean_test_score", mean_test_score)
+                mean_train_score = grid_search.cv_results_['mean_train_score'][i]
+                mean_test_score = grid_search.cv_results_['mean_test_score'][i]
+                mlflow.log_metric("mean_train_score", mean_train_score)
+                mlflow.log_metric("mean_test_score", mean_test_score)
 
-                     context.log.info(f'trail {i + 1} {mean_train_score}')
+                context.log.info(f'trail {i + 1} {mean_train_score}')
 
-     our_best_model = grid_search.best_estimator_
-     best_params = grid_search.best_params_
+    our_best_model = grid_search.best_estimator_
+    best_params = grid_search.best_params_
 
-     train_score = grid_search.best_score_
+    train_score = grid_search.best_score_
 
-     mlflow_client.log_params(best_params)
-     mlflow.log_metric("Best validation score", train_score)
+    mlflow_client.log_params(best_params)
+    mlflow.log_metric("Best validation score", train_score)
 
-     context.log.info(
-     f'''
-     Cross validation score: {train_score}
-     Best parameters:
-     {best_params}
+    context.log.info(
+    f'''
+    Cross validation score: {train_score}
+    Best parameters:
+    {best_params}
     '''
-     )
+    )
 
-     return dg.MaterializeResult(value={
-        "model": our_best_model,
-        "train_score": train_score,
-        "best_params": best_params
-     },
-     )
+    return dg.MaterializeResult(value={
+    "model": our_best_model,
+    "train_score": train_score,
+    "best_params": best_params
+    },
+    )
 
 
 def create_confusion_matrix(model, y_test, y_pred):
@@ -197,7 +199,8 @@ def create_confusion_matrix(model, y_test, y_pred):
 
     # Plot the confusion matrix
     fig, ax = plt.subplots(figsize=(6, 6))
-    disp.plot(ax=ax, cmap=plt.cm.Blues)
+    blues = plt.cm.Blues  # type: ignore
+    disp.plot(ax=ax, cmap=blues)
     plt.title("Confusion Matrix (Model By Vicent & Aaron)")
 
     image_path = "/tmp/fraud_model_confusion_matrix.png"
@@ -215,38 +218,40 @@ def create_confusion_matrix(model, y_test, y_pred):
     resource_defs={"fraud_mlflow_tracking": mlflow_resource}
 )
 def fraud_ml_model_testing(context: dg.AssetExecutionContext,
-fraud_ml_model_training: dg.MaterializeResult,
-fraud_ml_train_test_split: dg.MaterializeResult
+fraud_ml_model_training: Dict,
+fraud_ml_train_test_split: Dict
 ) -> dg.MaterializeResult:
 
-     mlflow_client = context.resources.fraud_mlflow_tracking
-     model = fraud_ml_model_training["model"]
-     data = fraud_ml_train_test_split
+    mlflow_client = context.resources.fraud_mlflow_tracking
+    model = fraud_ml_model_training["model"]
+    data = fraud_ml_train_test_split
 
-     x_test = data["x_test"]
-     y_test = data["y_test"]
+    x_test = data["x_test"]
+    y_test = data["y_test"]
 
-     y_pred = model.predict(x_test)
+    y_pred = model.predict(x_test)
 
-     train_score = fraud_ml_model_training['train_score']
+    train_score = fraud_ml_model_training['train_score']
 
-     test_accuracy = accuracy_score(y_test, y_pred)
-     test_precision = precision_score(y_test, y_pred)
-     test_recall = recall_score(y_test, y_pred)
-     context.log.info(f"test accuracy {test_accuracy}")
+    test_accuracy = accuracy_score(y_test, y_pred)
+    test_precision = precision_score(y_test, y_pred)
+    test_recall = recall_score(y_test, y_pred)
+    context.log.info(f"test accuracy {test_accuracy}")
 
-     confusion_matrix_path = create_confusion_matrix(model, y_test, y_pred)
+    confusion_matrix_path = create_confusion_matrix(model, y_test, y_pred)
 
-     experiment, experiment_id = get_experiment(mlflow_client)
-     with mlflow_client.start_run(experiment_id=experiment_id, run_name="Model Testing (By Aaron & Vicent)", nested=True):
-               mlflow.log_artifact(confusion_matrix_path, artifact_path="confusion_matrix")
-               mlflow.log_metric("training accuracy", train_score)
-               mlflow_client.log_metric("testing accuracy", test_accuracy)
+    _, experiment_id = get_experiment(mlflow_client)
 
-     feature_names = fraud_ml_train_test_split['feature_labels']
-     registered_model_name = "fraud_prediction_model_aaron_vicent"
-     model_version_info = None
-     with mlflow.start_run(nested=True) as current_run:
+    with mlflow_client.start_run(experiment_id=experiment_id,
+    run_name="Model Testing (By Aaron & Vicent)",
+    nested=True):
+        mlflow.log_artifact(confusion_matrix_path, artifact_path="confusion_matrix")
+        mlflow.log_metric("training accuracy", train_score)
+        mlflow_client.log_metric("testing accuracy", test_accuracy)
+
+    feature_names = fraud_ml_train_test_split['feature_labels']
+    registered_model_name = "fraud_prediction_model_aaron_vicent"
+    with mlflow.start_run(nested=True) as current_run:
         context.log.info(f"Starting nested MLflow run for model logging: {current_run.info.run_id}")
 
         log_model_info = ms.log_model(
@@ -269,14 +274,6 @@ fraud_ml_train_test_split: dg.MaterializeResult
         ]
 
         if matching_versions:
-            registered_model_version = matching_versions[0]
-            model_version_info = {
-                "name": registered_model_version.name,
-                "version": registered_model_version.version,
-                "status": registered_model_version.status,
-                "stage": registered_model_version.current_stage,
-                "model_uri": f"models:/{registered_model_version.name}/{registered_model_version.version}"
-            }
             context.log.info("Successfully retrieved registered model version info from registry.")
         else:
             context.log.error(
@@ -285,7 +282,7 @@ fraud_ml_train_test_split: dg.MaterializeResult
             )
             raise Exception("Failed to retrieve registered model version details after logging.")
 
-     return dg.MaterializeResult(value={
+        return dg.MaterializeResult(value={
         "model": model,
         "accuracy": test_accuracy,
         "recall": test_recall,
@@ -303,30 +300,28 @@ fraud_ml_train_test_split: dg.MaterializeResult
     resource_defs={"slack_messenger": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))},
 )
 def fraud_ml_slack_message(context: dg.AssetExecutionContext,
-fraud_ml_model_testing: dg.MaterializeResult,
+fraud_ml_model_testing: Dict,
 ) -> dg.MaterializeResult:
 
-     data = fraud_ml_model_testing
-     slack: dagster_slack.SlackResource = context.resources.slack_messenger
+    data = fraud_ml_model_testing
+    slack: dagster_slack.SlackResource = context.resources.slack_messenger
 
-     test_accuracy = data['accuracy']
-     test_precision = data['precision']
-     test_recall = data['recall']
+    test_accuracy = data['accuracy']
+    test_precision = data['precision']
+    test_recall = data['recall']
 
-     slack.get_client().chat_postMessage(
-        channel='aims_course_october2025',
-        text=f"""
-*🚀 Model Performance Report*  
-_By 👽 Aaron & 🥸 Vicent_
+    slack.get_client().chat_postMessage(
+    channel='aims_course_october2025',
+    text=f"""
+    *🚀 Model Performance Report*
+    _By 👽 Aaron & 🥸 Vicent_
 
-• 🎯 *Accuracy:* `{test_accuracy:.4f}`  
-• 🔍 *Recall:* `{test_recall:.4f}`  
-• 🧠 *Precision:* `{test_precision:.4f}`  
+    • 🎯 *Accuracy:* `{test_accuracy:.4f}
+    • 🔍 *Recall:* `{test_recall:.4f}
+    • 🧠 *Precision:* `{test_precision:.4f}
 
-🕒 *Timestamp:* {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}  
-"""
-     )
-
-     return dg.MaterializeResult(value={
-     },
-     )
+    🕒 *Timestamp:* {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    """)
+    return dg.MaterializeResult(value={
+    },
+    )

@@ -34,7 +34,8 @@ de_job = dg.define_asset_job(
 
 fraud_job = dg.define_asset_job(
     name="our_fraud_detection_mlflow",
-    selection=dg.AssetSelection.groups('ml_fraud_data_ingest', 'ml_fraud_data_transform', 'ml_fraud_model', 'ml_fraud_slack_msg')
+    selection=dg.AssetSelection.groups('ml_fraud_data_ingest', 'ml_fraud_data_transform',
+    'ml_fraud_model', 'ml_fraud_slack_msg')
 )
 ml_job = dg.define_asset_job(
     name="era5_machine_learning_with_mlflow",

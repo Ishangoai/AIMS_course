@@ -21,9 +21,32 @@ def predict_fraud(features: list):
         prob = model.predict_proba(features_np)[0][1]
         level = prob * 100
         if prediction == 1:
-            return f"div id='output_dt' data-val={level}>🚨 FRAUD DETECTED ({prob * 100:.2f}% probability)</div>"
+            result = f"div id='output_dt'>🚨 FRAUD DETECTED ({prob * 100:.2f}% probability)</div>"
+            risk = f"""
+                        <div class="risk-meter">
+                            <div class="risk-level" style="width: {max(10, level)}%;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;">
+                            <span>Low</span>
+                            <span>Medium</span>
+                            <span>High</span>
+                        </div>
+                        """
+            return result, risk
         else:
-            return f"<div id='output_dt' data-val={level}>✅ LEGITIMATE TRANSACTION ({(1 - prob) * 100:.2f}% probability)</div>"
+            result = f"<div id='output_dt'>✅ LEGITIMATE TRANSACTION ({(1 - prob) * 100:.2f}% \
+                probability)</div>"
+            risk = f"""
+                        <div class="risk-meter">
+                            <div class="risk-level" style="width: {max(10, level)}%;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;">
+                            <span>Low</span>
+                            <span>Medium</span>
+                            <span>High</span>
+                        </div>
+                        """
+            return result, risk
     except Exception as e:
         return f"❌ Prediction Error: {str(e)}"
 
