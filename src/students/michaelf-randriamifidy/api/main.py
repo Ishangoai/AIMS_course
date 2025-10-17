@@ -20,6 +20,7 @@ app = FastAPI(
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Image Transformation**](/image-transformation/)
+    5. [**Fraud Detection Model**](/fraud-detection/)
     -----
     """),
     version="1.0.0",

@@ -18,3 +18,19 @@ class TuningConfig(dg.Config):
         default=20,
         description="Maximum number of evaluations allowed by Hyperopt during model tuning."
     )
+
+
+class PromotionConfig(dg.Config):
+    """Configuration for model promotion thresholds"""
+    staging_accuracy_threshold: float = pyd.Field(
+        default=0.7,
+        description="Minimum acceptable Accuracy for promoting a model to Staging"
+    )
+    staging_recall_threshold: float = pyd.Field(
+        default=0.5,
+        description="Minimum acceptable Recall for promoting a model to Staging"
+    )
+    staging_fpr_threshold: float = pyd.Field(
+        default=0.2,
+        description="Maximum acceptable False Positive Rate for promoting a model to Staging"
+    )    
