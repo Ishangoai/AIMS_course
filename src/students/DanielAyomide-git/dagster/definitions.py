@@ -7,11 +7,13 @@ from .ml.resources import (
     PromotionConfig,
     TuningConfig,
 )
+from .ml_fraud import assets as ml_fraud_assets
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
 all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
+all_ml_fraud_assets = dg.load_assets_from_modules([ml_fraud_assets])
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
@@ -35,26 +37,36 @@ ml_job = dg.define_asset_job(
     hooks={mlflow_failure_hook},
     config={
         "ops": {
-            "raw_xarray_dataset": {"config": Era5RequestConfig().model_dump()},
-            "promote_model_to_production": {"config": PromotionConfig().model_dump()},
-            "tune_ridge_hyperparameters": {"config": TuningConfig().model_dump()},
+            "raw_xarray_dataset": {
+                "config": Era5RequestConfig().model_dump()
+            },
+            "promote_model_to_production": {
+                "config": PromotionConfig().model_dump()
+            },
+            "tune_ridge_hyperparameters": {
+                "config": TuningConfig().model_dump()
+            }
         }
-    },
+    }
 )
 
+fraud_job = dg.define_asset_job(
+    name="ml_fraud_analysis",
+    selection=dg.AssetSelection.groups("Extract", "Transform")
+)
 era5_daily_schedule = dg.ScheduleDefinition(
     job=ml_job,
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
-    name="era5_daily_schedule",
+    name="era5_daily_schedule"
 )
 
 # Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
-    assets=[*all_ml_assets, *all_de_assets],
+    assets=[*all_ml_assets, *all_de_assets, *all_ml_fraud_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
     },
-    jobs=[de_job, ml_job],
+    jobs=[de_job, ml_job, fraud_job],
     schedules=[era5_daily_schedule],
-    asset_checks=[*all_de_checks, *all_ml_checks],
+    asset_checks=[*all_de_checks, *all_ml_checks]
 )
