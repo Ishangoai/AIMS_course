@@ -7,13 +7,13 @@ from .ml.resources import (
     PromotionConfig,
     TuningConfig,
 )
-from .ml_fraud import assets as ml_fraud_assets #me
+from .ml_fraud import assets as ml_fraud_assets  # me
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
 all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
-all_fraud_assets = dg.load_assets_from_modules([ml_fraud_assets]) #me
+all_fraud_assets = dg.load_assets_from_modules([ml_fraud_assets])  # me
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
@@ -24,7 +24,6 @@ def mlflow_failure_hook(context):
     mlflow_client.set_tag("dagster_error_message", error_message)
     mlflow_client.log_param("dagster_failed_step", context.step_key)
     mlflow_client.log_param("dagster_run_id", context.run_id)
-    
 
 
 de_job = dg.define_asset_job(

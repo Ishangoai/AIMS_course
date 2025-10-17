@@ -1,4 +1,5 @@
-import dagster as dg 
+import dagster as dg
+
 
 @dg.asset(
     description="Download data for fraud detection",
