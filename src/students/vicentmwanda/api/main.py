@@ -7,6 +7,7 @@ from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
+from fraudapp.fraud_card_app import fraud_app
 from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
 
@@ -18,6 +19,7 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
+    4. [**Fraud Detector**](/fraud-detector/)
     -----
     """),
     version="1.0.0",
@@ -61,7 +63,6 @@ def evaluate(expression: str):
         return {"result": result}
     except Exception as e:
         return {"error": str(e)}
-
 
 
 @app.post("/register", summary="Register a new user", description="Registers a new user with the given username.")
@@ -125,11 +126,13 @@ def update_user_details(username: str, request: UpdateUserRequest):
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
 
-@app.get("/get-data/{username}",summary="get user data",description="lets get user data")
+
+@app.get("/get-data/{username}", summary="get user data", description="lets get user data")
 def get_data(username: str):
     return {"message": f"User {username} data"}
 
 
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
+gr.mount_gradio_app(app, fraud_app, path="/fraud-detector")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
