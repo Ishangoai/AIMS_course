@@ -52,7 +52,7 @@ ml_job = dg.define_asset_job(
 
 ml_fraud_job = dg.define_asset_job(
     name="ml_fraud_detection_job",
-    selection=dg.AssetSelection.groups("ml_fraud_ingest")
+    selection=dg.AssetSelection.groups("ml_fraud_ingest", "ml_fraud_model"),
 )
 
 era5_daily_schedule = dg.ScheduleDefinition(
