@@ -1,7 +1,16 @@
+from typing import Dict
+
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import ConfusionMatrixDisplay, classification_report, confusion_matrix, roc_auc_score
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.model_selection import RandomizedSearchCV
 
 
@@ -25,7 +34,7 @@ def model_training_testing(
     X_train: np.ndarray, y_train: np.ndarray,
     X_test: np.ndarray, y_test: np.ndarray,
     param_dist: dict, random_state: int
-    ) -> float:
+    ) -> Dict:
     "Train a RandomForestClassifier model and return the ROC AUC score on the test set"
     # Define the model
     rf = RandomForestClassifier(
@@ -52,8 +61,14 @@ def model_training_testing(
 
     # Evaluation
     roc_auc = float(roc_auc_score(y_test, y_proba))
+    accuracy = float(accuracy_score(y_test, y_pred))
+    recall = float(recall_score(y_test, y_pred))
     print("Classification Report:\n", classification_report(y_test, y_pred))
     print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
     print("ROC AUC Score:", roc_auc)
 
-    return roc_auc
+    return {
+        "accuracy": accuracy,
+        "recall": recall,
+        "roc_auc": roc_auc
+    }

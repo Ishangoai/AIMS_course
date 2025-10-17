@@ -13,5 +13,5 @@ dump_data_artifacts_job = define_asset_job(
 
 model_training_job = define_asset_job(
     name="model_training_job",
-    selection=["train_model", "send_ml_performance_to_slack"]
+    selection=["train_model", "notify_modelling_results"]
 )
