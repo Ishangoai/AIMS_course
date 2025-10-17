@@ -76,19 +76,38 @@ def train_fraud_model(
     split_fraud_model: list
 ) -> dg.MaterializeResult:
 
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.metrics import classification_report
+    import numpy as np
+    from sklearn.datasets import load_iris
+    from sklearn.model_selection import GridSearchCV, KFold, cross_val_score
+    from sklearn.svm import SVC
 
-    X_train, X_test, y_train, y_test = split_fraud_model
+    # 1. Load data
+    X, y = load_iris(return_X_y=True)
 
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X_train, y_train)
+    # 2. Define model and parameter grid
+    model = SVC()
+    param_grid = {
+        'C': [0.1, 1, 10],
+        'kernel': ['linear', 'rbf']
+    }
 
-    y_pred = model.predict(X_test)
-    report = classification_report(y_test, y_pred)
+    # 3. Inner cross-validation (for hyperparameter tuning)
+    inner_cv = KFold(n_splits=3, shuffle=True, random_state=42)
+    grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=inner_cv)
 
-    context.log.info(f"Classification Report:\n{report}")
+    # 4. Outer cross-validation (for performance estimation)
+    outer_cv = KFold(n_splits=5, shuffle=True, random_state=42)
 
+    # 5. Nested cross-validation: use cross_val_score with GridSearchCV as the estimator
+    nested_scores = cross_val_score(grid_search, X, y, cv=outer_cv)
+
+    # 6. Print results
+    print("Nested CV scores:", nested_scores)
+    print("Mean score:", np.mean(nested_scores))
     return dg.MaterializeResult(
-        value=model
+        value="Model trained successfully",
+        metadata={
+            "nested_cv_scores": nested_scores.tolist(),
+            "mean_score": float(np.mean(nested_scores))
+        }
     )
