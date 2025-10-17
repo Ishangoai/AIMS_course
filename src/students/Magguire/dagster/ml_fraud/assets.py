@@ -17,6 +17,7 @@ from sklearn.metrics import (
     recall_score,
 )
 from sklearn.model_selection import GridSearchCV, KFold, train_test_split
+import dagster_slack
 
 from ..ml.resources import mlflow_resource
 from .resources import FraudDataConfig
@@ -427,7 +428,8 @@ def test_fraud_detection_model(
     description="Save the tuned RandomForest model as a pickle file for Gradio use.",
     compute_kind="python",
     group_name="ml_fraud_store",
-    resource_defs={"mlflow_tracking": mlflow_resource}
+    resource_defs={"mlflow_tracking": mlflow_resource,
+    "slack_resource": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))}
 )
 def save_tuned_model(context: dg.AssetExecutionContext, test_fraud_detection_model: dict) -> str:
     """
@@ -442,6 +444,21 @@ def save_tuned_model(context: dg.AssetExecutionContext, test_fraud_detection_mod
     model_path = os.path.join(save_dir, "fraud_detection_model.pkl")
 
     context.log.info(f"Saving model to: {model_path}")
+
+    # Send message on slack
+    slack: dagster_slack.SlackResource = context.resources.slack_resource
+    slack.get_client().chat_postMessage(
+        channel='aims_course_october2025',
+        text=f"🇰🇪 {os.environ.get("USER_1", "default")} & 🇧🇯 {os.environ.get("USER_2", "default")}'s "
+        "dagster pipeline has run sucessfully \U0001FAE1  "
+        "\n 📈 \033[1mModel metrics:\033[0m"
+        f"\nAccuracy: {round(test_fraud_detection_model['test_accuracy'] * 100, 2)}%"
+        f"\nRecall: {round(test_fraud_detection_model['test_recall'] * 100, 2)}%"
+        f"\nPrecision: {round(test_fraud_detection_model['test_precision'] * 100, 2)}%"
+        f"\nF1 Score: {round(test_fraud_detection_model['test_f1'] * 100, 2)}%"
+        "\nAsante sana"
+        "\nAu revoir"
+    )
 
     try:
         with open(model_path, "wb") as f:
