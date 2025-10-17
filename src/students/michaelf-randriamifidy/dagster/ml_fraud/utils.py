@@ -1,4 +1,3 @@
-import os
 
 import requests
 
@@ -22,7 +21,7 @@ class ClientDownloader:
             raise RuntimeError(f"Request failed: {e}")
 
         try:
-            with open(os.getcwd() + output_filename, "wb") as f:
+            with open(output_filename, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)

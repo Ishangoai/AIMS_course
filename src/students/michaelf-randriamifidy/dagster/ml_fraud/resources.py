@@ -1,6 +1,6 @@
 import dagster as dg
 
-from utils import ClientDownloader
+from .utils import ClientDownloader
 
 
 class FraudResourceConfig(dg.ConfigurableResource):

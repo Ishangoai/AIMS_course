@@ -7,15 +7,23 @@ from .ml.resources import (
     PromotionConfig,
     TuningConfig,
 )
+from .ml_fraud.all_assets import (
+    assets_data_ingest as di_assets,
+)
 
-# Import here our assets 
-from .ml_fraud.all_assets import assets_train_eval
-
+# Import here our assets
+from .ml_fraud.all_assets import (
+    assets_train_eval as te_assets,
+)
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
 all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
+all_ml_fraud_assets = dg.load_assets_from_modules([
+    te_assets,
+    di_assets
+])
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
@@ -52,24 +60,24 @@ ml_job = dg.define_asset_job(
     }
 )
 
+fraud_detection = dg.define_asset_job(
+    name="machine_learning_fraud_detection",
+    selection=dg.AssetSelection.groups("data_ingest"),
+)
+
 era5_daily_schedule = dg.ScheduleDefinition(
     job=ml_job,
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
     name="era5_daily_schedule"
 )
 
-fraud_detection = dg.define_asset_job(
-    name="machine_learning_fraud_detection",
-    selection=dg.AssetSelection.groups(...)
-)
-
 # Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
-    assets=[*all_ml_assets, *all_de_assets],
+    assets=[*all_ml_assets, *all_de_assets, *all_ml_fraud_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
     },
-    jobs=[de_job, ml_job],
+    jobs=[de_job, ml_job, fraud_detection],
     schedules=[era5_daily_schedule],
-    asset_checks=[*all_de_checks, *all_ml_checks, *fraud_detection]
+    asset_checks=[*all_de_checks, *all_ml_checks]
 )
