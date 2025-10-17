@@ -3,6 +3,7 @@ import pickle
 import tempfile
 
 import dagster as dg
+import dagster_slack
 import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn as ms
@@ -17,7 +18,6 @@ from sklearn.metrics import (
     recall_score,
 )
 from sklearn.model_selection import GridSearchCV, KFold, train_test_split
-import dagster_slack
 
 from ..ml.resources import mlflow_resource
 from .resources import FraudDataConfig
