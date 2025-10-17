@@ -8,6 +8,10 @@ from .ml.resources import (
     TuningConfig,
 )
 
+# Import here our assets 
+from .ml_fraud.all_assets import assets_train_eval
+
+
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
@@ -54,6 +58,11 @@ era5_daily_schedule = dg.ScheduleDefinition(
     name="era5_daily_schedule"
 )
 
+ml_fraud_job = dg.define_asset_job(
+    name="machine_learning_fraud_detection",
+    selection=dg.AssetSelection.groups(...)
+)
+
 # Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
     assets=[*all_ml_assets, *all_de_assets],
@@ -62,5 +71,5 @@ defs = dg.Definitions(
     },
     jobs=[de_job, ml_job],
     schedules=[era5_daily_schedule],
-    asset_checks=[*all_de_checks, *all_ml_checks]
+    asset_checks=[*all_de_checks, *all_ml_checks, *ml_fraud_job]
 )
