@@ -451,13 +451,13 @@ def save_tuned_model(context: dg.AssetExecutionContext, test_fraud_detection_mod
         channel='aims_course_october2025',
         text=f"🇰🇪 {os.environ.get("USER_1", "default")} & 🇧🇯 {os.environ.get("USER_2", "default")}'s "
         "dagster pipeline has run sucessfully \U0001FAE1  "
-        "\n 📈 \033[1mModel metrics:\033[0m"
-        f"\nAccuracy: {round(test_fraud_detection_model['test_accuracy'] * 100, 2)}%"
-        f"\nRecall: {round(test_fraud_detection_model['test_recall'] * 100, 2)}%"
-        f"\nPrecision: {round(test_fraud_detection_model['test_precision'] * 100, 2)}%"
-        f"\nF1 Score: {round(test_fraud_detection_model['test_f1'] * 100, 2)}%"
-        "\nAsante sana"
-        "\nAu revoir"
+        "\n 📈 *Model metrics:*"
+        f"\n• Accuracy: {round(test_fraud_detection_model['eval_metrics']['test_accuracy'] * 100, 2)}%"
+        f"\n• Recall: {round(test_fraud_detection_model['eval_metrics']['test_recall'] * 100, 2)}%"
+        f"\n• Precision: {round(test_fraud_detection_model['eval_metrics']['test_precision'] * 100, 2)}%"
+        f"\n• F1 Score: {round(test_fraud_detection_model['eval_metrics']['test_f1'] * 100, 2)}%"
+        "\n      *Asante sana*"
+        "\n      *Au revoir*"
     )
 
     try:
