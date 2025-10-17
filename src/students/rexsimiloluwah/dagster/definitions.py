@@ -7,23 +7,34 @@ from .ml.resources import (
     PromotionConfig,
     TuningConfig,
 )
+from .ml_fraud import assets as ml_fraud_assets
+from .ml_fraud.resources import data_config, mlflow_resource, model_config
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
 all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
+all_ml_fraud_assets = dg.load_assets_from_modules([ml_fraud_assets])
+all_ml_fraud_asset_checks = dg.load_asset_checks_from_modules([ml_fraud_assets])
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
 def mlflow_failure_hook(context):
+    print("-------------- MLflow Failure Hook Triggered -----------\n" * 10)
     mlflow_client = context.resources.mlflow_tracking
-    error_message = f"Dagster job failed: {context.failure_event.message}"
+
+    # TODO: check how to get this failure event (dagster mlflow docs)
+    # error_message = f"Dagster job failed: {context.failure_event.message}"
+
+    mlflow_client.log_metric("dagster_job_failed", 1)
     mlflow_client.set_tag("dagster_job_status", "failed")
-    mlflow_client.set_tag("dagster_error_message", error_message)
+    mlflow_client.end_run(status="FAILED")  # Updated for updating the mlflow run status
+    # mlflow_client.set_tag("dagster_error_message", error_message)
     mlflow_client.log_param("dagster_failed_step", context.step_key)
     mlflow_client.log_param("dagster_run_id", context.run_id)
 
 
+# Jobs
 de_job = dg.define_asset_job(
     name="simple_data_engineering_example",
     selection=dg.AssetSelection.groups("de_ingest", "de_transform"),
@@ -48,6 +59,18 @@ ml_job = dg.define_asset_job(
     }
 )
 
+ml_fraud_job = dg.define_asset_job(
+    name="ml_fraud_pipeline",
+    selection=dg.AssetSelection.groups(
+        "ml_fraud_ingest",
+        "ml_fraud_transform",
+        "ml_fraud_split",
+        "ml_fraud_model",
+        "ml_fraud_evaluate"
+    )
+)
+
+# Schedules
 era5_daily_schedule = dg.ScheduleDefinition(
     job=ml_job,
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
@@ -56,11 +79,26 @@ era5_daily_schedule = dg.ScheduleDefinition(
 
 # Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
-    assets=[*all_ml_assets, *all_de_assets],
+    assets=[
+        *all_ml_assets,
+        *all_de_assets,
+        *all_ml_fraud_assets
+    ],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
+        "data_config": data_config,
+        "model_config": model_config,
+        "mlflow": mlflow_resource
     },
-    jobs=[de_job, ml_job],
+    jobs=[
+        de_job,
+        ml_job,
+        ml_fraud_job
+    ],
     schedules=[era5_daily_schedule],
-    asset_checks=[*all_de_checks, *all_ml_checks]
+    asset_checks=[
+        *all_de_checks,
+        *all_ml_checks,
+        *all_ml_fraud_asset_checks
+    ]
 )
