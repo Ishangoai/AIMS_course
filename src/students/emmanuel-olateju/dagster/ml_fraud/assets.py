@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime
 
 import requests
 
@@ -11,6 +12,7 @@ import pandas as pd
 import yaml
 from dagster import asset
 
+from .custom_modules.modelling import model_training_testing
 from .custom_modules.preprocessing import clean_data, data_splitting, split_features_labels
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.yaml')
@@ -48,6 +50,8 @@ def splitting_data(preprocess_data: pd.DataFrame) -> Dict:
 def save_data_artifacts(preprocess_data: pd.DataFrame, splitting_data: Dict) -> None:
     "Save preprocessed data and split data artifacts to local storage or bucket"
     data_dir = CONFIGS["artifacts"]["data_dir"]
+    if os.path.exists(data_dir) is False:
+        os.mkdir(data_dir)
     preprocess_data.to_csv(f"{data_dir}/preprocessed_data.csv", index=False)
 
     for key, value in splitting_data.items():
@@ -57,12 +61,45 @@ def save_data_artifacts(preprocess_data: pd.DataFrame, splitting_data: Dict) -> 
 # ----------------------- MODELING ASSETS --------------------------------- #
 @asset
 def train_model(splitting_data: Dict) -> float:
-    # X_train = splitting_data['X_train']
-    # X_test = splitting_data['X_test']
-    # y_train = splitting_data['y_train']
-    # y_test = splitting_data['y_test']
+    SLACK_WEBHOOK_URL = CONFIGS['hooks']['slack_webhook_url']
 
-    return 0.95
+    X_train = splitting_data['X_train']
+    X_test = splitting_data['X_test']
+    y_train = splitting_data['y_train']
+    y_test = splitting_data['y_test']
+
+    # Construct the Slack message
+    emoji = ":rocket:"
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    message = f"Training Session Started at {current_time} {emoji}"
+    # Send message to Slack
+    response = requests.post(SLACK_WEBHOOK_URL, json={"text": message})
+    if response.status_code != 200:
+        pass
+        # Notify in Email
+        # context.log.error(f"Failed to send Slack message: {response.text}")
+    else:
+        pass
+        # context.log.info("Slack message sent successfully!")
+
+    roc_auc = model_training_testing(
+        X_train, y_train, X_test, y_test,
+        CONFIGS['training']['random_forest_params_space'], CONFIGS['training']['random_state']
+        )
+    # Construct the Slack message
+    emoji = ":rocket:"
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    message = f"Training Session Completed at {current_time} {emoji}"
+    # Send message to Slack
+    response = requests.post(SLACK_WEBHOOK_URL, json={"text": message})
+    if response.status_code != 200:
+        pass
+        # Notify in Email
+        # context.log.error(f"Failed to send Slack message: {response.text}")
+    else:
+        pass
+        # context.log.info("Slack message sent successfully!")
+    return roc_auc
 
 
 # ----------------------------- NOTIFICATION ASSETS ----------------------------- #
@@ -70,11 +107,11 @@ def train_model(splitting_data: Dict) -> float:
 def send_ml_performance_to_slack(train_model: float) -> float:
     SLACK_WEBHOOK_URL = CONFIGS['hooks']['slack_webhook_url']
     # Dummy performance values
-    accuracy = train_model  # replace with your real value later
+    roc_auc = train_model  # replace with your real value later
 
     # Choose metric to display
-    metric_name = "Accuracy"
-    metric_value = accuracy
+    metric_name = "ROC_AUC"
+    metric_value = roc_auc
 
     # Your favorite emoji
     emoji = ":rocket:"

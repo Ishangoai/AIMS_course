@@ -21,7 +21,10 @@ def split_features_labels(df: pd.DataFrame, label_column: str) -> Tuple[np.ndarr
 
 def data_splitting(X: np.ndarray, y: np.ndarray, test_size: float, random_state: int) -> Dict:
     """Splits the data into training and testing sets."""
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size,
+        random_state=random_state, stratify=y
+        )
     return {
         "X_train": X_train,
         "X_test": X_test,
