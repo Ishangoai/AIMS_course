@@ -1,4 +1,5 @@
 import dagster as dg
+import pydantic as pyd
 
 from .utils import ClientDownloader
 
