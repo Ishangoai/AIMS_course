@@ -58,7 +58,7 @@ era5_daily_schedule = dg.ScheduleDefinition(
     name="era5_daily_schedule"
 )
 
-ml_fraud_job = dg.define_asset_job(
+fraud_detection = dg.define_asset_job(
     name="machine_learning_fraud_detection",
     selection=dg.AssetSelection.groups(...)
 )
@@ -71,5 +71,5 @@ defs = dg.Definitions(
     },
     jobs=[de_job, ml_job],
     schedules=[era5_daily_schedule],
-    asset_checks=[*all_de_checks, *all_ml_checks, *ml_fraud_job]
+    asset_checks=[*all_de_checks, *all_ml_checks, *fraud_detection]
 )
