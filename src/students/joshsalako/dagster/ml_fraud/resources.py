@@ -3,7 +3,6 @@ import os
 import dagster as dg
 import pydantic as pyd
 from dagster_mlflow import mlflow_tracking
-from dagster_slack import SlackResource
 from mlflow.tracking import MlflowClient
 
 BASE_DIR = os.path.abspath(os.getenv("DAGSTER_HOME", "."))
@@ -27,10 +26,6 @@ mlflow_resource = mlflow_tracking.configured(
 @dg.resource
 def mlflow_client(_):
     return MlflowClient(tracking_uri=f"sqlite:///{SQLITE_DB_PATH}")
-
-
-# Shared Slack resource to avoid conflicts between modules
-slack_resource = SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))
 
 
 class FraudModelConfig(dg.Config):

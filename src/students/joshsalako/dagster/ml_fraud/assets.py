@@ -5,10 +5,12 @@ import time
 from typing import Any, Dict, List
 
 import dagster as dg
+import dagster_slack
 import matplotlib.pyplot as plt
-import mlflow
+import mlflow.sklearn as ms
 import numpy as np
 import pandas as pd
+from mlflow.models import infer_signature
 
 # from imblearn.over_sampling import RandomOverSampler
 from sklearn.ensemble import RandomForestClassifier
@@ -24,7 +26,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import KFold, train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from .resources import mlflow_resource, slack_resource
+from .resources import mlflow_resource
 
 
 def categorize_time(time_in_seconds: int) -> int:
@@ -45,7 +47,8 @@ def categorize_time(time_in_seconds: int) -> int:
 @dg.asset(
     description="Import data for fraud detection",
     compute_kind="python",
-    group_name="ml_fraud_ingest"
+    group_name="ml_fraud_ingest",
+    resource_defs={"mlflow_fraud": mlflow_resource}
 )
 def fraud_data(
     context: dg.AssetExecutionContext,
@@ -61,6 +64,16 @@ def fraud_data(
     row_count = len(df)
     context.log.info(f"Raw data ingested with {row_count} rows.")
     column_schema = [dg.TableColumn(name, str(dtype)) for name, dtype in df.dtypes.items()]
+
+    # MLflow logging
+    try:
+        mlflow_client = context.resources.mlflow_fraud
+        mlflow_client.log_param("data_source", csv_path)
+        mlflow_client.log_metric("raw_row_count", int(row_count))
+        dataset = mlflow_client.data.from_pandas(df.head(1000), name="fraud_raw_sample")
+        mlflow_client.log_input(dataset=dataset, context="training")
+    except Exception as e:
+        context.log.warning(f"MLflow logging (fraud_data) skipped due to error: {e}")
 
     return dg.MaterializeResult(
         value=df,
@@ -112,7 +125,8 @@ def check_fraud_data(
 @dg.asset(
     description="Preprocess fraud data with feature engineering, normalization, and correlation analysis",
     compute_kind="python",
-    group_name="ml_fraud_transform"
+    group_name="ml_fraud_transform",
+    resource_defs={"mlflow_fraud": mlflow_resource}
 )
 def preprocessed_fraud_data(
     context: dg.AssetExecutionContext,
@@ -167,12 +181,24 @@ def preprocessed_fraud_data(
 
     context.log.info(f"Final processed dataset shape: {df_processed.shape}")
 
+    # MLflow logging
+    try:
+        mlflow_client = context.resources.mlflow_fraud
+        mlflow_client.log_metric("balanced_row_count", int(len(df_subsample)))
+        mlflow_client.log_param("correlation_threshold", correlation_threshold)
+        mlflow_client.log_param("selected_feature_count", int(len(features_to_output)))
+        mlflow_client.log_param("selected_features", ", ".join(features_to_output))
+        processed_sample = mlflow_client.data.from_pandas(df_processed.head(1000), name="fraud_processed_sample")
+        mlflow_client.log_input(dataset=processed_sample, context="training")
+    except Exception as e:
+        context.log.warning(f"MLflow logging (preprocessed_fraud_data) skipped due to error: {e}")
+
     return dg.MaterializeResult(
         value=df_processed,
         metadata={
             "preview": dg.MetadataValue.md(df_processed.head().to_markdown() or ""),
             "shape": dg.MetadataValue.text(f"{df_processed.shape[0]} rows, {df_processed.shape[1]} columns"),
-            "class_distribution": dg.MetadataValue.text(str(dict(df_processed['Class'].value_counts()))),
+            "class_distribution": dg.MetadataValue.text(str(dict(pd.Series(df_processed['Class']).value_counts()))),
             "selected_features": dg.MetadataValue.text(", ".join(features_to_output)),
             "correlation_threshold": dg.MetadataValue.float(correlation_threshold)
         }
@@ -216,7 +242,8 @@ def check_preprocessed_fraud_data(
 @dg.asset(
     description="Split preprocessed data into 80% train and 20% test",
     compute_kind="python",
-    group_name="ml_fraud_transform"
+    group_name="ml_fraud_transform",
+    resource_defs={"mlflow_fraud": mlflow_resource}
 )
 def train_test_split_data(
     context: dg.AssetExecutionContext,
@@ -241,11 +268,30 @@ def train_test_split_data(
     context.log.info(f"Test set: {X_test.shape[0]} samples")
 
     # Log class distributions
-    train_class_dist = np.bincount(y_train)
-    test_class_dist = np.bincount(y_test)
+    train_class_dist = np.bincount(np.asarray(y_train).astype(int))
+    test_class_dist = np.bincount(np.asarray(y_test).astype(int))
 
     context.log.info(f"Train class distribution: {dict(zip(range(len(train_class_dist)), train_class_dist))}")
     context.log.info(f"Test class distribution: {dict(zip(range(len(test_class_dist)), test_class_dist))}")
+
+    # MLflow logging
+    try:
+        mlflow_client = context.resources.mlflow_fraud
+        mlflow_client.log_metric("train_samples", int(X_train.shape[0]))
+        mlflow_client.log_metric("test_samples", int(X_test.shape[0]))
+        mlflow_client.log_param("num_features", int(X_train.shape[1]))
+        mlflow_client.log_param("split_ratio", "80/20")
+        mlflow_client.log_param("stratified", True)
+        mlflow_client.log_param(
+            "train_class_dist",
+            str(dict(zip(range(len(train_class_dist)), train_class_dist)))
+        )
+        mlflow_client.log_param(
+            "test_class_dist",
+            str(dict(zip(range(len(test_class_dist)), test_class_dist)))
+        )
+    except Exception as e:
+        context.log.warning(f"MLflow logging (train_test_split_data) skipped due to error: {e}")
 
     split_data = {
         'X_train': X_train,
@@ -258,8 +304,12 @@ def train_test_split_data(
     return dg.MaterializeResult(
         value=split_data,
         metadata={
-            "train_shape": dg.MetadataValue.text(f"{X_train.shape[0]} samples, {X_train.shape[1]} features"),
-            "test_shape": dg.MetadataValue.text(f"{X_test.shape[0]} samples, {X_test.shape[1]} features"),
+            "train_shape": dg.MetadataValue.text(
+                f"{np.asarray(X_train).shape[0]} samples, {np.asarray(X_train).shape[1]} features"
+            ),
+            "test_shape": dg.MetadataValue.text(
+                f"{np.asarray(X_test).shape[0]} samples, {np.asarray(X_test).shape[1]} features"
+            ),
             "train_class_dist": dg.MetadataValue.text(str(dict(zip(range(len(train_class_dist)), train_class_dist)))),
             "test_class_dist": dg.MetadataValue.text(str(dict(zip(range(len(test_class_dist)), test_class_dist)))),
             "split_ratio": dg.MetadataValue.text("80/20"),
@@ -335,20 +385,30 @@ def trained_fraud_model(
     """Train RandomForest classifier with hyperparameter tuning"""
 
     mlflow_client = context.resources.mlflow_fraud
-    mlflow.set_experiment("fraud_detection_ml")
 
-    active_run = mlflow.active_run()
-    if active_run:
-        context.log.info("Found active MLflow run, ending it before starting new one")
-        mlflow.end_run()
-    with mlflow.start_run(run_name=f"fraud_detection_training_{context.run_id[:8]}"):
-        mlflow.set_tag("model_type", "RandomForest")
-        mlflow.set_tag("task", "fraud_detection")
+    try:
+        experiment = mlflow_client.get_experiment_by_name("fraud_detection_ml")
+        if experiment is None:
+            experiment = mlflow_client.create_experiment("fraud_detection_ml")
+            experiment_id = experiment.experiment_id
+        else:
+            experiment_id = experiment.experiment_id
+    except Exception:
+        experiment_id = None
+
+    with mlflow_client.start_run(experiment_id=experiment_id,
+    run_name=f"fraud_detection_training_{context.run_id[:8]}",
+    nested=True):
+        mlflow_client.set_tag("model_type", "RandomForest")
+        mlflow_client.set_tag("task", "fraud_detection")
 
         X_train = train_test_split_data['X_train']
         y_train = train_test_split_data['y_train']
         feature_names = train_test_split_data['feature_names']
-        context.log.info(f"Training model with {X_train.shape[0]} samples, {X_train.shape[1]} features")
+        xtr = np.asarray(X_train)
+        context.log.info(
+            f"Training model with {int(xtr.shape[0])} samples, {int(xtr.shape[1])} features"
+        )
 
         # Apply RandomOverSampler to training data
         # oversampler = RandomOverSampler(sampling_strategy={1: 800, 0: 22390}, random_state=42)
@@ -370,10 +430,10 @@ def trained_fraud_model(
             context.log.info(f"Testing n_estimators={n_estimators}")
 
             # Start nested run for each hyperparameter
-            with mlflow.start_run(nested=True, run_name=f"n_estimators_{n_estimators}"):
-                mlflow.log_param("n_estimators", n_estimators)
-                mlflow.log_param("random_state", 42)
-                mlflow.log_param("cv_folds", 3)
+            with mlflow_client.start_run(nested=True, run_name=f"n_estimators_{n_estimators}"):
+                mlflow_client.log_param("n_estimators", n_estimators)
+                mlflow_client.log_param("random_state", 42)
+                mlflow_client.log_param("cv_folds", 3)
 
                 # Perform 3-fold cross-validation
                 rf = RandomForestClassifier(
@@ -395,13 +455,13 @@ def trained_fraud_model(
                     cv_scores.append(fold_recall)
 
                     # Log fold results
-                    mlflow.log_metric(f"fold_{fold + 1}_recall", fold_recall)
+                    mlflow_client.log_metric(f"fold_{fold + 1}_recall", fold_recall)
 
                 mean_cv_score = float(np.mean(cv_scores))
                 std_cv_score = float(np.std(cv_scores))
 
-                mlflow.log_metric("mean_cv_recall", mean_cv_score)
-                mlflow.log_metric("std_cv_recall", std_cv_score)
+                mlflow_client.log_metric("mean_cv_recall", mean_cv_score)
+                mlflow_client.log_metric("std_cv_recall", std_cv_score)
 
                 context.log.info(f"n_estimators={n_estimators}: CV Recall = {mean_cv_score:.4f} ± {std_cv_score:.4f}")
 
@@ -418,25 +478,25 @@ def trained_fraud_model(
 
         # Log best parameters and model
         if best_params is not None:
-            mlflow.log_params(best_params)
-        mlflow.log_metric("best_cv_recall", float(best_score))
+            mlflow_client.log_params(best_params)
+        mlflow_client.log_metric("best_cv_recall", float(best_score))
 
         # Log feature importance
         if best_model is not None:
             feature_importance = best_model.feature_importances_
             for i, (feature, importance) in enumerate(zip(feature_names, feature_importance)):
-                mlflow.log_metric(f"feature_importance_{feature}", float(importance))
+                mlflow_client.log_metric(f"feature_importance_{feature}", float(importance))
 
             # Log model
-            import mlflow.sklearn
-            mlflow.sklearn.log_model(
-                best_model,
-                "model",
-                signature=mlflow.models.infer_signature(
-                    X_train_resampled[:10],  # Sample for signature
-                    best_model.predict(X_train_resampled[:10])
+            with mlflow_client.start_run(nested=True, run_name="model_logging"):
+                ms.log_model(
+                    best_model,
+                    "model",
+                    signature=infer_signature(
+                        X_train_resampled[:10],
+                        best_model.predict(X_train_resampled[:10])
+                    )
                 )
-            )
 
         if best_params is not None:
             context.log.info(f"Best model: n_estimators={best_params['n_estimators']}, CV Recall={best_score:.4f}")
@@ -514,19 +574,12 @@ def model_evaluation(
 ) -> dg.MaterializeResult:
     """Evaluate the trained model on test set and log results to MLflow"""
 
-    import mlflow
-
     mlflow_client = context.resources.mlflow_fraud
-    mlflow.set_experiment("fraud_detection_ml")
 
-    active_run = mlflow.active_run()
-    if active_run:
-        context.log.info("Found active MLflow run, ending it before starting new one")
-        mlflow.end_run()
-    with mlflow.start_run(run_name=f"fraud_detection_evaluation_{context.run_id[:8]}"):
-        mlflow.set_tag("model_type", "RandomForest")
-        mlflow.set_tag("task", "fraud_detection")
-        mlflow.set_tag("phase", "evaluation")
+    with mlflow_client.start_run(nested=True, run_name=f"fraud_detection_evaluation_{context.run_id[:8]}"):
+        mlflow_client.set_tag("model_type", "RandomForest")
+        mlflow_client.set_tag("task", "fraud_detection")
+        mlflow_client.set_tag("phase", "evaluation")
 
         X_test = train_test_split_data['X_test']
         y_test = train_test_split_data['y_test']
@@ -549,10 +602,10 @@ def model_evaluation(
         context.log.info(f"Test ROC-AUC: {roc_auc:.4f}")
 
         # Log metrics to MLflow
-        mlflow.log_metric("test_recall", recall)
-        mlflow.log_metric("test_precision", precision)
-        mlflow.log_metric("test_f1", f1)
-        mlflow.log_metric("test_roc_auc", roc_auc)
+        mlflow_client.log_metric("test_recall", recall)
+        mlflow_client.log_metric("test_precision", precision)
+        mlflow_client.log_metric("test_f1", f1)
+        mlflow_client.log_metric("test_roc_auc", roc_auc)
 
         # Create confusion matrix
         cm = confusion_matrix(y_test, y_pred)
@@ -571,7 +624,7 @@ def model_evaluation(
             plt.close()
 
             # Log image to MLflow
-            mlflow.log_artifact(tmp_file.name, "confusion_matrix")
+            mlflow_client.log_artifact(tmp_file.name, "confusion_matrix")
 
             # Clean up temporary file
             os.unlink(tmp_file.name)
@@ -582,8 +635,15 @@ def model_evaluation(
         class_report = classification_report(y_test, y_pred, target_names=['Not Fraud', 'Fraud'])
         context.log.info(f"Classification Report:\n{class_report}")
 
-        # Log detailed metrics to MLflow
-        mlflow.log_text(str(class_report), "classification_report.txt")
+        # Log metrics to MLflow
+        try:
+            mlflow_client.log_text(str(class_report), "classification_report.txt")
+        except Exception:
+            with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as rpt:
+                rpt.write(str(class_report))
+                rpt.flush()
+                mlflow_client.log_artifact(rpt.name, "evaluation")
+                os.unlink(rpt.name)
 
         evaluation_results = {
             'recall': recall,
@@ -651,7 +711,7 @@ def check_model_evaluation(
 
 
 def start_model_server(model, port: int = 5001):
-    """Start a Flask server to serve the model (runs in background)"""
+    """Start a Flask server to serve the model"""
     from flask import Flask, jsonify, request
 
     app = Flask(__name__)
@@ -692,7 +752,10 @@ def start_model_server(model, port: int = 5001):
     description="Post recall metric to Slack and start model server on port 5001",
     compute_kind="python",
     group_name="ml_fraud_deploy",
-    resource_defs={"slack": slack_resource, "mlflow_fraud": mlflow_resource}
+    resource_defs={
+        "slack_fraud": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN")),
+        "mlflow_fraud": mlflow_resource
+    }
 )
 def notify_and_serve(
     context: dg.AssetExecutionContext,
@@ -710,7 +773,7 @@ def notify_and_serve(
 
     # Send notification to Slack
     try:
-        slack = context.resources.slack
+        slack = context.resources.slack_fraud
         github_user = os.environ.get("GITHUB_USER", "unknown")
 
         message = f"""🎯 Fraud Detection Model Training Complete!
@@ -724,8 +787,6 @@ def notify_and_serve(
         👤 Trained by: {github_user}
         🔧 Model: RandomForest Classifier
         📈 Experiment: fraud_detection_ml
-
-        {'✅ Model meets recall threshold!' if recall >= 0.7 else '⚠️ Model below recall threshold'}
         """
 
         response = slack.get_client().chat_postMessage(
@@ -738,39 +799,24 @@ def notify_and_serve(
     except Exception as e:
         context.log.error(f"Failed to post to Slack: {e}")
 
-    # Save model using MLflow
+    # Save model and final metrics using MLflow
     try:
-        import mlflow
-
-        mlflow.set_tracking_uri(
-            f"sqlite:///{os.path.join(os.path.abspath(os.getenv('DAGSTER_HOME', '.')),
-            'mlflow_fraud_detection.db')}"
-            )
-        mlflow.set_experiment("fraud_detection_ml")
-
-        active_run = mlflow.active_run()
-        if active_run:
-            context.log.info("Found active MLflow run, ending it before starting new one")
-            mlflow.end_run()
-        with mlflow.start_run(run_name=f"fraud_detection_serving_{context.run_id[:8]}"):
-            mlflow.set_tag("model_type", "RandomForest")
-            mlflow.set_tag("task", "fraud_detection")
-            mlflow.set_tag("phase", "serving")
+        mlflow_client = context.resources.mlflow_fraud
+        with mlflow_client.start_run(nested=True, run_name=f"fraud_detection_serving_{context.run_id[:8]}"):
+            mlflow_client.set_tag("model_type", "RandomForest")
+            mlflow_client.set_tag("task", "fraud_detection")
+            mlflow_client.set_tag("phase", "serving")
 
             # Log final metrics
-            mlflow.log_metric("final_recall", recall)
-            mlflow.log_metric("final_precision", precision)
-            mlflow.log_metric("final_f1", f1)
-            mlflow.log_metric("final_roc_auc", roc_auc)
+            mlflow_client.log_metric("final_recall", recall)
+            mlflow_client.log_metric("final_precision", precision)
+            mlflow_client.log_metric("final_f1", f1)
+            mlflow_client.log_metric("final_roc_auc", roc_auc)
 
-            # Save model for serving
-            model_path = f"./models/fraud_detection_model_{context.run_id[:8]}"
-            import mlflow.sklearn
-            mlflow.sklearn.save_model(
-                trained_fraud_model,
-                model_path
-            )
-            context.log.info(f"Model saved to {model_path}")
+            # Log model artifact under run
+            with mlflow_client.start_run(nested=True, run_name="serving_model_artifact"):
+                ms.log_model(trained_fraud_model, "serving_model")
+            context.log.info("Model logged to MLflow under current run")
 
     except Exception as e:
         context.log.error(f"Failed to save model: {e}")
