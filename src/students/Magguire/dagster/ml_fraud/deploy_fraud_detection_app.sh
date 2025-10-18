@@ -6,9 +6,9 @@
 set -e # Stop the script if any command fails
 
 # Model and environment details
-MODEL_NAME="tuned-temp-forecaster"
-MODEL_STAGE="Production"
-MLFLOW_PORT=5002
+MODEL_NAME="tuned-random-forest"
+MODEL_ALIAS="production"
+MLFLOW_PORT=5005
 
 # Get the directory where this script is located
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
@@ -20,8 +20,8 @@ DB_PATH="$SCRIPT_DIR/../../../../../mlflow_local_tracking.db"
 export MLFLOW_TRACKING_URI="sqlite:///$DB_PATH"
 
 echo "Starting the MLflow model server..."
-echo "Model: '$MODEL_NAME' from stage '$MODEL_STAGE'"
+echo "Model: '$MODEL_NAME' with alias  '$MODEL_ALIAS'"
 
 
 # The --env-manager=local flag tells MLflow to use the current virtual environment
-mlflow models serve -m "models:/$MODEL_NAME/$MODEL_STAGE" --port "$MLFLOW_PORT"  --env-manager=local
+mlflow models serve -m "models:/$MODEL_NAME@$MODEL_ALIAS" --port "$MLFLOW_PORT"  --env-manager=local
