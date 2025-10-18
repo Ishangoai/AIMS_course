@@ -12,7 +12,7 @@ class FraudResourceConfig(dg.ConfigurableResource):
         return ClientDownloader(url=self.data_url)
 
 
-class TuningConfig(dg.Config):
+class FraudTuningConfig(dg.Config):
     """Configuration for model tuning and optimization"""
     max_hyperopt_evals: int = pyd.Field(
         default=2,
@@ -20,7 +20,7 @@ class TuningConfig(dg.Config):
     )
 
 
-class PromotionConfig(dg.Config):
+class FraudPromotionConfig(dg.Config):
     """Configuration for model promotion thresholds"""
     staging_accuracy_threshold: float = pyd.Field(
         default=0.7,

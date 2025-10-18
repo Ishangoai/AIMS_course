@@ -7,6 +7,9 @@ from .ml.resources import (
     PromotionConfig,
     TuningConfig,
 )
+
+from .ml_fraud.resources import (FraudPromotionConfig)
+
 from .ml_fraud.all_assets import assets_data_ingest as di_assets
 from .ml_fraud.all_assets import assets_promotion as pr_assets
 from .ml_fraud.all_assets import assets_train_eval as te_assets
@@ -62,10 +65,10 @@ fraud_detection = dg.define_asset_job(
     config={
         "ops": {
             "promote_to_staging": {
-                "config": PromotionConfig().model_dump()
+                "config": FraudPromotionConfig().model_dump()
             },
             "promote_to_production": {
-                "config": PromotionConfig().model_dump()
+                "config": FraudPromotionConfig().model_dump()
             }
         }
     }
