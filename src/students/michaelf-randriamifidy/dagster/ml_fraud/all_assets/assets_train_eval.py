@@ -1,30 +1,22 @@
-import os
-from collections import abc
 
 import dagster as dg
 import dagster_slack
 import hyperopt
 import mlflow
 import mlflow.sklearn as ms
-from sklearn.ensemble import RandomForestClassifier
 import pandas as pd
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score, average_precision_score,
-    confusion_matrix, roc_curve, roc_auc_score, classification_report
-)
-from sklearn.model_selection import StratifiedKFold, cross_val_score
-from sklearn.model_selection import train_test_split  # For robust splitting
-
-from ...ml.resources import mlflow_resource
-from ...ml.resources import mlflow_resource, mlflow_client
-
-from ..resources import FraudTuningConfig
-from ..utils import (
-    calculate_false_positive_rate, to_native, random_forest_summary_message,
-    post_message_in_slack
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, recall_score
+from sklearn.model_selection import (
+    cross_val_score,
+    train_test_split,  # For robust splitting
 )
 
 from ...client_consumers import slack_provider
+from ...ml.resources import mlflow_resource
+from ..resources import FraudTuningConfig
+from ..utils import calculate_false_positive_rate, post_message_in_slack, random_forest_summary_message, to_native
+
 
 @dg.asset(
     description="Tunes Random Forest  hyperparameters using Hyperopt and prepares data splits.",
@@ -41,7 +33,7 @@ def tune_random_forest_hyperparameters(
     context.log.info("Starting hyperparameter tuning for Ridge model.")
 
     clean_df = pandas_data_df
-    
+
     if len(clean_df) < 20:  # Increased threshold for meaningful splits
         msg = "Not enough data points for hyperparameter tuning, training, and testing. Need at least 20."
         context.log.error(msg)
@@ -67,14 +59,14 @@ def tune_random_forest_hyperparameters(
         raise ValueError(msg)
 
     context.log.info(f"Data split: X_train_val: {X_train_val.shape}, X_test: {X_test.shape}")  # type: ignore
-    
+
     # Define Hyperopt search space for RandomForest n_estimators
     n_estimators_list = [10, 20, 30]
     search_space = {
         'n_estimators': hyperopt.hp.choice('n_estimators',
-                                        n_estimators = n_estimators_list)
+                                           n_estimators_list)
     }
-    
+
     # MLflow experiment context for nested runs
     # Ensure the experiment exists or is created
     try:
@@ -90,6 +82,7 @@ def tune_random_forest_hyperparameters(
     trials = hyperopt.Trials()
     k_folds = 3
     # Objective function for Hyperopt
+
     def objective(params):
         trial_num = len(trials.trials)
         try:
@@ -105,7 +98,7 @@ def tune_random_forest_hyperparameters(
                 # This case should be rare given prior checks but good to have
                 return {'loss': float('inf'), 'status': hyperopt.STATUS_OK, 'params': params}  # Penalize if split fails
             run_name = f"hyperopt_trial_{trial_num}_n_estimators_{n_estimators:.4f}"
-        
+
             model = RandomForestClassifier(n_estimators=n_estimators,
                                             random_state=42,
                                             n_jobs=-1
@@ -168,6 +161,7 @@ def tune_random_forest_hyperparameters(
         "feature_names": feature_names,
     }
 
+
 @dg.asset(
 description="Trains a Random Forest model using the best hyperparameters found by Hyperopt.",
     resource_defs={"mlflow_tracking": mlflow_resource},
@@ -215,7 +209,8 @@ def train_tuned_model_fraud(
         "y_test": y_test,
         "feature_names": feature_names
     }
-    
+
+
 @dg.asset(
     description="Evaluates the tuned model and logs model and metrics to MLflow.",
     resource_defs={"mlflow_tracking": mlflow_resource,
@@ -316,7 +311,7 @@ def test_model_fraud(
 
     authors = "Rado Fitiavana and Michael Fitiavana"
     hyperparameters = model.get_params()
-    n_estimators = hyperparameters.n_estimators
+    n_estimators = hyperparameters["n_estimators"]
     message = random_forest_summary_message(authors, accuracy, recall, fpr, n_estimators)
     channel = "aims_course_october2025"
 
@@ -326,7 +321,7 @@ def test_model_fraud(
     except Exception as e:
         error_msg = f"Error while posting model summary: {e}"
         context.log.error(error_msg)
-    
+
     return dg.MaterializeResult(
         value=output_value_for_downstream,
         metadata={

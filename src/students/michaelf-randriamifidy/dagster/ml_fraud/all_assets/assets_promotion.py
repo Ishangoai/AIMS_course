@@ -21,22 +21,22 @@ from ..utils import (
 def promote_to_staging(
     context: dg.AssetExecutionContext,
     config: FraudPromotionConfig,
-    test_model: dict
+    test_model_fraud: dict
 ) -> dg.MaterializeResult:
     # Get the MLflow client from the context to interact with the model registry
     mlflow_client = context.resources.mlflow_client
     context.log.info("Starting model promotion to Staging.")
 
     # If the evaluation step was skipped, we also skip promotion
-    if test_model.get("status") == "skipped_evaluation":
+    if test_model_fraud.get("status") == "skipped_evaluation":
         context.log.info("Evaluation was skipped in the previous step. Skipping staging promotion.")
         return dg.MaterializeResult(
             value={"status": "skipped_promotion", "reason": "evaluation_skipped_upstream"},
             metadata={"status": "skipped_promotion_due_to_upstream_skip"}
         )
     # Extract metrics and model version info from evaluation result
-    eval_metrics = test_model.get("eval_metrics", {})
-    model_version_info = test_model.get("model_version_info")
+    eval_metrics = test_model_fraud.get("eval_metrics", {})
+    model_version_info = test_model_fraud.get("model_version_info")
 
     # If no model version info was returned, skip promotion.
     # model_version_info might be None due to an upstream failure
@@ -47,9 +47,9 @@ def promote_to_staging(
             metadata={"status": "skipped_promotion_no_model_info"}
         )
     # Get performance metrics (default to infinity if missing)
-    current_accuracy = eval_metrics.get("test_accuracy", float('inf'))
-    current_recall = eval_metrics.get("test_recall", float('inf'))
-    current_fpr = eval_metrics.get("test_fpr", float('inf'))
+    current_accuracy = float(eval_metrics.get("test_accuracy", float('inf')))
+    current_recall = float(eval_metrics.get("test_recall", float('inf')))
+    current_fpr = float(eval_metrics.get("test_fpr", float('inf')))
 
     STAGING_ACCURACY = config.staging_accuracy_threshold
     STAGING_RECALL = config.staging_recall_threshold
@@ -130,7 +130,7 @@ def promote_to_staging(
     compute_kind="python",
     group_name="promote_model"
 )
-def promoted_to_production(
+def promote_to_production(
     context: dg.AssetExecutionContext,
     promote_to_staging: dict
 ) -> dg.MaterializeResult:

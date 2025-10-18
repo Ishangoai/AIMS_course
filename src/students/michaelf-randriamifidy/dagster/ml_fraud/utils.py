@@ -1,13 +1,12 @@
-from datetime import datetime
-import requests
 import os
+from datetime import datetime
 
+import dagster_slack
 import joblib
 import mlflow
 import numpy as np
 import requests
 from sklearn.metrics import confusion_matrix
-import dagster_slack
 
 
 class ClientDownloader:
@@ -40,14 +39,15 @@ class ClientDownloader:
 
 def post_message_in_slack(slack: dagster_slack.SlackResource,
                             message: str,
-                            channel: str="aims_course_october2025"
+                            channel: str = "aims_course_october2025"
                             ):
-        
-        slack.get_client().chat_postMessage(
-            channel='aims_course_october2025',
-            text=message
-        )
-        
+
+    slack.get_client().chat_postMessage(
+        channel='aims_course_october2025',
+        text=message
+    )
+
+
 def was_model_promoted_to_staging(promote_to_staging: dict) -> bool:
     return promote_to_staging.get("status") == "promoted_to_staging"
 
@@ -114,9 +114,9 @@ def to_native(val):
         return val.item()
     return val
 
+
 def random_forest_summary_message(authors, accuracy, recall, fpr, n_estimators):
     time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
 
     message = (
         f"**Fraud Detection**\n"
