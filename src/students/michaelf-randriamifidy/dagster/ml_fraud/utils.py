@@ -8,6 +8,10 @@ import numpy as np
 import requests
 from sklearn.metrics import confusion_matrix
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+import tempfile
+
 
 class ClientDownloader:
     def __init__(self, url=None):
@@ -133,3 +137,22 @@ def random_forest_summary_message(authors, accuracy, recall, fpr, n_estimators):
         f"----------------------------------"
     )
     return message
+
+
+def log_confusion_matrix(y_true, y_pred, labels=None, artifact_name="confusion_matrix.png"):
+    """
+    Plots and logs a confusion matrix to the current MLflow run.
+    """
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=labels, yticklabels=labels)
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title("Confusion Matrix")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, artifact_name)
+        plt.savefig(path)
+        mlflow.log_artifact(path, artifact_path="plots")
+    
+    plt.close()    

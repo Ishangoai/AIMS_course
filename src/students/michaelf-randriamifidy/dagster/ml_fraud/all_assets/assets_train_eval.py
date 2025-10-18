@@ -15,7 +15,13 @@ from sklearn.model_selection import (
 from ...client_consumers import slack_provider
 from ...ml.resources import mlflow_resource
 from ..resources import FraudTuningConfig
-from ..utils import calculate_false_positive_rate, post_message_in_slack, random_forest_summary_message, to_native
+from ..utils import (
+    calculate_false_positive_rate, 
+    post_message_in_slack, 
+    random_forest_summary_message, 
+    to_native,
+    log_confusion_matrix
+)
 
 
 @dg.asset(
@@ -256,6 +262,11 @@ def test_model_fraud(
     recall = recall_score(y_test, preds)
     fpr = calculate_false_positive_rate(y_test, preds)
     context.log.info(f"Final Model Evaluation Metrics on Test Set: accuracy={accuracy:.4f}, recall={recall:.4f}, fpr={fpr:.4f}")
+
+    # Log confusion matrix as artifact
+    context.log.info("Logging Confusion matrix to Mlflow Artifacts")
+    log_confusion_matrix(y_test, preds, labels=[0, 1])
+    context.log.info("Confusion matrix logged as Artifact to Mlflow")
 
     eval_metrics = {"test_accuracy": accuracy, "test_recall": recall, "test_fpr": fpr}
     mlflow_client.log_metrics(eval_metrics)
