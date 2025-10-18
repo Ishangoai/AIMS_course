@@ -126,20 +126,6 @@ def split_dataset(
     # upstream asset, not MaterializeResult itself.
     preprocessed_data: Tuple[pd.DataFrame, pd.Series]
 ) -> dg.MaterializeResult:
-import json
-import os
-from typing import Dict, Tuple, Any
-
-import dagster as dg
-import matplotlib.pyplot as plt
-import mlflow
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score, roc_auc_score
-from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
-from sklearn.preprocessing import StandardScaler
-from slack_sdk import WebClient
-from slack_sdk.errors import SlackApiError
     """Split data into training and test sets with stratification."""
     X, y = preprocessed_data
     
