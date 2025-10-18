@@ -5,6 +5,7 @@ import dagster_slack
 import mlflow
 import pandas as pd
 
+from ..de.assets import slack_resource
 from .resources import fraud_data_source
 
 
@@ -15,7 +16,6 @@ from .resources import fraud_data_source
 )
 def fraud_data(
     context: dg.AssetExecutionContext,
-    # resource_defs={"fraud_data": FraudDataConfig}
     ) -> dg.MaterializeResult:
 
     df = pd.read_csv(fraud_data_source.data_url)
@@ -144,7 +144,7 @@ def train_real_fraud_model(
 
 @dg.asset(
     description="Evaluate the trained fraud detection model.",
-    resource_defs={"slack": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))},
+    resource_defs={"slack": slack_resource},
     compute_kind="python",
     group_name="ml_fraud_evaluate",
     deps=["train_fraud_model", "split_fraud_model"]
@@ -165,7 +165,7 @@ def evaluate_fraud_model(
     )
 
     _, X_test, _, y_test = split_fraud_model
-    y_pred = train_fraud_model["model_name"].predict(X_test)
+    y_pred = train_fraud_model.predict(X_test)
 
     report = classification_report(y_test, y_pred, output_dict=True)
     cm = confusion_matrix(y_test, y_pred)

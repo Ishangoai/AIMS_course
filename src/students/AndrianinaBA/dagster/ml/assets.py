@@ -603,7 +603,8 @@ def promote_model_to_production(
     mlflow_client = context.resources.mlflow_client
     context.log.info("Starting model promotion to Production.")
 
-    # Step 1: Check if a model was promoted to Staging previously
+    # Step 1: Check if a model was promoted to Staging previou
+    # y
     if promote_model_to_staging.get("status") != "promoted_to_staging":
         # If no model was promoted to staging in the last step, skip production promotion
         context.log.info("No model was promoted to Staging in the previous step. Skipping production promotion.")

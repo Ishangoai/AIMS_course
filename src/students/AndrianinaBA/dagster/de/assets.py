@@ -5,6 +5,10 @@ import dagster as dg
 import dagster_slack
 import pandas as pd
 
+slack_resource = dagster_slack.SlackResource(
+    token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN")
+)
+
 
 @dg.asset(
     description="Ingests raw data from a source (in this example, we create a dummy DataFrame).",
@@ -72,7 +76,7 @@ def clean_data(
 
 @dg.asset(
     description="Aggregates the data by grouping by FoodItem and summing nItems.",
-    resource_defs={"slack": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))},
+    resource_defs={"slack": slack_resource},
     compute_kind="python",
     group_name="de_transform"
 )
