@@ -26,16 +26,24 @@ class ModelConfig(ConfigurableResource):
     """Model training configuration.
     """
     n_estimators: int = pyd.Field(
-        default=100,
+        default=500,
         description="Number of trees in the Random Forest"
     )
     max_depth: int = pyd.Field(
-        default=10,
+        default=30,
         description="Maximum depth of the tree"
     )
     max_depth_options: List[int] = pyd.Field(
-        default=[5, 10, 15, 20],
+        default=[3, 5, 8, 10, 12],
         description="Options for maximum depth during hyperparameter tuning"
+    )
+    min_samples_split: int = pyd.Field(
+        default=2,
+        description="Minimum number of samples required to split an internal node"
+    )
+    min_samples_leaf: int = pyd.Field(
+        default=5,
+        description="Minimum number of samples required to be at a leaf node"
     )
     random_state: int = pyd.Field(
         default=42,
@@ -45,13 +53,39 @@ class ModelConfig(ConfigurableResource):
         default="f1",
         description="Metric to optimize during hyperparameter tuning"
     )
-    performance_threshold: float = pyd.Field(
-        default=0.75,
-        description="Minimum performance threshold for model promotion"
-    )
     cv_folds: int = pyd.Field(
         default=3,
         description="Number of cross-validation folds"
+    )
+    feature_importance_threshold: float = pyd.Field(
+        default=0.02,
+        description="Threshold for feature importance to select features"
+    )
+
+
+class ModelPromotionConfig(ConfigurableResource):
+    """Configuration for model promotion thresholds.
+    F1 score and ROC-AUC thresholds for promoting models to Staging and Production.
+
+    Why?
+    F1 score is the harmonic mean of precision and recall, providing a balance between the two metrics.
+    ROC-AUC measures the model's ability to distinguish between classes across all classification thresholds.
+    """
+    staging_f1_threshold: float = pyd.Field(
+        default=0.75,
+        description="Minimum F1-score threshold for promoting a model to Staging."
+    )
+    production_f1_threshold: float = pyd.Field(
+        default=0.80,
+        description="Minimum F1-score threshold for promoting a model to Production."
+    )
+    staging_roc_auc_threshold: float = pyd.Field(
+        default=0.80,
+        description="Minimum ROC-AUC threshold for promoting a model to Staging."
+    )
+    production_roc_auc_threshold: float = pyd.Field(
+        default=0.85,
+        description="Minimum ROC-AUC threshold for promoting a model to Production."
     )
 
 
