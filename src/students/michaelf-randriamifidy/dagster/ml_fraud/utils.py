@@ -1,6 +1,6 @@
-
 import requests
-
+import numpy as np
+from sklearn.metrics import confusion_matrix
 
 class ClientDownloader:
     def __init__(self, url=None):
@@ -28,3 +28,25 @@ class ClientDownloader:
 
         except IOError as e:
             raise RuntimeError(f"Failed to write file: {e}")
+
+
+
+def calculate_false_positive_rate(y_true:np.ndarray, y_pred:np.ndarray) -> float:
+    """
+    Calculate False Positive Rate
+    Args:
+        y_true (np.ndarray): true value
+        y_pred (np.ndarray): predicted value 
+
+    Returns:
+        float: False Positive Rate
+    """
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    return fp / (fp + tn)
+
+
+def to_native(val):
+    import numpy as np
+    if isinstance(val, np.generic):
+        return val.item()
+    return val

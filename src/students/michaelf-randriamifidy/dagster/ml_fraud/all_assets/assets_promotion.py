@@ -199,7 +199,7 @@ def promote_to_production(
             context.log.info(f"Dump promoted model to pickle file at {DUMP_PATH}")
             try:
                 joblib.dump(model, DUMP_PATH)
-            except Exception e:
+            except Exception as e:
                 context.log.info(f"Failed to dump model, reason: {e}")
 
             # Return success with metadata about the promoted model

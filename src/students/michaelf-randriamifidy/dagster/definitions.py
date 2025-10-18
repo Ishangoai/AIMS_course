@@ -55,7 +55,8 @@ ml_job = dg.define_asset_job(
 
 fraud_detection = dg.define_asset_job(
     name="machine_learning_fraud_detection",
-    selection=dg.AssetSelection.groups("data_ingest", "ml_model_fraud", "promote_model"),
+    selection=dg.AssetSelection.groups("data_ingest", "ml_model_fraud", 
+                                       "ml_evaluate_fraud", "promote_model"),
     config={
         "ops": {
             "promote_to_staging": {
