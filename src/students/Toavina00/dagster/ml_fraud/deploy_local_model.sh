@@ -6,7 +6,7 @@
 set -e # Stop the script if any command fails
 
 # Model and environment details
-MODEL_NAME="tuned-temp-forecaster"
+MODEL_NAME="tuned-fraud-detector"
 MODEL_STAGE="Production"
 MLFLOW_PORT=5002
 
