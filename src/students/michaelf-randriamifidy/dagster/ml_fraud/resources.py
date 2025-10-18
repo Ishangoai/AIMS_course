@@ -15,7 +15,7 @@ class FraudResourceConfig(dg.ConfigurableResource):
 class TuningConfig(dg.Config):
     """Configuration for model tuning and optimization"""
     max_hyperopt_evals: int = pyd.Field(
-        default=20,
+        default=2,
         description="Maximum number of evaluations allowed by Hyperopt during model tuning."
     )
 
