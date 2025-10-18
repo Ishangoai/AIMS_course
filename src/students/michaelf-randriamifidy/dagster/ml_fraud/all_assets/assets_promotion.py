@@ -1,7 +1,7 @@
 import dagster as dg
 
-from ..ml.resources import mlflow_client, mlflow_resource
-from .resources import PromotionConfig
+from ...ml.resources import mlflow_client, mlflow_resource
+from ..resources import PromotionConfig
 
 
 @dg.asset(
@@ -10,7 +10,7 @@ from .resources import PromotionConfig
     compute_kind="python",
     group_name="promote_model"
 )
-def promote_model_to_staging(
+def promote_to_staging(
     context: dg.AssetExecutionContext,
     config: PromotionConfig,
     test_model: dict
@@ -51,7 +51,7 @@ def promote_model_to_staging(
                      f"Recall: {current_recall:.4f}, FPR: {current_fpr}"
                      )
     context.log.info(f"Staging promotion thresholds: Accuracy > {STAGING_ACCURACY},"
-                     f"Recall > {STAGING_RECALL}, FPR > {STAGING_FPR}"
+                     f"Recall > {STAGING_RECALL}, FPR < {STAGING_FPR}"
                      )
 
     # Check if model meets promotion criteria
@@ -113,4 +113,106 @@ def promote_model_to_staging(
                 "recall": dg.MetadataValue.float(current_recall),
                 "fpr": dg.MetadataValue.float(current_fpr)
             }
+        )
+
+
+@dg.asset(
+    description="Promotes the best model from Staging to Production",
+    resource_defs={"mlflow_tracking": mlflow_resource, "mlflow_client": mlflow_client},
+    compute_kind="python",
+    group_name="promote_model"
+)
+def promote_to_production(
+    context: dg.AssetExecutionContext,
+    promote_to_staging: dict
+) -> dg.MaterializeResult:
+    # Get the MLflow client to interact with the model registry
+    mlflow_client = context.resources.mlflow_client
+    context.log.info("Starting model promotion to Production.")
+
+    # Step 1: Check if a model was promoted to Staging previously
+    if promote_to_staging.get("status") != "promoted_to_staging":
+        # If no model was promoted to staging in the last step, skip production promotion
+        context.log.info("No model was promoted to Staging in the previous step. Skipping production promotion.")
+        return dg.MaterializeResult(
+            value={"status": "skipped_production_promotion", "reason": "no_model_in_staging_from_previous_step"},
+            metadata={"status": "skipped_production_promotion"}
+        )
+    # Get the model name from the previous promotion step
+    model_name = promote_to_staging.get("model_name", "tuned-fraud-detector")
+
+    # Simulate manual approval
+    # In a real scenario, this would involve a manual review/approval process.
+    manual_approval_granted = True
+
+    # Proceed with promotion only if manual approval is granted
+    if manual_approval_granted:
+        try:
+            # Find the latest model version in Staging for the given model_name
+            latest_staging_version = None
+            for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
+                if mv.current_stage == "Staging":
+                    # Ensure we promote the highest version currently in Staging
+                    if latest_staging_version is None or mv.version > latest_staging_version.version:
+                        latest_staging_version = mv
+
+            # If no model is found in staging, log a warning and skip promotion
+            if not latest_staging_version:
+                context.log.warning(f"No model found in Staging stage for '{model_name}'. Skipping prod promotion.")
+                return dg.MaterializeResult(
+                    value={"status": "skipped_production_promotion", "reason": "no_staging_model_found_for_prod"},
+                    metadata={"status": "skipped_production_promotion_no_staging_model"}
+                )
+
+            # Extract the model name and version to promote
+            prod_model_name = latest_staging_version.name
+            prod_model_version = latest_staging_version.version
+
+            # Archive all existing models in Production
+            for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
+                if mv.current_stage == "Production":
+                    context.log.info(f"Archiving previous Production model '{mv.name}' (version {mv.version})")
+                    mlflow_client.transition_model_version_stage(
+                        name=mv.name,
+                        version=mv.version,
+                        stage="Archived"
+                    )
+
+            # Promote the new version to Production
+            context.log.info(f"Promoting model '{prod_model_name}' (version {prod_model_version}) to Production")
+            mlflow_client.transition_model_version_stage(
+                name=prod_model_name,
+                version=prod_model_version,
+                stage="Production"
+            )
+
+            # Return success with metadata about the promoted model
+            context.log.info(f"Model '{prod_model_name}' (version {prod_model_version}) promoted to Production.")
+            return dg.MaterializeResult(
+                value={
+                    "status": "promoted_to_production",
+                    "model_name": prod_model_name,
+                    "model_version": prod_model_version,
+                    "previous_metrics": promote_to_staging.get("metrics")
+                },
+                metadata={
+                    "status": "promoted_to_production",
+                    "model_name": dg.MetadataValue.text(prod_model_name),
+                    "model_version": dg.MetadataValue.text(str(prod_model_version))
+                }
+            )
+        except Exception as e:
+            # Catch and log any error that occurs during the promotion process
+            context.log.error(f"Error promoting model to Production: {e}")
+            return dg.MaterializeResult(
+                value={"status": "failed_production_promotion", "error": str(e)},
+                metadata={"status": "failed_production_promotion", "error_message": dg.MetadataValue.text(str(e))}
+            )
+
+    # If manual approval was denied, skip promotion and return reason
+    else:
+        context.log.info("Manual approval not granted. Skipping production promotion")
+        return dg.MaterializeResult(
+            value={"status": "not_promoted_to_production", "reason": "manual_approval_denied"},
+            metadata={"status": "not_promoted_to_production"}
         )
