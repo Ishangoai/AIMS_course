@@ -2,6 +2,7 @@ import os
 from collections import abc
 
 import dagster as dg
+import dagster_slack
 import hyperopt
 import mlflow
 import mlflow.sklearn as ms
@@ -18,7 +19,12 @@ from ...ml.resources import mlflow_resource
 from ...ml.resources import mlflow_resource, mlflow_client
 
 from ..resources import FraudTuningConfig
-from ..utils import calculate_false_positive_rate, to_native
+from ..utils import (
+    calculate_false_positive_rate, to_native, random_forest_summary_message,
+    post_message_in_slack
+)
+
+from ...client_consumers import slack_provider
 
 @dg.asset(
     description="Tunes Random Forest  hyperparameters using Hyperopt and prepares data splits.",
@@ -212,7 +218,9 @@ def train_tuned_model_fraud(
     
 @dg.asset(
     description="Evaluates the tuned model and logs model and metrics to MLflow.",
-    resource_defs={"mlflow_tracking": mlflow_resource},
+    resource_defs={"mlflow_tracking": mlflow_resource,
+                "slack": slack_provider
+                },
     compute_kind="python",
     group_name="ml_evaluate_fraud"
 )
@@ -220,6 +228,7 @@ def test_model_fraud(
     context: dg.AssetExecutionContext,
     train_tuned_model_fraud: dict
 ) -> dg.MaterializeResult:
+    slack: dagster_slack.SlackResource = context.resources.slack
     mlflow_client = context.resources.mlflow_tracking
     context.log.info("Starting final model evaluation.")
 
@@ -305,6 +314,19 @@ def test_model_fraud(
         "status": "evaluated_successfully"
     }
 
+    authors = "Rado Fitiavana and Michael Fitiavana"
+    hyperparameters = model.get_params()
+    n_estimators = hyperparameters.n_estimators
+    message = random_forest_summary_message(authors, accuracy, recall, fpr, n_estimators)
+    channel = "aims_course_october2025"
+
+    try:
+        post_message_in_slack(slack, message, channel)
+        context.log.info(f"The following message is posted to Slack {channel} \n", message)
+    except Exception as e:
+        error_msg = f"Error while posting model summary: {e}"
+        context.log.error(error_msg)
+    
     return dg.MaterializeResult(
         value=output_value_for_downstream,
         metadata={

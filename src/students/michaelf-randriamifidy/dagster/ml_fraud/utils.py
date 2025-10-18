@@ -1,6 +1,8 @@
+from datetime import datetime
 import requests
 import numpy as np
 from sklearn.metrics import confusion_matrix
+import dagster_slack
 
 class ClientDownloader:
     def __init__(self, url=None):
@@ -30,7 +32,16 @@ class ClientDownloader:
             raise RuntimeError(f"Failed to write file: {e}")
 
 
-
+def post_message_in_slack(slack: dagster_slack.SlackResource,
+                            message: str,
+                            channel: str="aims_course_october2025"
+                            ):
+        
+        slack.get_client().chat_postMessage(
+            channel='aims_course_october2025',
+            text=message
+        )
+        
 def calculate_false_positive_rate(y_true:np.ndarray, y_pred:np.ndarray) -> float:
     """
     Calculate False Positive Rate
@@ -50,3 +61,23 @@ def to_native(val):
     if isinstance(val, np.generic):
         return val.item()
     return val
+
+def random_forest_summary_message(authors, accuracy, recall, fpr, n_estimators):
+    time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+
+    message = (
+        f"**Fraud Detection**\n"
+        f"**Model Training Summary**\n"
+        f"----------------------------------\n"
+        f" Model Type: Random Forest\n"
+        # f" Dataset: {data_name}\n"
+        f" Authors: {authors}\n"
+        f" n_estimators: {n_estimators}\n"
+        f" Accuracy: {accuracy:.4f}\n"
+        f" Recall: {recall:.4f}\n"
+        f" False Positive Rate (FPR): {fpr:.4f}\n"
+        f" Timestamp: {time_now}\n"
+        f"----------------------------------"
+    )
+    return message
