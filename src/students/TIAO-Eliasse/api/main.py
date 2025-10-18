@@ -10,7 +10,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.Assignment1propoB import gradioImage
 from gradioapp.heart_disease_app import heart_app
-from ml_fraud.gradio_applica import appli_fraud
+from gradioapp.gradio_applica import appli_fraud
 
 app = FastAPI(
     title="AIMS Course API",
