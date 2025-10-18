@@ -5,6 +5,8 @@ import io
 import dagster as dg
 import dagster_slack
 import matplotlib.pyplot as plt
+import mlflow
+import mlflow.sklearn as ms
 import pandas as pd
 
 # import seaborn as sns
@@ -19,8 +21,8 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import GridSearchCV, train_test_split
 
-from ..ml.resources import mlflow_resource
-from .resources import FraudDataConfig, tuning_config
+from ..ml.resources import mlflow_client, mlflow_resource
+from .resources import FraudDataConfig, promotion_config, tuning_config
 
 
 @dg.asset(
@@ -269,63 +271,119 @@ def tune_random_forest(
 
 
 @dg.asset(
-    description="Evaluate model on test set and generate confusion matrix",
+    description="Train final model with best hyperparameters",
+    resource_defs={"mlflow_tracking": mlflow_resource},
+    compute_kind="python",
+    group_name="ml_fraud_model"
+)
+def train_fraud_model(
+    context: dg.AssetExecutionContext,
+    tune_random_forest: dict
+) -> dict:
+    """
+    Trains the final RandomForest model using the best hyperparameters.
+    Model is already trained by GridSearchCV.
+    """
+    mlflow_client = context.resources.mlflow_tracking
+
+    context.log.info("Final model training with best parameters")
+
+    best_model = tune_random_forest["best_estimator"]
+    X_train = tune_random_forest["X_train"]
+    y_train = tune_random_forest["y_train"]
+    X_test = tune_random_forest["X_test"]
+    y_test = tune_random_forest["y_test"]
+    best_params = tune_random_forest["best_params"]
+
+    context.log.info(f"Model trained on {len(X_train)} samples")
+
+    # Log final model parameters
+    train_params_log = {
+        "model_type": "RandomForestClassifier",
+        **{f"final_{k}": v for k, v in best_params.items()},
+        "final_train_samples": len(X_train),
+        "final_test_samples": len(X_test)
+    }
+    mlflow_client.log_params(train_params_log)
+    context.log.info(f"Logged final training parameters to MLflow: {train_params_log}")
+
+    return {
+        "model": best_model,
+        "X_test": X_test,
+        "y_test": y_test,
+        "X_train": X_train,
+        "y_train": y_train
+    }
+
+
+@dg.asset(
+    description="Evaluate model on test set, generate confusion matrix, and register in MLflow",
     resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
     group_name="ml_fraud_evaluate"
 )
-def evaluate_fraud_model(
+def test_fraud_model(
     context: dg.AssetExecutionContext,
-    tune_random_forest: dict
+    train_fraud_model: dict
 ) -> dg.MaterializeResult:
     """
     Evaluates the trained model on test data and generates confusion matrix.
     Logs metrics and confusion matrix plot to MLflow as an artifact.
+    Registers model in MLflow Model Registry.
     """
     mlflow_client = context.resources.mlflow_tracking
 
-    context.log.info("Evaluating model on test set")
+    context.log.info("Starting final model evaluation")
 
-    model = tune_random_forest["best_estimator"]
-    X_test = tune_random_forest["X_test"]
-    y_test = tune_random_forest["y_test"]
+    model = train_fraud_model["model"]
+    X_test = train_fraud_model["X_test"]
+    y_test = train_fraud_model["y_test"]
+
+    if len(X_test) == 0:
+        context.log.warning("Test set is empty. Skipping evaluation and model logging.")
+        return dg.MaterializeResult(
+            value={
+                "status": "skipped_evaluation",
+                "reason": "Test set empty, evaluation skipped.",
+                "eval_metrics": {"test_accuracy": float('nan'), "test_precision": float('nan')},
+                "model_version_info": None
+            },
+            metadata={
+                "status": "skipped_evaluation",
+                "reason": dg.MetadataValue.text("Test set was empty, no evaluation performed.")
+            }
+        )
 
     context.log.info(f"Test set size: {len(X_test)} samples")
 
     # Make predictions
-    y_pred = model.predict(X_test)
+    predictions = model.predict(X_test)
 
     # Calculate metrics - CONVERT TO PYTHON TYPES
-    accuracy = float(accuracy_score(y_test, y_pred))
-    precision = float(precision_score(y_test, y_pred, zero_division=0))
-    recall = float(recall_score(y_test, y_pred, zero_division=0))
-    f1 = float(f1_score(y_test, y_pred, zero_division=0))
+    accuracy = float(accuracy_score(y_test, predictions))
+    precision = float(precision_score(y_test, predictions, zero_division=0))
+    recall = float(recall_score(y_test, predictions, zero_division=0))
+    f1 = float(f1_score(y_test, predictions, zero_division=0))
 
-    context.log.info("=" * 60)
-    context.log.info("TEST SET EVALUATION METRICS:")
-    context.log.info(f"  Accuracy:  {accuracy:.4f}")
-    context.log.info(f"  Precision: {precision:.4f}")
-    context.log.info(f"  Recall:    {recall:.4f}")
-    context.log.info(f"  F1-Score:  {f1:.4f}")
-    context.log.info("=" * 60)
+    context.log.info(
+        "Final Model Evaluation Metrics on Test Set:"
+        "Accuracy={accuracy:.4f},"
+        "Precision={precision:.4f}, Recall={recall:.4f}, F1={f1:.4f}"
+        )
 
-    # Log metrics to MLflow
-    metrics = {
+    eval_metrics = {
         "test_accuracy": accuracy,
         "test_precision": precision,
         "test_recall": recall,
         "test_f1_score": f1
     }
-    mlflow_client.log_metrics(metrics)
+    mlflow_client.log_metrics(eval_metrics)
+    context.log.info(f"Logged final evaluation metrics to MLflow: {eval_metrics}")
 
     # Generate confusion matrix
-    cm = confusion_matrix(y_test, y_pred)
+    cm = confusion_matrix(y_test, predictions)
 
-    context.log.info("Confusion Matrix:")
-    context.log.info(f"  True Negatives:  {cm[0, 0]}")
-    context.log.info(f"  False Positives: {cm[0, 1]}")
-    context.log.info(f"  False Negatives: {cm[1, 0]}")
-    context.log.info(f"  True Positives:  {cm[1, 1]}")
+    context.log.info(f"Confusion Matrix: TN={cm[0, 0]}, FP={cm[0, 1]}, FN={cm[1, 0]}, TP={cm[1, 1]}")
 
     # Create confusion matrix plot
     plt.figure(figsize=(10, 8))
@@ -343,10 +401,6 @@ def evaluate_fraud_model(
     for i in range(len(cm)):
         for j in range(len(cm[i])):
             plt.text(j, i, cm[i, j], ha='center', va='center', color='black')
-
-    # plt.title('Confusion Matrix - Fraud Detection Model\n', fontsize=16, fontweight='bold')
-    # plt.ylabel('True Label', fontsize=12)
-    # plt.xlabel('Predicted Label', fontsize=12)
 
     # Add metrics text to plot
     metrics_text = f"Accuracy: {accuracy:.4f} | Precision: {precision:.4f} | Recall: {recall:.4f} | F1: {f1:.4f}"
@@ -373,7 +427,7 @@ def evaluate_fraud_model(
     img_base64 = base64.b64encode(buf.read()).decode()
 
     # Generate classification report
-    report = classification_report(y_test, y_pred, target_names=['Normal', 'Fraud'])
+    report = classification_report(y_test, predictions, target_names=['Normal', 'Fraud'])
     context.log.info(f"Classification Report:\n{report}")
 
     # Log classification report as text artifact
@@ -388,15 +442,60 @@ def evaluate_fraud_model(
         temp_report_path = f.name
     mlflow_client.log_artifact(temp_report_path, "evaluation_reports")
 
+    # Register model in MLflow Model Registry
+    registered_model_name = "fraud-detection-rf"
+    model_version_info = None
+
+    with mlflow.start_run(nested=True) as current_run:
+        context.log.info(f"Starting nested MLflow run for model logging: {current_run.info.run_id}")
+
+        log_model_info = ms.log_model(
+            sk_model=model,
+            artifact_path="fraud_detection_model",
+            input_example=X_test[:min(5, len(X_test))],
+            registered_model_name=registered_model_name
+        )
+        context.log.info(f"Model logged to MLflow Run ID: {current_run.info.run_id}")
+        context.log.info(f"Logged model artifact URI: {log_model_info.model_uri}")
+
+        # Get model version info from registry
+        model_versions = mlflow_client.search_model_versions(
+            filter_string=f"name='{registered_model_name}'"
+        )
+
+        # Find the model version registered in this run
+        matching_versions = [
+            mv for mv in model_versions if mv.run_id == current_run.info.run_id
+        ]
+
+        if matching_versions:
+            registered_model_version = matching_versions[0]
+            model_version_info = {
+                "name": registered_model_version.name,
+                "version": registered_model_version.version,
+                "status": registered_model_version.status,
+                "stage": registered_model_version.current_stage,
+                "model_uri": f"models:/{registered_model_version.name}/{registered_model_version.version}"
+            }
+            context.log.info("Successfully retrieved registered model version info from registry.")
+        else:
+            context.log.error(
+                f"Could not find registered model version for run ID {current_run.info.run_id} "
+                f"and name '{registered_model_name}'."
+            )
+            raise Exception("Failed to retrieve registered model version details after logging.")
+
+    output_value_for_downstream = {
+        "test_accuracy": accuracy,
+        "test_precision": precision,
+        "test_recall": recall,
+        "test_f1_score": f1,
+        "model_version_info": model_version_info,
+        "status": "evaluated_successfully"
+    }
+
     return dg.MaterializeResult(
-        value={
-            "metrics": metrics,
-            "confusion_matrix": cm.tolist(),
-            "best_params": tune_random_forest["best_params"],
-            "status": "evaluated_successfully",
-            "accuracy_value": accuracy,
-            "f1_score": f1
-        },
+        value=output_value_for_downstream,
         metadata={
             "test_accuracy": dg.MetadataValue.float(accuracy),
             "test_precision": dg.MetadataValue.float(precision),
@@ -405,13 +504,11 @@ def evaluate_fraud_model(
             "confusion_matrix": dg.MetadataValue.md(
                 f"![Confusion Matrix](data:image/png;base64,{img_base64})"
             ),
-            "true_negatives": dg.MetadataValue.int(int(cm[0, 0])),
-            "false_positives": dg.MetadataValue.int(int(cm[0, 1])),
-            "false_negatives": dg.MetadataValue.int(int(cm[1, 0])),
-            "true_positives": dg.MetadataValue.int(int(cm[1, 1])),
-            "description": dg.MetadataValue.text(
-                "Model evaluation results with confusion matrix on test set"
-            )
+            "model_name": dg.MetadataValue.text(model_version_info["name"]),
+            "model_version": dg.MetadataValue.text(str(model_version_info["version"])),
+            "mlflow_run_id": dg.MetadataValue.text(current_run.info.run_id),
+            "mlflow_model_uri": dg.MetadataValue.text(model_version_info["model_uri"]),
+            "mlflow_stage": dg.MetadataValue.text(model_version_info["stage"])
         }
     )
 
@@ -420,18 +517,18 @@ def evaluate_fraud_model(
     description="Send ML prediction, performance on the test on slack channel",
     resource_defs={"newslack": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))},
     compute_kind="python",
-    group_name="ml_fraud_message"
+    group_name="ml_fraud_evaluate"
 )
 def send_message(
     context: dg.AssetExecutionContext,
-    evaluate_fraud_model: dict,
+    test_fraud_model: dict,
 ) -> dg.MaterializeResult:
     """
     Send the performance on the test to slack channel
     """
     # metrics = evaluate_fraud_model["metrics"]
-    accuracy = evaluate_fraud_model["accuracy_value"]
-    score_f1 = evaluate_fraud_model["f1_score"]
+    accuracy = test_fraud_model["test_accuracy"]
+    score_f1 = test_fraud_model["test_f1_score"]
     emoji_success = ":rocket:"
 
     slack: dagster_slack.SlackResource = context.resources.newslack
@@ -457,3 +554,216 @@ def send_message(
            "preview": dg.MetadataValue.md(f"Accuracy: {accuracy}"),
            "test_accuracy": dg.MetadataValue.float(accuracy)
         })
+
+
+@dg.asset(
+    description="Promotes the model to Staging if it meets performance criteria",
+    resource_defs={"mlflow_tracking": mlflow_resource, "mlflow_client": mlflow_client},
+    compute_kind="python",
+    group_name="ml_fraud_promote"
+)
+def promote_fraud_model_to_staging(
+    context: dg.AssetExecutionContext,
+    test_fraud_model: dict
+) -> dg.MaterializeResult:
+    """
+    Promotes the fraud detection model to Staging if it meets criteria.
+    """
+    mlflow_client = context.resources.mlflow_client
+    context.log.info("Starting model promotion to Staging.")
+
+    # If the evaluation step was skipped, we also skip promotion
+    if test_fraud_model.get("status") == "skipped_evaluation":
+        context.log.info("Evaluation was skipped in the previous step. Skipping staging promotion.")
+        return dg.MaterializeResult(
+            value={"status": "skipped_promotion", "reason": "evaluation_skipped_upstream"},
+            metadata={"status": "skipped_promotion_due_to_upstream_skip"}
+        )
+
+    # Extract metrics and model version info from evaluation result
+    eval_metrics = test_fraud_model.get("eval_metrics", {})
+    model_version_info = test_fraud_model.get("model_version_info")
+
+    # If no model version info was returned, skip promotion
+    if not model_version_info:
+        context.log.warning("No valid model version info found from evaluation. Skipping staging promotion.")
+        return dg.MaterializeResult(
+            value={"status": "skipped_promotion", "reason": "no_model_version_info_from_evaluation"},
+            metadata={"status": "skipped_promotion_no_model_info"}
+        )
+
+    # Get performance metrics
+    current_accuracy = eval_metrics.get("test_accuracy", float('inf'))
+    current_precision = eval_metrics.get("test_precision", float('inf'))
+    current_recall = eval_metrics.get("test_recall", float('inf'))
+
+    STAGING_ACCURACY_THRESHOLD = promotion_config.staging_accuracy_threshold
+    STAGING_PRECISION_THRESHOLD = promotion_config.staging_precision_threshold
+    STAGING_RECALL_THRESHOLD = promotion_config.staging_recall_threshold
+
+    # Log the evaluation metrics and threshold criteria
+    context.log.info(f"Model evaluated with Accuracy: {current_accuracy:.4f},"
+                    "Precision: {current_precision:.4f}, Recall: {current_recall:.4f}")
+    context.log.info(f"Staging promotion thresholds: Accuracy > {STAGING_ACCURACY_THRESHOLD},"
+                    "Precision > {STAGING_PRECISION_THRESHOLD}, Recall > {STAGING_RECALL_THRESHOLD}")
+
+    # Check if model meets promotion criteria
+    if (current_accuracy >= STAGING_ACCURACY_THRESHOLD and
+        current_precision >= STAGING_PRECISION_THRESHOLD and
+        current_recall >= STAGING_RECALL_THRESHOLD):
+        try:
+            # Extract the model name and version for promotion
+            model_name = model_version_info["name"]
+            model_version = model_version_info["version"]
+
+            # Promote the model to the 'Staging' stage
+            context.log.info(f"Model '{model_name}' (version {model_version}) meets criteria. Promoting to Staging")
+            mlflow_client.transition_model_version_stage(
+                name=model_name,
+                version=model_version,
+                stage="Staging"
+            )
+
+            # Return successful result with status and relevant metadata
+            context.log.info(f"Model '{model_name}' (version {model_version}) promoted to Staging.")
+            return dg.MaterializeResult(
+                value={
+                    "status": "promoted_to_staging",
+                    "model_name": model_name,
+                    "model_version": model_version,
+                    "metrics": eval_metrics
+                },
+                metadata={
+                    "status": "promoted_to_staging",
+                    "model_name": dg.MetadataValue.text(model_name),
+                    "model_version": dg.MetadataValue.text(str(model_version)),
+                    "accuracy_at_promotion": dg.MetadataValue.float(current_accuracy),
+                    "precision_at_promotion": dg.MetadataValue.float(current_precision),
+                    "recall_at_promotion": dg.MetadataValue.float(current_recall)
+                }
+            )
+        except Exception as e:
+            # Handle any exception during promotion and log the error
+            context.log.error(f"Error promoting model to Staging: {e}")
+            return dg.MaterializeResult(
+                value={"status": "failed_promotion_to_staging", "error": str(e)},
+                metadata={"status": "failed_promotion_to_staging", "error_message": dg.MetadataValue.text(str(e))}
+            )
+    # If model doesn't meet criteria, log and return "not promoted"
+    else:
+        context.log.info("Model does not meet performance criteria for Staging promotion. Skipping.")
+        return dg.MaterializeResult(
+            value={
+                "status": "not_promoted_to_staging",
+                "reason": "criteria_not_met",
+                "metrics": eval_metrics
+            },
+            metadata={
+                "status": "not_promoted_to_staging",
+                "accuracy": dg.MetadataValue.float(current_accuracy),
+                "precision": dg.MetadataValue.float(current_precision),
+                "recall": dg.MetadataValue.float(current_recall)
+            }
+        )
+
+
+@dg.asset(
+    description="Promotes the best model from Staging to Production",
+    resource_defs={"mlflow_tracking": mlflow_resource, "mlflow_client": mlflow_client},
+    compute_kind="python",
+    group_name="ml_fraud_promote"
+)
+def promote_fraud_model_to_production(
+    context: dg.AssetExecutionContext,
+    promote_fraud_model_to_staging: dict
+) -> dg.MaterializeResult:
+    """
+    Promotes the fraud detection model from Staging to Production.
+    """
+    mlflow_client = context.resources.mlflow_client
+    context.log.info("Starting model promotion to Production.")
+
+    # Check if a model was promoted to Staging previously
+    if promote_fraud_model_to_staging.get("status") != "promoted_to_staging":
+        context.log.info("No model was promoted to Staging in the previous step. Skipping production promotion.")
+        return dg.MaterializeResult(
+            value={"status": "skipped_production_promotion", "reason": "no_model_in_staging_from_previous_step"},
+            metadata={"status": "skipped_production_promotion"}
+        )
+
+    # Get the model name from the previous promotion step
+    model_name = promote_fraud_model_to_staging.get("model_name", "fraud-detection-rf")
+
+    # Simulate manual approval
+    manual_approval_granted = True
+
+    # Proceed with promotion only if manual approval is granted
+    if manual_approval_granted:
+        try:
+            # Find the latest model version in Staging for the given model_name
+            latest_staging_version = None
+            for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
+                if mv.current_stage == "Staging":
+                    if latest_staging_version is None or mv.version > latest_staging_version.version:
+                        latest_staging_version = mv
+
+            # If no model is found in staging, log a warning and skip promotion
+            if not latest_staging_version:
+                context.log.warning(f"No model found in Staging stage for '{model_name}'. Skipping prod promotion.")
+                return dg.MaterializeResult(
+                    value={"status": "skipped_production_promotion", "reason": "no_staging_model_found_for_prod"},
+                    metadata={"status": "skipped_production_promotion_no_staging_model"}
+                )
+
+            # Extract the model name and version to promote
+            prod_model_name = latest_staging_version.name
+            prod_model_version = latest_staging_version.version
+
+            # Archive all existing models in Production
+            for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
+                if mv.current_stage == "Production":
+                    context.log.info(f"Archiving previous Production model '{mv.name}' (version {mv.version})")
+                    mlflow_client.transition_model_version_stage(
+                        name=mv.name,
+                        version=mv.version,
+                        stage="Archived"
+                    )
+
+            # Promote the new version to Production
+            context.log.info(f"Promoting model '{prod_model_name}' (version {prod_model_version}) to Production")
+            mlflow_client.transition_model_version_stage(
+                name=prod_model_name,
+                version=prod_model_version,
+                stage="Production"
+            )
+
+            # Return success with metadata about the promoted model
+            context.log.info(f"Model '{prod_model_name}' (version {prod_model_version}) promoted to Production.")
+            return dg.MaterializeResult(
+                value={
+                    "status": "promoted_to_production",
+                    "model_name": prod_model_name,
+                    "model_version": prod_model_version,
+                    "previous_metrics": promote_fraud_model_to_staging.get("metrics")
+                },
+                metadata={
+                    "status": "promoted_to_production",
+                    "model_name": dg.MetadataValue.text(prod_model_name),
+                    "model_version": dg.MetadataValue.text(str(prod_model_version))
+                }
+            )
+        except Exception as e:
+            # Catch and log any error that occurs during the promotion process
+            context.log.error(f"Error promoting model to Production: {e}")
+            return dg.MaterializeResult(
+                value={"status": "failed_production_promotion", "error": str(e)},
+                metadata={"status": "failed_production_promotion", "error_message": dg.MetadataValue.text(str(e))}
+            )
+
+    # If manual approval was denied, skip promotion and return reason
+    else:
+        context.log.info("Manual approval not granted. Skipping production promotion")
+        return dg.MaterializeResult(
+            value={"status": "not_promoted_to_production", "reason": "manual_approval_denied"},
+            metadata={"status": "not_promoted_to_production"}
+        )

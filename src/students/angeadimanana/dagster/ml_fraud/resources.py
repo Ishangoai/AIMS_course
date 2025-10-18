@@ -13,6 +13,7 @@ class FraudDataConfig(dg.Config):
     )
     data_url: str = "https://raw.githubusercontent.com/aduuna/Kaggle-Data-Credit-Card-Fraud-Detection/master/samplecreditcard.csv"
 
+
 class RandomForestTuningConfig(dg.Config):
     """Configuration for RandomForest hyperparameter tuning"""
     hyperparameter_to_tune: str = "n_estimators"  # Choose: n_estimators, max_depth, or min_samples_split
@@ -21,7 +22,14 @@ class RandomForestTuningConfig(dg.Config):
     min_samples_split_options: list[int] = [2, 5, 10]
     cv_folds: int = 3  # 3-fold cross-validation
 
-    
+
+class FraudPromotionConfig(dg.Config):
+    """Configuration for model promotion thresholds"""
+    staging_accuracy_threshold: float = 0.95
+    staging_precision_threshold: float = 0.90
+    staging_recall_threshold: float = 0.75
+
+
 data_link = FraudDataConfig()
 tuning_config = RandomForestTuningConfig()
-
+promotion_config = FraudPromotionConfig()
