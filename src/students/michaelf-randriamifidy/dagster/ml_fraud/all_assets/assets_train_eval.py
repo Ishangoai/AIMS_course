@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split  # For robust splitting
 from ...ml.resources import mlflow_resource
 from ...ml.resources import mlflow_resource, mlflow_client
 
-from ..resources import TuningConfig
+from ..resources import FraudTuningConfig
 @dg.asset(
     description="Tunes Random Forest  hyperparameters using Hyperopt and prepares data splits.",
     resource_defs={"mlflow_tracking": mlflow_resource},
@@ -26,7 +26,7 @@ from ..resources import TuningConfig
 )
 def tune_random_forest_hyperparameters(
     context: dg.AssetExecutionContext,
-    config: TuningConfig,
+    config: FraudTuningConfig,
     pandas_data_df: pd.DataFrame
 ) -> dict:
     mlflow_client = context.resources.mlflow_tracking
@@ -111,8 +111,8 @@ def tune_random_forest_hyperparameters(
         fn=objective,
         space=search_space,
         algo=hyperopt.tpe.suggest,
-        max_evals=2,
-        # max_evals=config.max_hyperopt_evals,  # Number of iterations
+        # max_evals=2,
+        max_evals=config.max_hyperopt_evals,  # Number of iterations
         trials=trials
     )
     context.log.info(f"fmin completed. Returned best_hyperparams: {best_hyperparams}")
@@ -156,4 +156,52 @@ def tune_random_forest_hyperparameters(
         "X_test": X_test,
         "y_test": y_test,
         "feature_names": feature_names,
+    }
+
+@dg.asset(
+description="Trains a Random Forest model using the best hyperparameters found by Hyperopt.",
+    resource_defs={"mlflow_tracking": mlflow_resource},
+    compute_kind="python",
+    group_name="ml_model_fraud"
+)
+def train_tuned_model_fraud(
+    context: dg.AssetExecutionContext,
+    tune_random_forest_hyperparameters
+) -> dict:
+    mlflow_client = context.resources.mlflow_tracking
+    context.log.info("Starting final model training with tuned hyperparameters.")
+
+    best_params = tune_random_forest_hyperparameters["best_params"]
+    X_train_val = tune_random_forest_hyperparameters["X_train_val"]
+    y_train_val = tune_random_forest_hyperparameters["y_train_val"]
+    X_test = tune_random_forest_hyperparameters["X_test"]
+    y_test = tune_random_forest_hyperparameters["y_test"]
+    feature_names = tune_random_forest_hyperparameters["feature_names"]
+
+    context.log.info(f"Training Random Forest model with parameters: {best_params}")
+    context.log.info(f"Training on {len(X_train_val)} samples.")
+
+    final_model = RandomForestClassifier(n_estimators=best_params['n_estimators'],
+                                        random_state=42,
+                                        n_jobs=-1
+                                        )
+    final_model.fit(X_train_val, y_train_val)
+    context.log.info("Final Random Forest model trained.")
+
+    train_params_log = {
+        "model_type": "Random Forest",
+        "n_estimators": best_params['n_estimators'],
+        "feature_used": ", ".join(feature_names),
+        "lag_period": 1,  # Assuming lag_period is 1 as per feature eng.
+        "final_train_samples": len(X_train_val),
+        "final_test_samples": len(X_test)
+    }
+    mlflow_client.log_params(train_params_log)
+    context.log.info(f"Logged final training parameters to MLflow: {train_params_log}")
+
+    return {
+        "model": final_model,
+        "X_test": X_test,
+        "y_test": y_test,
+        "feature_names": feature_names
     }

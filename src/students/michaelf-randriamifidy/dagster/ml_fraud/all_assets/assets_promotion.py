@@ -1,7 +1,7 @@
 import dagster as dg
 
 from ...ml.resources import mlflow_client, mlflow_resource
-from ..resources import PromotionConfig
+from ..resources import FraudPromotionConfig
 
 
 @dg.asset(
@@ -12,7 +12,7 @@ from ..resources import PromotionConfig
 )
 def promote_to_staging(
     context: dg.AssetExecutionContext,
-    config: PromotionConfig,
+    config: FraudPromotionConfig,
     test_model: dict
 ) -> dg.MaterializeResult:
     # Get the MLflow client from the context to interact with the model registry
