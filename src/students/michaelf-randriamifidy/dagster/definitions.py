@@ -61,9 +61,6 @@ fraud_detection = dg.define_asset_job(
         "ops": {
             "promote_to_staging": {
                 "config": FraudPromotionConfig().model_dump()
-            },
-            "promote_to_production": {
-                "config": FraudPromotionConfig().model_dump()
             }
         }
     }
