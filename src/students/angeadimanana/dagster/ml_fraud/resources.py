@@ -12,7 +12,6 @@ class FraudDataConfig(dg.Config):
         description="Random seed for reproducibility"
     )
     data_url: str = "https://raw.githubusercontent.com/aduuna/Kaggle-Data-Credit-Card-Fraud-Detection/master/samplecreditcard.csv"
-    
+
 
 data_link = FraudDataConfig()
-
