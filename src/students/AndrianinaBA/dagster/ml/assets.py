@@ -526,7 +526,7 @@ def promote_model_to_staging(
 
     # STAGING_MSE_THRESHOLD = config.staging_mse_threshold
     # STAGING_MAE_THRESHOLD = config.staging_mae_threshold
-    STAGING_R2_THRESHOLD = config.staging_r2_threshold
+    STAGING_R2_THRESHOLD = config
     # Log the evaluation metrics and threshold criteria
     context.log.info(f"Model evaluated with MSE: {current_mse:.4f}, MAE: {current_mae:.4f}")
     context.log.info(f"Staging promotion thresholds: R2 > {STAGING_R2_THRESHOLD}")
