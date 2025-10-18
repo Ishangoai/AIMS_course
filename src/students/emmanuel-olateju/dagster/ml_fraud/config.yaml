@@ -4,10 +4,10 @@ training:
   test_size: 0.2
   random_state: 42
   random_forest_params_space:
-    n_estimators: [100]
-    max_depth: [10]
-    min_samples_split: [2, 5, 10]
-    min_samples_leaf: [1, 2, 4]
+    n_estimators: [5]
+    max_depth: [3]
+    min_samples_split: [10]
+    min_samples_leaf: [100]
     max_features: ['sqrt', 'log2']
     bootstrap: [True, False]
 

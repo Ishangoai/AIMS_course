@@ -63,6 +63,7 @@ def model_training_testing(
     roc_auc = float(roc_auc_score(y_test, y_proba))
     accuracy = float(accuracy_score(y_test, y_pred))
     recall = float(recall_score(y_test, y_pred))
+    cm = confusion_matrix(y_test, y_pred)
     print("Classification Report:\n", classification_report(y_test, y_pred))
     print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
     print("ROC AUC Score:", roc_auc)
@@ -70,5 +71,6 @@ def model_training_testing(
     return {
         "accuracy": accuracy,
         "recall": recall,
-        "roc_auc": roc_auc
+        "roc_auc": roc_auc,
+        "cm": cm
     }
