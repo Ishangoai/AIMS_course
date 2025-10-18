@@ -9,6 +9,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
+from gradioapp.image_app import image_app
+from gradioapp.text_app import text_app
 
 app = FastAPI(
     title="AIMS Course API",
@@ -18,6 +20,8 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
+    4. [**Text Manipulation App**](/text-manipulation/)
+    5. [**Image Processing App**](/image-processing/)
     -----
     """),
     version="1.0.0",
@@ -128,3 +132,5 @@ def update_user_details(username: str, request: UpdateUserRequest):
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
+gr.mount_gradio_app(app, text_app, path="/text-manipulation")
+gr.mount_gradio_app(app, image_app, path="/image-processing")
