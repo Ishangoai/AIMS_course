@@ -8,6 +8,7 @@ from .ml.resources import (
     TuningConfig,
 )
 from .ml_fraud import assets as ml_fraud_assets
+from .ml_fraud.resources import FraudPromotionConfig
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
@@ -48,8 +49,18 @@ ml_job = dg.define_asset_job(
 fraud_job = dg.define_asset_job(
     name="machine_learning_fraud_detection",
     selection=dg.AssetSelection.groups(
-        "ml_fraud_ingest", "ml_fraud_transform", "ml_fraud_split", "ml_fraud_train", "ml_fraud_eval"
+        "ml_fraud_ingest",
+        "ml_fraud_transform",
+        "ml_fraud_split",
+        "ml_fraud_train",
+        "ml_fraud_eval",
+        "ml_fraud_promotion",
     ),
+    config={
+        "ops": {
+            "model_promotion_staging": {"config": FraudPromotionConfig().model_dump()},
+        }
+    },
 )
 
 
