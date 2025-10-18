@@ -1,9 +1,9 @@
+import re
+
 import gradio as gr
 import pandas as pd
-from gradioapp.utils.fraud_utils import predict_fraud
 import plotly.graph_objects as go
-import requests
-import re
+from gradioapp.utils.fraud_utils import predict_fraud
 
 # Example transaction values for testing
 EXAMPLE_TRANSACTION = [
@@ -42,10 +42,6 @@ EXAMPLE_TRANSACTION = [
 COLUMN_NAMES = [f"V{i + 1}" for i in range(28)] + ["Amount"]
 
 
-import plotly.graph_objects as go
-from gradioapp.utils.fraud_utils import predict_fraud
-
-
 def wrapped_predict(*args):
     # Handle missing inputs with example defaults
     inputs = [arg if arg is not None else EXAMPLE_TRANSACTION[i] for i, arg in enumerate(args)]
@@ -60,13 +56,14 @@ def wrapped_predict(*args):
             prob = 1 - (float(result.split("(")[1].split("%")[0]) / 100)
         else:
             prob = 0.0
-    except:
+    except Exception:
         prob = 0.0
 
     # Create a simple HTML bar to visualize probability
     bar_html = f"""
     <div style='width:100%; background:#eee; border-radius:5px;'>
-      <div style='width:{prob * 100:.1f}%; background:{"red" if prob > 0.5 else "green"}; padding:5px; border-radius:5px; color:white; text-align:center;'>
+      <div style='width:{prob * 100:.1f}%; background:{"red" if prob > 0.5 else "green"}; padding:5px;
+      border-radius:5px; color:white; text-align:center;'>
         {prob * 100:.1f}%
       </div>
     </div>
@@ -97,30 +94,32 @@ def reset_inputs():
     return [None] * 29
 
 
-def reset_inputs():
-    return [None]*29
+# def reset_inputs():
+#     return [None] * 29
+
 
 def batch_predict(csv_file):
     if csv_file is None:
-        return "Please upload dataset", pd.DataFrame(columns=["TransactionID","Prediction","Fraud Probability"])
+        return "Please upload dataset", pd.DataFrame(columns=["TransactionID", "Prediction", "Fraud Probability"])
 
     df = pd.read_csv(csv_file.name)
     predictions = []
 
     for _, row in df.iterrows():
-        inputs = [row.get(f"V{i}", EXAMPLE_TRANSACTION[i-1]) for i in range(1,29)]
+        inputs = [row.get(f"V{i}", EXAMPLE_TRANSACTION[i - 1]) for i in range(1, 29)]
         inputs.append(row.get("Amount", EXAMPLE_TRANSACTION[28]))
         result = predict_fraud(inputs)
         match = re.search(r"\(([\d.]+)% probability\)", result)
-        prob = 1 - (float(match.group(1))/100.0) if match else 0.0
-        predictions.append({"TransactionID": row.get("Time", None),
-                            "Prediction": result,
-                            "Fraud Probability": round(prob,2)})
+        prob = 1 - (float(match.group(1)) / 100.0) if match else 0.0
+        predictions.append(
+            {"TransactionID": row.get("Time", None), "Prediction": result, "Fraud Probability": round(prob, 2)}
+        )
 
     return "", pd.DataFrame(predictions)
-def clear_predictions():
-    return pd.DataFrame(columns=["TransactionID","Prediction","Fraud Probability"])
 
+
+def clear_predictions():
+    return pd.DataFrame(columns=["TransactionID", "Prediction", "Fraud Probability"])
 
 
 # ---- Gradio UI ----
@@ -130,9 +129,9 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as fraud_app:
 
     with gr.Row():
         with gr.Column():
-            sliders_1 = [gr.Slider(-5,5,value=EXAMPLE_TRANSACTION[i], label=f"V{i+1}") for i in range(14)]
+            sliders_1 = [gr.Slider(-5, 5, value=EXAMPLE_TRANSACTION[i], label=f"V{i + 1}") for i in range(14)]
         with gr.Column():
-            sliders_2 = [gr.Slider(-5,5,value=EXAMPLE_TRANSACTION[i], label=f"V{i+1}") for i in range(14,28)]
+            sliders_2 = [gr.Slider(-5, 5, value=EXAMPLE_TRANSACTION[i], label=f"V{i + 1}") for i in range(14, 28)]
             Amount = gr.Number(label="Transaction Amount", value=EXAMPLE_TRANSACTION[28], precision=2)
 
     predict_btn = gr.Button("Predict Single Transaction")
@@ -149,7 +148,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as fraud_app:
     # Batch Prediction
     gr.Markdown("### Batch Prediction via CSV Upload")
     csv_input = gr.File(label="Upload CSV", file_types=[".csv"])
-    batch_output = gr.Dataframe(headers=["TransactionID","Prediction","Fraud Probability"])
+    batch_output = gr.Dataframe(headers=["TransactionID", "Prediction", "Fraud Probability"])
     csv_btn = gr.Button("Run Batch Prediction")
     clear_btn = gr.Button("Clear Predictions")
 
@@ -158,4 +157,3 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as fraud_app:
 
     csv_btn.click(fn=batch_predict, inputs=csv_input, outputs=[gr.Textbox(), batch_output])
     clear_btn.click(fn=clear_predictions, inputs=None, outputs=batch_output)
-    
