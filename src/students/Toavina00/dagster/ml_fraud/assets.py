@@ -165,6 +165,8 @@ def tuned_hyperparameters(
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
 
+    train_dataset = mlflow.data.from_pandas(training_data, name="train_fraud_dataset")  # pyright: ignore
+
     X_train = training_data.drop(columns="Class")
     y_train = training_data["Class"]
 
@@ -182,6 +184,8 @@ def tuned_hyperparameters(
     report = []
 
     with mlflow.start_run(run_name=f"hyperparameter_tuning_rf_{time.time():.0f}"):
+        mlflow.log_input(dataset=train_dataset, context="training")
+
         run_num = 0
         for params in product(*params_val):
             train_param: dict = {params_key[i]: params[i] for i in range(len(params_key))}
@@ -243,6 +247,8 @@ def tuned_model(
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
 
+    train_dataset = mlflow.data.from_pandas(training_data, name="train_fraud_dataset")  # pyright: ignore
+
     X_train = training_data.drop(columns="Class")
     y_train = training_data["Class"]
 
@@ -252,6 +258,7 @@ def tuned_model(
     metrics, model_version_info = {}, {}
 
     with mlflow.start_run(run_name=f"model_training_{time.time():.0f}") as run:
+        mlflow.log_input(dataset=train_dataset, context="training")
         mlflow.log_params(tuned_hyperparameters)
         model.fit(X_train, y_train)
 
@@ -332,6 +339,8 @@ def model_evaluation(
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
 
+    test_dataset = mlflow.data.from_pandas(test_data, name="test_fraud_dataset")  # pyright: ignore
+
     X_test = test_data.drop(columns="Class")
     y_test = test_data["Class"]
 
@@ -343,6 +352,8 @@ def model_evaluation(
     metrics = {}
 
     with mlflow.start_run(run_name=f"model_eval_{time.time():.0f}"):
+        mlflow.log_input(dataset=test_dataset, context="testing")
+
         y_pred = model.predict(X_test)
         metrics["f1-score"] = f1_score(y_test, y_pred)
         metrics["accuracy"] = accuracy_score(y_test, y_pred)
@@ -434,7 +445,8 @@ def model_promotion_staging(
         context.log.info(f"Model '{model_name}' (version {model_version}) meets criteria. Promoting to Staging")
         mlflow_client.transition_model_version_stage(name=model_name, version=model_version, stage="Staging")
 
-        tuned_model["stage"] = "Staging"
+        mv = mlflow_client.get_model_version(model_name, model_version)
+        tuned_model["stage"] = mv.current_stage
 
         return dg.MaterializeResult(
             value={"promote_status": "success", **tuned_model},
@@ -491,6 +503,18 @@ def model_promotion_production(
             },
         )
 
+    # Promote only Staged model
+    mv = mlflow_client.get_model_version(model_name, model_version)
+    if mv.current_stage != "Staging":
+        model_promotion_staging["stage"] = mv.current_stage
+        return dg.MaterializeResult(
+            value={**model_promotion_staging},
+            metadata={
+                "error": "model did not pass staging",
+                **{k: v for (k, v) in model_promotion_staging.items() if k not in ["tuned_model"]},
+            },
+        )
+
     # Some promotion criteria
     promote = True
 
@@ -512,7 +536,8 @@ def model_promotion_production(
     context.log.info(f"Model '{model_name}' (version {model_version}) meets criteria. Promoting to Production")
     mlflow_client.transition_model_version_stage(name=model_name, version=model_version, stage="Production")
 
-    model_promotion_staging["stage"] = "Production"
+    mv = mlflow_client.get_model_version(model_name, model_version)
+    model_promotion_staging["stage"] = mv.current_stage
 
     return dg.MaterializeResult(
         value={**model_promotion_staging},
