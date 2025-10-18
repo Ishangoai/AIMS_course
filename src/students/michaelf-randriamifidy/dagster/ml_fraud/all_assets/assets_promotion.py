@@ -166,30 +166,6 @@ def promoted_to_production(
             promote_model_to_production(prod_model_name, prod_model_version, mlflow_client, context)
             dump_model_to_pickle(prod_model_name, prod_model_version, context)
 
-<<<<<<< HEAD
-=======
-            # Promote the new version to Production
-            context.log.info(f"Promoting model '{prod_model_name}' (version {prod_model_version}) to Production")
-            mlflow_client.transition_model_version_stage(
-                name=prod_model_name,
-                version=prod_model_version,
-                stage="Production"
-            )
-
-            DUMP_PATH = os.getcwd() + "fraud_detector.pkl"
-
-            model_uri = f"models:/{prod_model_name}/{prod_model_version}"
-            model = mlflow.pyfunc.load_model(model_uri)
-
-            # Dump the new version to pickle file
-            context.log.info(f"Dump promoted model to pickle file at {DUMP_PATH}")
-            try:
-                joblib.dump(model, DUMP_PATH)
-            except Exception as e:
-                context.log.info(f"Failed to dump model, reason: {e}")
-
-            # Return success with metadata about the promoted model
->>>>>>> 78a8f46fa2e9fd67843ccbdbf30bb961f7b18638
             context.log.info(f"Model '{prod_model_name}' (version {prod_model_version}) promoted to Production.")
             return dg.MaterializeResult(
                 value={

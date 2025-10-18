@@ -1,13 +1,11 @@
-<<<<<<< HEAD
 import os
 
 import joblib
 import mlflow
-=======
->>>>>>> 78a8f46fa2e9fd67843ccbdbf30bb961f7b18638
-import requests
 import numpy as np
+import requests
 from sklearn.metrics import confusion_matrix
+
 
 class ClientDownloader:
     def __init__(self, url=None):
@@ -37,7 +35,6 @@ class ClientDownloader:
             raise RuntimeError(f"Failed to write file: {e}")
 
 
-<<<<<<< HEAD
 def was_model_promoted_to_staging(promote_to_staging: dict) -> bool:
     return promote_to_staging.get("status") == "promoted_to_staging"
 
@@ -82,19 +79,19 @@ def dump_model_to_pickle(model_name: str, model_version: str, context) -> None:
         joblib.dump(model, DUMP_PATH)
     except Exception as e:
         context.log.info(f"Failed to dump model, reason: {e}")
-=======
 
-def calculate_false_positive_rate(y_true:np.ndarray, y_pred:np.ndarray) -> float:
+
+def calculate_false_positive_rate(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """
     Calculate False Positive Rate
     Args:
         y_true (np.ndarray): true value
-        y_pred (np.ndarray): predicted value 
+        y_pred (np.ndarray): predicted value
 
     Returns:
         float: False Positive Rate
     """
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    tn, fp, _, _ = confusion_matrix(y_true, y_pred).ravel()
     return fp / (fp + tn)
 
 
@@ -103,4 +100,3 @@ def to_native(val):
     if isinstance(val, np.generic):
         return val.item()
     return val
->>>>>>> 78a8f46fa2e9fd67843ccbdbf30bb961f7b18638
