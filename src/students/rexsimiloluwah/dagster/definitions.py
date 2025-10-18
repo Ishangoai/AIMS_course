@@ -1,4 +1,6 @@
+
 import dagster as dg
+import dagster_slack
 
 from .de import assets as de_assets
 from .ml import assets as ml_assets
@@ -8,7 +10,12 @@ from .ml.resources import (
     TuningConfig,
 )
 from .ml_fraud import assets as ml_fraud_assets
-from .ml_fraud.resources import data_config, mlflow_resource, model_config
+from .ml_fraud.resources import data_config, mlflow_client, mlflow_resource, model_config, model_promotion_config
+
+# _ = load_dotenv(find_dotenv())
+
+SLACK_TOKEN = dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN").get_value() or ""
+print("Slack token: ", SLACK_TOKEN)
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
@@ -66,7 +73,8 @@ ml_fraud_job = dg.define_asset_job(
         "ml_fraud_transform",
         "ml_fraud_split",
         "ml_fraud_model",
-        "ml_fraud_evaluate"
+        "ml_fraud_evaluate",
+        "ml_fraud_promote"
     )
 )
 
@@ -88,7 +96,10 @@ defs = dg.Definitions(
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
         "data_config": data_config,
         "model_config": model_config,
-        "mlflow": mlflow_resource
+        "model_promotion_config": model_promotion_config,
+        "mlflow": mlflow_resource,
+        "mlflow_api_client": mlflow_client,
+        "slack": dagster_slack.SlackResource(token=SLACK_TOKEN)
     },
     jobs=[
         de_job,

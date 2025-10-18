@@ -45,13 +45,35 @@ class ModelConfig(ConfigurableResource):
         default="f1",
         description="Metric to optimize during hyperparameter tuning"
     )
-    performance_threshold: float = pyd.Field(
-        default=0.75,
-        description="Minimum performance threshold for model promotion"
-    )
     cv_folds: int = pyd.Field(
         default=3,
         description="Number of cross-validation folds"
+    )
+
+
+class ModelPromotionConfig(ConfigurableResource):
+    """Configuration for model promotion thresholds.
+    F1 score and ROC-AUC thresholds for promoting models to Staging and Production.
+
+    Why?
+    F1 score is the harmonic mean of precision and recall, providing a balance between the two metrics.
+    ROC-AUC measures the model's ability to distinguish between classes across all classification thresholds.
+    """
+    staging_f1_threshold: float = pyd.Field(
+        default=0.75,
+        description="Minimum F1-score threshold for promoting a model to Staging."
+    )
+    production_f1_threshold: float = pyd.Field(
+        default=0.80,
+        description="Minimum F1-score threshold for promoting a model to Production."
+    )
+    staging_roc_auc_threshold: float = pyd.Field(
+        default=0.80,
+        description="Minimum ROC-AUC threshold for promoting a model to Staging."
+    )
+    production_roc_auc_threshold: float = pyd.Field(
+        default=0.85,
+        description="Minimum ROC-AUC threshold for promoting a model to Production."
     )
 
 

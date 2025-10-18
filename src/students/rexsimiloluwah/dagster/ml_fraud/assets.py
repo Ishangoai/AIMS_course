@@ -1,5 +1,6 @@
 import os
 import time
+from datetime import datetime
 from typing import Dict, Iterable
 
 import dagster as dg
@@ -8,11 +9,24 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix, f1_score
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from .configs import DataConfig, ModelConfig
+from .configs import DataConfig, ModelConfig, ModelPromotionConfig
+from .constants import (
+    ARCHIVED_STAGE_NAME,
+    FRAUD_MODEL_NAME,
+    GROUP_EMOJI,
+    MODEL_ARTIFACT_NAME,
+    PRODUCTION_STAGE_NAME,
+    STAGING_STAGE_NAME,
+    STATUS_MODEL_NOT_PROMOTED_TO_PRODUCTION,
+    STATUS_MODEL_NOT_PROMOTED_TO_STAGING,
+    STATUS_MODEL_PROMOTED_TO_PRODUCTION,
+    STATUS_MODEL_PROMOTED_TO_STAGING,
+    STATUS_MODEL_SKIPPED,
+)
 from .utils import _sanitize_report_dict
 
 
@@ -435,17 +449,13 @@ def evaluate_model(
     predictions = train_model.predict(X_test)
     predictions_proba = train_model.predict_proba(X_test)[:, 1]  # type: ignore
 
-    # Calculate metrics
-    from sklearn.metrics import accuracy_score, roc_auc_score
-
     accuracy = float(accuracy_score(y_test, predictions))
     f1 = float(f1_score(y_test, predictions))
     roc_auc = float(roc_auc_score(y_test, predictions_proba))
     report_dict: dict = classification_report(y_test, predictions, output_dict=True)  # type: ignore
     sanitized_report = _sanitize_report_dict(report_dict)
 
-    # Log metrics to MLflow
-    mlflow_client.log_metrics({
+    metrics = {
         "test_accuracy": accuracy,
         "test_f1_score": f1,
         "test_roc_auc": roc_auc,
@@ -453,7 +463,10 @@ def evaluate_model(
         "test_recall_class_0": sanitized_report['0']['recall'],
         "test_precision_class_1": sanitized_report['1']['precision'],
         "test_recall_class_1": sanitized_report['1']['recall'],
-    })
+    }
+
+    # Log metrics to MLflow
+    mlflow_client.log_metrics(metrics)
 
     context.log.info(f"Test Accuracy: {accuracy:.4f}")
     context.log.info(f"Test F1 Score: {f1:.4f}")
@@ -481,12 +494,25 @@ def evaluate_model(
     if os.path.exists(plot_path):
         os.remove(plot_path)
 
+    # Get the model info from MLFlow
+    run_id = mlflow_client.get_run(mlflow_client.active_run().info.run_id).info.run_uuid
+    model_uri = f"runs:/{run_id}/{MODEL_ARTIFACT_NAME}"
+    model_info = mlflow_client.register_model(model_uri, FRAUD_MODEL_NAME)
+    context.log.info(f"Registered model '{model_info.name}' version {model_info.version}")
+
+    output_value = {
+        "metrics": metrics,
+        "classification_report": _sanitize_report_dict(sanitized_report),
+        "confusion_matrix": cm.tolist(),
+        "model_info": {
+            "name": model_info.name,
+            "version": model_info.version,
+            "run_id": run_id
+        }
+    }
+
     return dg.MaterializeResult(
-        value={
-            "classification_report": sanitized_report,
-            "confusion_matrix": cm.tolist(),
-            "model": train_model
-        },
+        value=output_value,
         metadata={
             "test_accuracy": dg.MetadataValue.float(accuracy),
             "test_f1_score": dg.MetadataValue.float(f1),
@@ -502,6 +528,254 @@ def evaluate_model(
             )
         }
     )
+
+
+@dg.asset(
+    group_name="ml_fraud_promote",
+    description="Promotes the model to Staging if it meets performance criteria and sends a Slack notification.",
+    compute_kind="python",
+    required_resource_keys={"mlflow_api_client", "model_promotion_config", "slack"},
+)
+def promote_fraud_model_to_staging(
+    context: dg.OpExecutionContext,
+    evaluate_model: Dict
+) -> dg.MaterializeResult:
+    """
+    Checks model performance against F1 and ROC AUC thresholds and promotes to Staging if criteria are met.
+    Sends a detailed notification to a Slack channel for both success and failure cases.
+    """
+    model_promotion_config: ModelPromotionConfig = context.resources.model_promotion_config
+    mlflow_client = context.resources.mlflow_api_client  # high-level client
+    slack = context.resources.slack
+
+    metrics = evaluate_model.get("metrics", {})
+    model_info = evaluate_model.get("model_info", {})
+
+    if not metrics or not model_info:
+        context.log.warning("Upstream evaluation data is missing. Skipping promotion.")
+        return dg.MaterializeResult(
+            metadata={"status": dg.MetadataValue.text("Skipped, upstream data missing.")}
+        )
+
+    # Define performance thresholds from your config for both metrics
+    STAGING_F1_THRESHOLD = model_promotion_config.staging_f1_threshold
+    STAGING_ROC_AUC_THRESHOLD = model_promotion_config.staging_roc_auc_threshold
+
+    # Unpack metrics and model info
+    test_f1_score = metrics.get("test_f1_score", 0.0)
+    test_roc_auc = metrics.get("test_roc_auc", 0.0)
+    test_precision_fraud = metrics.get("test_precision_class_1", 0.0)
+    test_recall_fraud = metrics.get("test_recall_class_1", 0.0)
+    test_precision_normal = metrics.get("test_precision_class_0", 0.0)
+    test_recall_normal = metrics.get("test_recall_class_0", 0.0)
+
+    model_name = model_info.get("name")
+    model_version = model_info.get("version")
+
+    # Check if the model meets BOTH promotion criteria
+    meets_criteria = (test_f1_score >= STAGING_F1_THRESHOLD) and (test_roc_auc >= STAGING_ROC_AUC_THRESHOLD)
+
+    if meets_criteria:
+        context.log.info(
+            f"Model '{model_name}' (v{model_version}) meets performance criteria. "
+            f"F1: {test_f1_score:.4f} >= {STAGING_F1_THRESHOLD}, "
+            f"ROC AUC: {test_roc_auc:.4f} >= {STAGING_ROC_AUC_THRESHOLD}. Promoting to Staging."
+        )
+
+        try:
+            mlflow_client.transition_model_version_stage(
+                name=str(model_name),
+                version=str(model_version),
+                stage=STAGING_STAGE_NAME
+            )
+        except Exception as e:
+            context.log.error(f"Error during model promotion: {e}")
+            return dg.MaterializeResult(
+                metadata={
+                    "status": dg.MetadataValue.text(STATUS_MODEL_NOT_PROMOTED_TO_STAGING),
+                    "reason": dg.MetadataValue.text(f"Promotion failed: {e}")
+                }
+            )
+
+        try:
+            # Construct and send the success notification
+            slack_message = f"""✅ *Model Promoted to Staging: Fraud Detection* ✅
+
+            {GROUP_EMOJI} *GROUP MEMBERS:* Khadija EDARZI, Similoluwa OKUNOWO
+
+            *Performance Summary:*
+            - *F1 Score:* `{test_f1_score:.4f}` (Threshold: `> {STAGING_F1_THRESHOLD}`) -> *Passed*
+            - *ROC AUC:* `{test_roc_auc:.4f}` (Threshold: `> {STAGING_ROC_AUC_THRESHOLD}`) -> *Passed*
+
+            *Detailed Metrics:*
+            - *Precision (Fraud Class):* `{test_precision_fraud:.4f}`
+            - *Recall (Fraud Class):* `{test_recall_fraud:.4f}`
+            - *Precision (Normal Class):* `{test_precision_normal:.4f}`
+            - *Recall (Normal Class):* `{test_recall_normal:.4f}`
+
+            -----
+            Run Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
+            """
+            slack.get_client().chat_postMessage(channel='aims_course_october2025', text=slack_message)
+            context.log.info("Successfully promoted model and sent Slack notification.")
+
+            return dg.MaterializeResult(
+                value={
+                    "status": STATUS_MODEL_PROMOTED_TO_STAGING,
+                    "model_name": model_name,
+                    "model_version": model_version
+                },
+                metadata={
+                    "status": dg.MetadataValue.text(STATUS_MODEL_PROMOTED_TO_STAGING),
+                    "model_version": dg.MetadataValue.text(f"{model_name} v{model_version}"),
+                    "test_f1_score": dg.MetadataValue.float(test_f1_score),
+                    "test_roc_auc": dg.MetadataValue.float(test_roc_auc)
+                }
+            )
+        except Exception as e:
+            context.log.error(f"Failed to send 'Promoted' Slack notification: {e}")
+            return dg.MaterializeResult(
+                metadata={
+                    "status": dg.MetadataValue.text(STATUS_MODEL_NOT_PROMOTED_TO_STAGING),
+                    "model_version": dg.MetadataValue.text(f"{model_name} v{model_version}"),
+                    "test_f1_score": dg.MetadataValue.float(test_f1_score),
+                    "test_roc_auc": dg.MetadataValue.float(test_roc_auc),
+                    "notification_status": dg.MetadataValue.text(f"Failed to send notification: {e}")
+                }
+            )
+
+    else:
+        # This block executes if one or both performance thresholds are NOT met
+        context.log.warning("Model does not meet performance criteria for Staging promotion.")
+
+        # Determine which check failed for a clearer message
+        f1_status = "Passed" if test_f1_score >= STAGING_F1_THRESHOLD else "Failed"
+        roc_auc_status = "Passed" if test_roc_auc >= STAGING_ROC_AUC_THRESHOLD else "Failed"
+
+        # Construct and send the failure notification
+        slack_message = f"""⚠️ *Model NOT Promoted: Performance Threshold Not Met* ⚠️
+
+        *Performance Summary:*
+        - *F1 Score:* `{test_f1_score:.4f}` (Threshold: `> {STAGING_F1_THRESHOLD}`) -> *{f1_status}*
+        - *ROC AUC:* `{test_roc_auc:.4f}` (Threshold: `> {STAGING_ROC_AUC_THRESHOLD}`) -> *{roc_auc_status}*
+
+        This model was *not* promoted to Staging.
+
+        -----
+        Run Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
+        """
+        try:
+            slack.get_client().chat_postMessage(channel='aims_course_october2025', text=slack_message)
+            context.log.info("Sent Slack notification for model not meeting promotion criteria.")
+        except Exception as e:
+            context.log.error(f"Failed to send 'Not Promoted' Slack notification: {e}")
+
+        return dg.MaterializeResult(
+            metadata={
+                "status": dg.MetadataValue.text(STATUS_MODEL_NOT_PROMOTED_TO_STAGING),
+                "reason": dg.MetadataValue.text("Performance threshold(s) not met."),
+                "test_f1_score": dg.MetadataValue.float(test_f1_score),
+                "f1_threshold": dg.MetadataValue.float(STAGING_F1_THRESHOLD),
+                "test_roc_auc": dg.MetadataValue.float(test_roc_auc),
+                "roc_auc_threshold": dg.MetadataValue.float(STAGING_ROC_AUC_THRESHOLD),
+            }
+        )
+
+
+@dg.asset(
+    group_name="ml_fraud_promote",
+    description="Promotes the best model from Staging to Production.",
+    compute_kind="python",
+    required_resource_keys={"mlflow_api_client", "slack"},
+)
+def promote_fraud_model_to_production(
+    context: dg.OpExecutionContext,
+    promote_fraud_model_to_staging: Dict
+) -> dg.MaterializeResult:
+    """
+    Finds the latest model in Staging, archives the current Production model,
+    and promotes the Staging model to Production. Sends a Slack notification.
+    """
+    mlflow_client = context.resources.mlflow_api_client
+    slack = context.resources.slack
+    context.log.info("Starting model promotion to Production.")
+
+    if promote_fraud_model_to_staging.get("status") != STATUS_MODEL_PROMOTED_TO_STAGING:
+        context.log.info("No model was promoted to Staging in the previous step. Skipping production promotion.")
+        return dg.MaterializeResult(
+            metadata={"status": dg.MetadataValue.text("Skipped, no new model in Staging.")}
+        )
+
+    model_name = promote_fraud_model_to_staging.get("model_name") or ""
+
+    try:
+        # Find the latest model version in the 'Staging' stage
+        staging_versions = [
+            mv for mv in mlflow_client.search_model_versions(f"name='{model_name}'")
+            if mv.current_stage == STAGING_STAGE_NAME
+        ]
+        if not staging_versions:
+            context.log.warning(f"No model versions found in Staging for '{model_name}'. Skipping promotion.")
+            return dg.MaterializeResult(
+                metadata={
+                    "status": dg.MetadataValue.text(STATUS_MODEL_SKIPPED),
+                    "reason": dg.MetadataValue.text("No model in Staging.")
+                }
+            )
+
+        # Get the version with the highest version number
+        latest_staging_version = max(staging_versions, key=lambda mv: int(mv.version))
+        prod_model_version = latest_staging_version.version
+
+        # Archive any existing models currently in 'Production'
+        for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
+            if mv.current_stage == PRODUCTION_STAGE_NAME:
+                context.log.info(f"Archiving previous Production model version {mv.version}.")
+                mlflow_client.transition_model_version_stage(
+                    name=model_name,
+                    version=mv.version,
+                    stage=ARCHIVED_STAGE_NAME
+                )
+
+        # Promote the new version to 'Production'
+        context.log.info(f"Promoting model '{model_name}' version {prod_model_version} to Production.")
+        mlflow_client.transition_model_version_stage(
+            name=model_name,
+            version=prod_model_version,
+            stage=PRODUCTION_STAGE_NAME
+        )
+
+        # Send Slack notification
+        slack_message = f"""🚀 *Model Promoted to Production: Fraud Detection* 🚀
+
+        {GROUP_EMOJI} *GROUP MEMBERS:* Khadija EDARZI, Similoluwa OKUNOWO
+
+        - *Model Name:* `{model_name}`
+        - *Version:* `{prod_model_version}`
+
+        This model is now live in the production environment.
+
+        -----
+        Run Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
+        """
+        slack.get_client().chat_postMessage(channel='aims_course_october2025', text=slack_message)
+        context.log.info("Successfully promoted model to Production and sent Slack notification.")
+
+        return dg.MaterializeResult(
+            metadata={
+                "status": dg.MetadataValue.text(STATUS_MODEL_PROMOTED_TO_PRODUCTION),
+                "model_name": dg.MetadataValue.text(model_name),
+                "promoted_version": dg.MetadataValue.text(str(prod_model_version))
+            }
+        )
+    except Exception as e:
+        context.log.error(f"Error promoting model to Production: {e}")
+        return dg.MaterializeResult(
+            metadata={
+                "status": dg.MetadataValue.text(STATUS_MODEL_NOT_PROMOTED_TO_PRODUCTION),
+                "reason": dg.MetadataValue.text(f"Promotion failed: {e}")
+            }
+        )
 
 
 @dg.multi_asset_check(
