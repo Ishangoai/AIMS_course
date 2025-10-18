@@ -26,16 +26,24 @@ class ModelConfig(ConfigurableResource):
     """Model training configuration.
     """
     n_estimators: int = pyd.Field(
-        default=100,
+        default=500,
         description="Number of trees in the Random Forest"
     )
     max_depth: int = pyd.Field(
-        default=10,
+        default=30,
         description="Maximum depth of the tree"
     )
     max_depth_options: List[int] = pyd.Field(
-        default=[5, 10, 15, 20],
+        default=[3, 5, 8, 10, 12],
         description="Options for maximum depth during hyperparameter tuning"
+    )
+    min_samples_split: int = pyd.Field(
+        default=2,
+        description="Minimum number of samples required to split an internal node"
+    )
+    min_samples_leaf: int = pyd.Field(
+        default=5,
+        description="Minimum number of samples required to be at a leaf node"
     )
     random_state: int = pyd.Field(
         default=42,
@@ -48,6 +56,10 @@ class ModelConfig(ConfigurableResource):
     cv_folds: int = pyd.Field(
         default=3,
         description="Number of cross-validation folds"
+    )
+    feature_importance_threshold: float = pyd.Field(
+        default=0.02,
+        description="Threshold for feature importance to select features"
     )
 
 

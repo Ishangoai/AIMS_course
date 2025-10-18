@@ -15,7 +15,6 @@ from .ml_fraud.resources import data_config, mlflow_client, mlflow_resource, mod
 # _ = load_dotenv(find_dotenv())
 
 SLACK_TOKEN = dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN").get_value() or ""
-print("Slack token: ", SLACK_TOKEN)
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
