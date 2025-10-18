@@ -4,6 +4,14 @@ import joblib
 import numpy as np
 import pandas as pd
 
+def is_valid_csv_file(file_path: str) -> bool:
+    try:
+        pd.read_csv(file_path)
+        
+        return True
+    except Exception:
+        return False
+
 def predict_fraud(features_file: str) -> np.ndarray | None:
     MODEL_PATH = os.path.join(os.path.dirname(__file__), "fraud_detector.pkl")
     
@@ -18,7 +26,7 @@ def predict_fraud(features_file: str) -> np.ndarray | None:
         predictions = model.predict(X)
         
         return predictions
-    except Exception as e:
+    except Exception:
         return None
 
 
