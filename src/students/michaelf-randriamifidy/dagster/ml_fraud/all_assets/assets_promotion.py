@@ -1,6 +1,8 @@
+import os
+import joblib
+
 import dagster as dg
 import mlflow
-import pickle
 
 from ...ml.resources import mlflow_client, mlflow_resource
 from ..resources import FraudPromotionConfig
@@ -190,13 +192,15 @@ def promote_to_production(
 
             DUMP_PATH = os.getcwd() + "fraud_detector.pkl"
 
-            model_uri = f"models:/{prod_model_name}/{prod_model_version}" 
+            model_uri = f"models:/{prod_model_name}/{prod_model_version}"
             model = mlflow.pyfunc.load_model(model_uri)
 
             # Dump the new version to pickle file
             context.log.info(f"Dump promoted model to pickle file at {DUMP_PATH}")
-            with open(DUMP_PATH, "wb") as f:
-                pickle.dump(model, f)
+            try:
+                joblib.dump(model, DUMP_PATH)
+            except Exception e:
+                context.log.info(f"Failed to dump model, reason: {e}")
 
             # Return success with metadata about the promoted model
             context.log.info(f"Model '{prod_model_name}' (version {prod_model_version}) promoted to Production.")

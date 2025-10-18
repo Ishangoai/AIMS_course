@@ -4,15 +4,12 @@ from .de import assets as de_assets
 from .ml import assets as ml_assets
 from .ml.resources import (
     Era5RequestConfig,
-    PromotionConfig,
     TuningConfig,
 )
-
-from .ml_fraud.resources import (FraudPromotionConfig)
-
 from .ml_fraud.all_assets import assets_data_ingest as di_assets
 from .ml_fraud.all_assets import assets_promotion as pr_assets
 from .ml_fraud.all_assets import assets_train_eval as te_assets
+from .ml_fraud.resources import FraudPromotionConfig
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
@@ -48,9 +45,6 @@ ml_job = dg.define_asset_job(
         "ops": {
             "raw_xarray_dataset": {
                 "config": Era5RequestConfig().model_dump()
-            },
-            "promote_model_to_production": {
-                "config": PromotionConfig().model_dump()
             },
             "tune_ridge_hyperparameters": {
                 "config": TuningConfig().model_dump()
