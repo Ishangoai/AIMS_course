@@ -2,12 +2,12 @@ import dagster as dg
 
 from .de import assets as de_assets
 from .ml import assets as ml_assets
-from .ml_fraud import assets as ml_fraud_assets
 from .ml.resources import (
     Era5RequestConfig,
     PromotionConfig,
     TuningConfig,
 )
+from .ml_fraud import assets as ml_fraud_assets
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
@@ -38,30 +38,25 @@ ml_job = dg.define_asset_job(
     hooks={mlflow_failure_hook},
     config={
         "ops": {
-            "raw_xarray_dataset": {
-                "config": Era5RequestConfig().model_dump()
-            },
-            "promote_model_to_production": {
-                "config": PromotionConfig().model_dump()
-            },
-            "tune_ridge_hyperparameters": {
-                "config": TuningConfig().model_dump()
-            }
+            "raw_xarray_dataset": {"config": Era5RequestConfig().model_dump()},
+            "promote_model_to_production": {"config": PromotionConfig().model_dump()},
+            "tune_ridge_hyperparameters": {"config": TuningConfig().model_dump()},
         }
-    }
+    },
 )
 
 fraud_job = dg.define_asset_job(
     name="machine_learning_fraud_detection",
-    selection=dg.AssetSelection.groups("ml_fraud_ingest", "ml_fraud_transform", "ml_fraud_split", "ml_fraud_train", "ml_fraud_eval"),
-    hooks={mlflow_failure_hook},
+    selection=dg.AssetSelection.groups(
+        "ml_fraud_ingest", "ml_fraud_transform", "ml_fraud_split", "ml_fraud_train", "ml_fraud_eval"
+    ),
 )
 
 
 era5_daily_schedule = dg.ScheduleDefinition(
     job=ml_job,
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
-    name="era5_daily_schedule"
+    name="era5_daily_schedule",
 )
 
 # Define all assets and resources for Dagster to discover
@@ -72,5 +67,5 @@ defs = dg.Definitions(
     },
     jobs=[de_job, ml_job, fraud_job],
     schedules=[era5_daily_schedule],
-    asset_checks=[*all_de_checks, *all_ml_checks, *all_ml_fraud_checks]
+    asset_checks=[*all_de_checks, *all_ml_checks, *all_ml_fraud_checks],
 )
