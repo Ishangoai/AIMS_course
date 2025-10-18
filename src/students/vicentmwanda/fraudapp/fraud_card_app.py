@@ -275,7 +275,7 @@ def create_stats_dashboard():
                 </div>
                 <div class="stat-card">
                     <div style="font-size: 2rem;">🎯</div>
-                    <div>99.9% Accuracy</div>
+                    <div>99.75% Accuracy</div>
                 </div>
                 <div class="stat-card">
                     <div style="font-size: 2rem;">🛡️</div>
@@ -338,7 +338,7 @@ with gr.Blocks(css=custom_css, theme=gr.themes.Soft()) as fraud_app:  # type:ign
                         """)
 
                     with gr.Group(elem_classes=["glass-card"]):
-                        gr.Markdown("### ⚙️ Control Panel")
+                        gr.Markdown("### 📈  Analysis")
                 # Analysis Section
 
                         # Quick Presets
@@ -374,25 +374,26 @@ with gr.Blocks(css=custom_css, theme=gr.themes.Soft()) as fraud_app:  # type:ign
                                                  label="💰 Amount",
                                                  info="Transaction amount in USD")
 
-                        gr.Markdown("### 🔧 Principal Components")
+                        gr.Markdown("### 🔧 Principal Components (In order of Importance)")
                         with gr.Row():
                             col1, col2, col3 = gr.Column(), gr.Column(), gr.Column()
 
+                    # V14, V17, V10, V12, V16, V11, V3, V4, V9, V18, V7, V21
                             with col1:
-                                V1 = gr.Slider(-50.0, 50.0, value=-1.359807, step=0.1, label="🎯 V1")
-                                V2 = gr.Slider(-50.0, 50.0, value=-0.072781, step=0.1, label="🎯 V2")
-                                V3 = gr.Slider(-50.0, 50.0, value=2.536347, step=0.1, label="🎯 V3")
-                                V4 = gr.Slider(-50.0, 50.0, value=1.378155, step=0.1, label="🎯 V4")
-                                V5 = gr.Slider(-50.0, 50.0, value=-0.338321, step=0.1, label="🎯 V5")
-                                V6 = gr.Slider(-50.0, 50.0, value=0.462388, step=0.1, label="🎯 V6")
+                                V14 = gr.Slider(-50.0, 50.0, value=-0.311169, step=0.1, label="🎯 V14")
+                                V17 = gr.Slider(-50.0, 50.0, value=0.207971, step=0.1, label="📈 V17")
+                                V10 = gr.Slider(-50.0, 50.0, value=0.090794, step=0.1, label="🎯 V10")
+                                V12 = gr.Slider(-50.0, 50.0, value=-0.617801, step=0.1, label="🎯 V12")
+                                V16 = gr.Slider(-50.0, 50.0, value=-0.470401, step=0.1, label="📈 V16")
+                                V11 = gr.Slider(-50.0, 50.0, value=-0.551600, step=0.1, label="🎯 V11")
 
                             with col2:
-                                V7 = gr.Slider(-50.0, 50.0, value=0.239599, step=0.1, label="🎯 V7")
-                                V8 = gr.Slider(-50.0, 50.0, value=0.098698, step=0.1, label="🎯 V8")
+                                V3 = gr.Slider(-50.0, 50.0, value=2.536347, step=0.1, label="🎯 V3")
+                                V4 = gr.Slider(-50.0, 50.0, value=1.378155, step=0.1, label="🎯 V4")
                                 V9 = gr.Slider(-50.0, 50.0, value=0.363787, step=0.1, label="🎯 V9")
-                                V10 = gr.Slider(-50.0, 50.0, value=0.090794, step=0.1, label="🎯 V10")
-                                V11 = gr.Slider(-50.0, 50.0, value=-0.551600, step=0.1, label="🎯 V11")
-                                V12 = gr.Slider(-50.0, 50.0, value=-0.617801, step=0.1, label="🎯 V12")
+                                V18 = gr.Slider(-50.0, 50.0, value=0.025791, step=0.1, label="📈 V18")
+                                V7 = gr.Slider(-50.0, 50.0, value=0.239599, step=0.1, label="🎯 V7")
+                                V21 = gr.Slider(-50.0, 50.0, value=-0.018307, step=0.1, label="📈 V21")
 
                 # Right Panel - Additional Features
                 with gr.Column(scale=2):
@@ -402,17 +403,17 @@ with gr.Blocks(css=custom_css, theme=gr.themes.Soft()) as fraud_app:  # type:ign
                             col4, col5, col6 = gr.Column(), gr.Column(), gr.Column()
 
                             with col4:
+                                V1 = gr.Slider(-50.0, 50.0, value=-1.359807, step=0.1, label="🎯 V1")
+                                V2 = gr.Slider(-50.0, 50.0, value=-0.072781, step=0.1, label="🎯 V2")
+                                V5 = gr.Slider(-50.0, 50.0, value=-0.338321, step=0.1, label="🎯 V5")
+                                V6 = gr.Slider(-50.0, 50.0, value=0.462388, step=0.1, label="🎯 V6")
+                                V8 = gr.Slider(-50.0, 50.0, value=0.098698, step=0.1, label="🎯 V8")
                                 V13 = gr.Slider(-50.0, 50.0, value=-0.991391, step=0.1, label="🎯 V13")
-                                V14 = gr.Slider(-50.0, 50.0, value=-0.311169, step=0.1, label="🎯 V14")
                                 V15 = gr.Slider(-50.0, 50.0, value=1.468177, step=0.1, label="📈 V15")
-                                V16 = gr.Slider(-50.0, 50.0, value=-0.470401, step=0.1, label="📈 V16")
-                                V17 = gr.Slider(-50.0, 50.0, value=0.207971, step=0.1, label="📈 V17")
-                                V18 = gr.Slider(-50.0, 50.0, value=0.025791, step=0.1, label="📈 V18")
                                 V19 = gr.Slider(-50.0, 50.0, value=0.403993, step=0.1, label="📈 V19")
-                                V20 = gr.Slider(-50.0, 50.0, value=0.251412, step=0.1, label="📈 V20")
 
                             with col5:
-                                V21 = gr.Slider(-50.0, 50.0, value=-0.018307, step=0.1, label="📈 V21")
+                                V20 = gr.Slider(-50.0, 50.0, value=0.251412, step=0.1, label="📈 V20")
                                 V22 = gr.Slider(-50.0, 50.0, value=0.277838, step=0.1, label="📈 V22")
                                 V23 = gr.Slider(-50.0, 50.0, value=-0.110474, step=0.1, label="📈 V23")
                                 V24 = gr.Slider(-50.0, 50.0, value=0.066928, step=0.1, label="📈 V24")
@@ -477,7 +478,7 @@ with gr.Blocks(css=custom_css, theme=gr.themes.Soft()) as fraud_app:  # type:ign
                 - **Machine Learning**: Advanced anomaly detection algorithms
                 - **Real-time Processing**: Instant analysis with sub-second response
                 - **Security**: Local processing ensures complete privacy
-                - **Accuracy**: 99.9% detection rate across diverse scenarios
+                - **Accuracy**: 99.75% detection rate across diverse scenarios
 
                 ### 🏆 Features
                 """)

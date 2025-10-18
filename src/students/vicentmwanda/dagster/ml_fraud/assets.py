@@ -11,10 +11,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix, precision_score, recall_score
 from sklearn.model_selection import GridSearchCV, train_test_split
 
-from .resources import mlflow_resource
-
+from .resources import mlflow_client, mlflow_resource
 
 # Accesing the raw data from the source uri
+
+
 @dg.asset(
     description="Download the raw data",
     compute_kind="python",
@@ -172,6 +173,12 @@ fraud_ml_train_test_split: Dict
     our_best_model = grid_search.best_estimator_
     best_params = grid_search.best_params_
 
+    importance = our_best_model.feature_importances_   # type: ignore
+
+    feature_importance = pd.DataFrame({'feature': data['feature_labels'],
+        'importance': importance
+    }).sort_values(by='importance', ascending=False)
+
     train_score = grid_search.best_score_
 
     mlflow_client.log_params(best_params)
@@ -190,6 +197,9 @@ fraud_ml_train_test_split: Dict
     "train_score": train_score,
     "best_params": best_params
     },
+    metadata={
+        "feature_importance": str(feature_importance.head(12))  # type: ignore
+    }
     )
 
 
@@ -215,7 +225,7 @@ def create_confusion_matrix(model, y_test, y_pred):
     description="Testing the trained model on the remaining 20% data",
     compute_kind="python",
     group_name="ml_fraud_model",
-    resource_defs={"fraud_mlflow_tracking": mlflow_resource}
+    resource_defs={"fraud_mlflow_tracking": mlflow_resource, "fraud_mlflow_client": mlflow_client}
 )
 def fraud_ml_model_testing(context: dg.AssetExecutionContext,
 fraud_ml_model_training: Dict,
@@ -223,6 +233,9 @@ fraud_ml_train_test_split: Dict
 ) -> dg.MaterializeResult:
 
     mlflow_client = context.resources.fraud_mlflow_tracking
+
+    main_mlflow_client = context.resources.fraud_mlflow_client
+
     model = fraud_ml_model_training["model"]
     data = fraud_ml_train_test_split
 
@@ -281,7 +294,17 @@ fraud_ml_train_test_split: Dict
                 f"and name '{registered_model_name}'."
             )
             raise Exception("Failed to retrieve registered model version details after logging.")
+        model_version = matching_versions[0].version
+        context.log.info(f"Registered model version: {model_version}")
 
+        # Transition model to Production stage
+
+        main_mlflow_client.transition_model_version_stage(
+            name=registered_model_name,
+            version=model_version,
+            stage="Production",
+            archive_existing_versions=True
+        )
         return dg.MaterializeResult(value={
         "model": model,
         "accuracy": test_accuracy,

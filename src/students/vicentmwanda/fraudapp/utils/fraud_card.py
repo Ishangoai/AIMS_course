@@ -5,7 +5,7 @@ import joblib
 import numpy as np
 
 # Load model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pkl")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "fraud_model.pkl")
 model = joblib.load(MODEL_PATH)
 
 
@@ -21,7 +21,7 @@ def predict_fraud(features: list):
         prob = model.predict_proba(features_np)[0][1]
         level = prob * 100
         if prediction == 1:
-            result = f"div id='output_dt'>🚨 FRAUD DETECTED ({prob * 100:.2f}% probability)</div>"
+            result = f"<div id='output_dt'>🚨 FRAUD DETECTED ({prob * 100:.2f}% probability)</div>"
             risk = f"""
                         <div class="risk-meter">
                             <div class="risk-level" style="width: {max(10, level)}%;"></div>
