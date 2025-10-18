@@ -1,37 +1,33 @@
-import mlflow
-import pandas as pd
+# fraud_utils.py
+import os
+import joblib
 import numpy as np
+import pandas as pd
 
-# Set the tracking URI if needed
-mlflow.set_tracking_uri("sqlite:///./mlruns/mlflow_local_tracking.db")  # or your MLflow URI
+# Use your exact model path
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "fraud_model.pkl")
 
-def load_last_promoted_model(model_name="RandomForestFraudModel"):
-    """
-    Load the last promoted model from MLflow registry.
-    """
-    try:
-        # Search for the latest "Production" version
-        client = mlflow.tracking.MlflowClient()
-        versions = client.get_latest_versions(name=model_name, stages=["Production"])
-        if not versions:
-            raise ValueError("No model in Production stage found")
-        model_uri = f"models:/{model_name}/Production"
-        model = mlflow.pyfunc.load_model(model_uri)
-        return model
-    except Exception as e:
-        print(f"Error loading model: {e}")
-        return None
+# Load once at import
+model = joblib.load(MODEL_PATH)
 
+# Feature names as expected by model
 FEATURE_NAMES = [f"V{i}" for i in range(1, 29)] + ["Amount"]
 
 def predict_fraud(features: list):
-    model = load_last_promoted_model()
-    if model is None:
-        return "No model loaded"
-    
-    # Convert input to DataFrame with proper column names
-    df = pd.DataFrame([features], columns=FEATURE_NAMES)
-    
-    prediction = model.predict(df)[0]
-    probability = model.predict_proba(df)[0][1]
-    return f"Prediction: {prediction}, Probability of Fraud: {probability:.2f}"
+    try:
+        df = pd.DataFrame([features], columns=FEATURE_NAMES)
+
+        # Fix column name mismatch
+        if "Amount" in df.columns:
+            df["Amount_scaled"] = df["Amount"]
+            df = df.drop(columns=["Amount"])
+
+        prediction = model.predict(df)[0]
+        probability = model.predict_proba(df)[0][1]
+
+        if prediction == 1:
+            return f"Fraudulent transaction detected ({probability * 100:.2f}% probability)"
+        else:
+            return f"Legitimate transaction ({(1 - probability) * 100:.2f}% probability)"
+    except Exception as e:
+        return f"Error during prediction: {str(e)}"
