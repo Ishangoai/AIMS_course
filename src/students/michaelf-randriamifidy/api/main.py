@@ -9,12 +9,11 @@ from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.response import FileResponse
+from fastapi.responses import FileResponse
 from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.image_editor_app import image_transformation
-from gradioapp.utils.fraud_detecton import is_valid_csv_file, predict_fraud
-
+from gradioapp.utils.fraud_detection import is_valid_csv_file, predict_fraud
 
 app = FastAPI(
     title="AIMS Course API",
@@ -145,7 +144,7 @@ async def make_predictions(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # check input features file validity    
+    # check input features file validity
     if not is_valid_csv_file(file_path):
         raise HTTPException(status_code=400, detail="Invalid file input, please upload a valid csv file")
 
@@ -161,10 +160,13 @@ async def make_predictions(file: UploadFile = File(...)):
 
     with open(result_path, "w", newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["input index", "prediction"])
+        writer.writerow(["sample_index", "prediction"])
         idx = 1
         for pred in predictions:
-            writer.writerow([idx, pred])
+            if pred == 0:
+                writer.writerow([idx, "legitimate"])
+            else:
+                writer.writerow([idx, "fraud"])
             idx += 1
 
     return FileResponse(
