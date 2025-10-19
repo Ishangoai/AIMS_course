@@ -76,7 +76,6 @@ def fraud_detection(
             "columns": dg.MetadataValue.int(df.shape[1]),
             "features": dg.MetadataValue.text(", ".join(column_names)),
             "target": dg.MetadataValue.text(target_variable)
-            # "dagster/column_schema": dg.TableSchema(columns=list(df.columns))
         }
     )
 
@@ -133,7 +132,7 @@ def cross_validation_results(
 
     # --- Hyperparameter grid ---
     param_grid = {
-        "n_estimators": [5, 10, 20]
+        "n_estimators": [10, 20, 50, 100]
     }
 
     outer_cv = KFold(n_splits=3, shuffle=True, random_state=42)
@@ -292,8 +291,110 @@ def train_random_forest_tuned_model(
         "final_model": final_model,
         "X_test": X_test,
         "y_test": y_test,
+        "X_train": X_train,
+        "y_train": y_train,
         "feature_names": feature_names
     }
+
+
+@dg.asset(
+    description="Computes and logs feature importances of the trained Random Forest model.",
+    resource_defs={"mlflow_tracking": mlflow_resource},
+    compute_kind="python",
+    group_name="ml_fraud_model"
+)
+def feature_importance_analysis(
+    context: dg.AssetExecutionContext,
+    train_random_forest_tuned_model: dict
+) -> dict:
+    """
+    Computes the feature importances from the trained Random Forest model
+    and logs them to MLflow for interpretability analysis.
+    """
+
+    mlflow_client = context.resources.mlflow_tracking
+    final_model: RandomForestClassifier = train_random_forest_tuned_model["final_model"]
+    feature_names = train_random_forest_tuned_model["feature_names"]
+    X_train = train_random_forest_tuned_model["X_train"]
+    y_train = train_random_forest_tuned_model["y_train"]
+    X_test = train_random_forest_tuned_model["X_test"]
+    y_test = train_random_forest_tuned_model["y_test"]
+
+    context.log.info("Computing feature importances from the trained model.")
+
+    # Compute importances
+    importances = final_model.feature_importances_
+    feature_importance_df = pd.DataFrame({
+        "feature": feature_names,
+        "importance": importances
+    }).sort_values(by="importance", ascending=False)
+
+    context.log.info("Feature importance computation complete.")
+    context.log.info(f"Features Ranking:\n{feature_importance_df}")
+
+    # Log to MLflow
+    mlflow_client.log_table(feature_importance_df, artifact_file="feature_importance.parquet")
+    mlflow_client.log_figure(
+        feature_importance_df.plot(
+            kind="barh", x="feature", y="importance", legend=False, title="Feature Importance"
+        ).get_figure(),
+        artifact_file="feature_importance/feature_importance_plot.png"
+    )
+
+    context.log.info("Logged feature importance table and plot to MLflow.")
+
+    testing_values = {
+        "final_model": final_model,
+        "X_test": X_test,
+        "y_test": y_test,
+        "X_train": X_train,
+        "y_train": y_train,
+        "feature_names": list(feature_importance_df["feature"].head(9))
+        }
+
+    return testing_values
+
+
+@dg.asset(
+    description="Retrains Random Forest using top 10 most important features, plus Time and.",
+    resource_defs={"mlflow_tracking": mlflow_resource},
+    compute_kind="python",
+    group_name="ml_fraud_model"
+)
+def retrain_top_features_model(
+    context: dg.AssetExecutionContext,
+    feature_importance_analysis: dict
+) -> dict:
+    mlflow_client = context.resources.mlflow_tracking
+    top_features = feature_importance_analysis["feature_names"]
+    top_features.append("Time")
+    top_features.append("Amount")
+    context.log.info(f"Training features: {top_features}")
+
+    X_train = feature_importance_analysis["X_train"]
+    y_train = feature_importance_analysis["y_train"]
+    X_test = feature_importance_analysis["X_test"]
+    y_test = feature_importance_analysis["y_test"]
+    final_model = feature_importance_analysis["final_model"]
+    X_train_top = X_train[top_features]
+
+    model = RandomForestClassifier(
+        n_estimators=final_model.n_estimators
+    )
+    model.fit(X_train_top, y_train)
+
+    mlflow_client.log_param("Number of training features", len(top_features))
+    mlflow_client.log_param("selected_features", ", ".join(top_features))
+
+    # return {"model_top10": model, "top_features": top_features}
+    testing_values = {
+        "final_model": model,
+        "X_test": X_test[top_features],
+        "y_test": y_test,
+        "feature_names": top_features,
+        }
+
+    return testing_values
 
 
 @dg.asset(description="Perform test on the test set",
@@ -302,12 +403,12 @@ def train_random_forest_tuned_model(
     group_name="ml_fraud_evaluate",)
 def test_fraud_detection_model(
     context: dg.AssetExecutionContext,
-    train_random_forest_tuned_model: dict) -> dg.MaterializeResult:
+    retrain_top_features_model: dict) -> dg.MaterializeResult:
 
-    final_model = train_random_forest_tuned_model["final_model"]
-    X_test = train_random_forest_tuned_model["X_test"]
-    y_test = train_random_forest_tuned_model["y_test"]
-    feature_names = train_random_forest_tuned_model["feature_names"]
+    final_model = retrain_top_features_model["final_model"]
+    X_test = retrain_top_features_model["X_test"]
+    y_test = retrain_top_features_model["y_test"]
+    feature_names = retrain_top_features_model["feature_names"]
 
     y_pred = final_model.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
@@ -441,7 +542,7 @@ def save_tuned_model(context: dg.AssetExecutionContext, test_fraud_detection_mod
     # Make sure models directory exists relative to Dagster project root
     save_dir = os.getcwd() + "/src/students/Magguire/gradioapp/utils/"
 
-    model_path = os.path.join(save_dir, "fraud_detection_model.pkl")
+    model_path = os.path.join(save_dir, "fraud_detection_model_test.pkl")
 
     context.log.info(f"Saving model to: {model_path}")
 
