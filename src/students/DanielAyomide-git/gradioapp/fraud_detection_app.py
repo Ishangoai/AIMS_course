@@ -1,12 +1,14 @@
 import re
 
 import gradio as gr
-import matplotlib.pyplot as plt  # Matplotlib import
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-# Assuming this import works in your environment
 from gradioapp.utils.fraud_utils import predict_fraud
+from matplotlib.figure import Figure
+
+# ✅ Add these imports:
+from matplotlib.projections.polar import PolarAxes
 
 # Example transaction values for testing
 EXAMPLE_TRANSACTION = [
@@ -45,17 +47,16 @@ EXAMPLE_TRANSACTION = [
 COLUMN_NAMES = [f"V{i + 1}" for i in range(28)] + ["Amount"]
 
 
-def create_matplotlib_gauge(prob: float, title: str, height: int = 350):
+def create_matplotlib_gauge(prob: float, title: str, height: int = 350) -> Figure:
     """
     Creates a simple Matplotlib approximation of a gauge chart.
     Returns a Matplotlib Figure object.
     """
-    # Close any existing plot to prevent memory leaks in a loop
     plt.close("all")
 
-    fig, ax = plt.subplots(figsize=(6, 6))  # Adjust size as needed, Gradio controls the final display size
-
-    # Convert angle to radians for plotting
+    # ✅ Explicit type for polar axis
+    fig, ax = plt.subplots(subplot_kw={"projection": "polar"}, figsize=(6, 6))  # type: ignore
+    ax: PolarAxes  # type: ignore
 
     # 1. Background Arc (The "Gauge")
     # Define colors for ranges (0-50% green, 50-100% pink)
@@ -74,7 +75,7 @@ def create_matplotlib_gauge(prob: float, title: str, height: int = 350):
         alpha=0.5,
     )
 
-    fig, ax = plt.subplots(subplot_kw={"projection": "polar"}, figsize=(6, 6))
+    fig, ax = plt.subplots(subplot_kw={"projection": "polar"}, figsize=(6, 6))  # type:ignore
 
     # Gauge arcs (0-50% and 50-100%)
     # Matplotlib polar angle is in radians, 0 is east, positive is counter-clockwise.
@@ -210,8 +211,7 @@ def generate_batch_analysis_viz(predictions_df):
     for the probability distribution across the predicted dataset using Matplotlib.
     """
     if predictions_df.empty or "Fraud Probability" not in predictions_df.columns:
-        # Return empty figures
-        return "No prediction data available for visualization.", plt.Figure(), plt.Figure()
+        return "No prediction data available for visualization.", Figure(), Figure()
 
     probabilities = predictions_df["Fraud Probability"]
     avg_prob = probabilities.mean()
