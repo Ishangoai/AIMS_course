@@ -1,6 +1,6 @@
 import dagster as dg
-from dagster_slack import slack_resource
 
+# import dagster_slack
 from .de import assets as de_assets
 from .ml import assets as ml_assets
 from .ml.resources import (
@@ -8,9 +8,16 @@ from .ml.resources import (
     PromotionConfig,
     TuningConfig,
 )
-
-
 from .ml_fraud import assets as ml_fraud_assets
+from .ml_fraud.resources import (
+    FraudDataConfig,
+    mlflow_client,
+    mlflow_resource,
+    model_config,
+    model_promotion_config,
+)
+
+# SLACK_TOKEN = dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN").get_value() or ""
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
@@ -21,7 +28,12 @@ all_ml_fraud_assets = dg.load_assets_from_modules([ml_fraud_assets])
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
 def mlflow_failure_hook(context):
+
     mlflow_client = context.resources.mlflow_tracking
+
+    mlflow_client.log_metric("dagster_job_failed", 1)
+    mlflow_client.set_tag("dagster_job_status", "failed")
+    mlflow_client.end_run(status="FAILED") 
     error_message = f"Dagster job failed: {context.failure_event.message}"
     mlflow_client.set_tag("dagster_job_status", "failed")
     mlflow_client.set_tag("dagster_error_message", error_message)
@@ -57,10 +69,11 @@ ml_fraud_job = dg.define_asset_job(
     name="ml_fraud_detection",
     selection=dg.AssetSelection.groups("ml_fraud_ingest",
                                        "ml_fraud_transform",
-                                       "ml_fraud_detection",
+                                       "model_ml_fraud",
                                        "ml_fraud_evaluate",
-                                       "ml_fraud_notify",
-                                                        )
+                                       "slack_message"
+                                                        ),
+
 )
 
 era5_daily_schedule = dg.ScheduleDefinition(
@@ -74,8 +87,12 @@ defs = dg.Definitions(
     assets=[*all_ml_assets, *all_de_assets, *all_ml_fraud_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
-        # "slack_notify": slack_resource,
-    
+         "data_config": FraudDataConfig,
+        "model_config": model_config,
+        "model_promotion_config": model_promotion_config,
+        "mlflow": mlflow_resource,
+        "mlflow_api_client": mlflow_client,
+
     },
     jobs=[de_job, ml_job, ml_fraud_job],
     schedules=[era5_daily_schedule],

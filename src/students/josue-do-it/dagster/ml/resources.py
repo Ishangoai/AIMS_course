@@ -4,16 +4,11 @@ import cdsapi
 import dagster as dg
 import pydantic as pyd
 from dagster_mlflow import mlflow_tracking
-from dagster_slack import SlackResource
 from mlflow.tracking import MlflowClient
 
 # Configuration for Local SQLite and Local Artifacts
 # Using DAGSTER_HOME if set, otherwise, defaults to the current directory
-# where the Dagster process is run.
-slack_resource = SlackResource(
-    token="xoxb-2422279561408-9303546575606-kvjli9hRzdk0AIUphprXpMQa"
-)
-
+# # where the Dagster process is run.
 
 BASE_DIR = os.path.abspath(os.getenv("DAGSTER_HOME", "."))  # base directory for all MLflow data.
 SQLITE_DB_FILENAME = "mlflow_local_tracking.db"  # Name of the SQLite database file
@@ -30,7 +25,7 @@ mlflow_resource = mlflow_tracking.configured(
         "mlflow_tracking_uri": f"sqlite:///{SQLITE_DB_PATH}",
         "experiment_name": DEFAULT_EXPERIMENT_NAME,
     }
-)
+    )
 
 
 # Raw MlflowClient for advanced API access (transition_model_version_stage,....)
@@ -105,6 +100,4 @@ class PromotionConfig(dg.Config):
     staging_r2_threshold: float = pyd.Field(
         default=0.8,
         description="Minimum acceptable R2 for promoting a model to Staging."
-    )
-
-
+        )
