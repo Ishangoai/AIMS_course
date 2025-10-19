@@ -1290,7 +1290,109 @@ def create_interface():
                 padding: 1rem;
             }
         }
+
+             /* RADIO BUTTON STYLING */
+        /* Make radio buttons bigger and more visible */
+        input[type="radio"] {
+            accent-color: #667eea !important;
+            width: 22px !important;
+            height: 22px !important;
+            cursor: pointer !important;
+        }
+        /* Style all radio button containers */
+        .form input[type="radio"] {
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            width: 22px !important;
+            height: 22px !important;
+            border: 2px solid rgba(102, 126, 234, 0.5) !important;
+            border-radius: 50% !important;
+            cursor: pointer !important;
+            background: transparent !important;
+            position: relative !important;
+            margin-right: 10px !important;
+        }
+        .form input[type="radio"]:hover {
+            border-color: #667eea !important;
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.3) !important;
+        }
+        .form input[type="radio"]:checked {
+            background: #667eea !important;
+            border-color: #667eea !important;
+            box-shadow: 0 0 12px rgba(102, 126, 234, 0.6) !important;
+        }
+        .form input[type="radio"]:checked::after {
+            content: '';
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            width: 8px !important;
+            height: 8px !important;
+            background: white !important;
+            border-radius: 50% !important;
+            transform: translate(-50%, -50%) !important;
+        }
+        /* CHECKBOX STYLING */
+        /* Make checkboxes bigger and more visible */
+        input[type="checkbox"] {
+            accent-color: #667eea !important;
+            width: 22px !important;
+            height: 22px !important;
+            cursor: pointer !important;
+        }
+        .form input[type="checkbox"] {
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            width: 22px !important;
+            height: 22px !important;
+            border: 2px solid rgba(102, 126, 234, 0.5) !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            background: transparent !important;
+            position: relative !important;
+            margin-right: 10px !important;
+            transition: all 0.3s ease !important;
+        }
+        .form input[type="checkbox"]:hover {
+            border-color: #667eea !important;
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.3) !important;
+        }
+        .form input[type="checkbox"]:checked {
+            background: #10b981 !important;
+            border-color: #10b981 !important;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.5) !important;
+        }
+        .form input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            color: white !important;
+            font-size: 14px !important;
+            font-weight: bold !important;
+            line-height: 1 !important;
+        }
+        /* Style the parent wrapper of radio/checkbox options */
+        .form > div > div:has(input[type="radio"]),
+        .form > div > div:has(input[type="checkbox"]) {
+            padding: 0.75rem !important;
+            border-radius: 8px !important;
+            transition: all 0.3s ease !important;
+            background: rgba(255, 255, 255, 0.02) !important;
+            border: 1px solid rgba(102, 126, 234, 0.2) !important;
+            margin-bottom: 0.5rem !important;
+        }
+        .form > div > div:has(input[type="radio"]:checked),
+        .form > div > div:has(input[type="checkbox"]:checked) {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
+            border-color: #667eea !important;
+        }
+
+        # end of CSS fo
         """,
+
+
     ) as app:
         # Enhanced Header with Icons and Animations
         gr.HTML("""
