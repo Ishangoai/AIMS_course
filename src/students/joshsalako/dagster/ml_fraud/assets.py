@@ -163,9 +163,11 @@ def check_fraud_data(context: dg.AssetCheckExecutionContext, fraud_data: pd.Data
         passed=passed,
         metadata=metadata,
         description=(
-            "Passed"
-            if passed
-            else f"{'Nulls present. ' if num_nulls > 0 else ''}{'Negative Amounts found.' if negative_amounts > 0 else ''}"
+            "Passed" if passed
+            else (
+                f"{'Nulls present. ' if num_nulls > 0 else ''}"
+                f"{'Negative Amounts found.' if negative_amounts > 0 else ''}"
+            )
         ),
         asset_key="fraud_data",
     )
