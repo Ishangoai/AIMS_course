@@ -88,3 +88,6 @@ with gr.Blocks() as app:
         delete_button = gr.Button("Delete User")
         delete_output = gr.Textbox(label="Deletion Status", interactive=False)
         delete_button.click(fn=delete_user, inputs=delete_input, outputs=delete_output)
+
+
+# import requests
