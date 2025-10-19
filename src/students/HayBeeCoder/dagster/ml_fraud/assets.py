@@ -721,8 +721,9 @@ def notify_slack(
 
             # Log model artifact under run
             with mlflow_client.start_run(nested=True, run_name="serving_model_artifact"):
-                ms.log_model(model, "serving_model", input_example=pd.DataFrame(X_test_resampled[:10],
-                                                                                columns=X_test_resampled.columns))
+                # Use feature_names if available, otherwise generate generic column names
+                input_example_columns = feature_names if 'feature_names' in locals() else [f"feature_{i}" for i in range(X_test_resampled.shape[1])]
+                ms.log_model(model, "serving_model", input_example=pd.DataFrame(X_test_resampled[:10], columns=input_example_columns))
             context.log.info("Model logged to MLflow under current run")
 
     except Exception as e:
