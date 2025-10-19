@@ -396,9 +396,14 @@ def trained_fraud_model(
     except Exception:
         experiment_id = None
 
+    # Ensure any existing run is ended before starting a new one
+    try:
+        mlflow_client.end_run()
+    except Exception:
+        pass
+
     with mlflow_client.start_run(experiment_id=experiment_id,
-    run_name=f"fraud_detection_training_{context.run_id[:8]}",
-    nested=True):
+    run_name=f"fraud_detection_training_{context.run_id[:8]}"):
         mlflow_client.set_tag("model_type", "RandomForest")
         mlflow_client.set_tag("task", "fraud_detection")
 
@@ -488,15 +493,14 @@ def trained_fraud_model(
                 mlflow_client.log_metric(f"feature_importance_{feature}", float(importance))
 
             # Log model
-            with mlflow_client.start_run(nested=True, run_name="model_logging"):
-                ms.log_model(
-                    best_model,
-                    "model",
-                    signature=infer_signature(
-                        X_train_resampled[:10],
-                        best_model.predict(X_train_resampled[:10])
-                    )
+            ms.log_model(
+                best_model,
+                "model",
+                signature=infer_signature(
+                    X_train_resampled[:10],
+                    best_model.predict(X_train_resampled[:10])
                 )
+            )
 
         if best_params is not None:
             context.log.info(f"Best model: n_estimators={best_params['n_estimators']}, CV Recall={best_score:.4f}")
@@ -575,6 +579,12 @@ def model_evaluation(
     """Evaluate the trained model on test set and log results to MLflow"""
 
     mlflow_client = context.resources.mlflow_fraud
+
+    # Ensure any existing run is ended before starting a new one
+    try:
+        mlflow_client.end_run()
+    except Exception:
+        pass
 
     with mlflow_client.start_run(nested=True, run_name=f"fraud_detection_evaluation_{context.run_id[:8]}"):
         mlflow_client.set_tag("model_type", "RandomForest")
@@ -802,6 +812,13 @@ def notify_slack(
     # Save model and final metrics using MLflow
     try:
         mlflow_client = context.resources.mlflow_fraud
+
+        # Ensure any existing run is ended before starting a new one
+        try:
+            mlflow_client.end_run()
+        except Exception:
+            pass
+
         with mlflow_client.start_run(nested=True, run_name=f"fraud_detection_serving_{context.run_id[:8]}"):
             mlflow_client.set_tag("model_type", "RandomForest")
             mlflow_client.set_tag("task", "fraud_detection")
