@@ -243,7 +243,7 @@ def evaluate_fraud_model(
 
     # Classification report
     report_dict = classification_report(y_test, y_pred, output_dict=True)
-    report_df = pd.DataFrame(report_dict).transpose()
+    # report_df = pd.DataFrame(report_dict).transpose()
     context.log.info("Generated classification report.")
 
     # Confusion Matrix
