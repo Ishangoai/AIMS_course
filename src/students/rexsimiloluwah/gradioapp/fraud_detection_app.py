@@ -1,10 +1,27 @@
+import os
+
 import gradio as gr
+from gradioapp.styles.fraud_app import custom_css
 from gradioapp.utils.fraud_detection_utils import predict_credit_card_fraud
 
 
 # Wrap model predictor
 def wrapped_predict(*args):
     return predict_credit_card_fraud(list(args))
+
+
+ABOUT_FILE = os.path.join(os.path.dirname(__file__), "docs/about_fraud_app.md")
+
+
+def load_about_markdown():
+    if os.path.exists(ABOUT_FILE):
+        with open(ABOUT_FILE, "r", encoding="utf-8") as f:
+            return f.read()
+    else:
+        return (
+            "⚠️ *About file not found."
+            "Please ensure `about.md` exists in the same directory.*"
+        )
 
 
 # UI wrapper to format Gradio callouts
@@ -102,36 +119,53 @@ SAMPLE_FRAUD = {
     "V18": -4.0, "V7": -1.0, "V3": -2.0, "Amount": 500.0
 }
 
+with gr.Blocks(css=custom_css) as fraud_app:
+    gr.Markdown("# Credit Card Fraud Detector")
 
-with gr.Blocks(css="body {background: #f2f7ff;}") as fraud_app:
-    gr.Markdown("# AIMS Course: Credit Card Fraud Detector")
-    gr.Markdown("Enter the transaction features below to predict fraud risk using the trained model.")
+    with gr.Tabs():
+        with gr.Tab("🔍 Fraud Detection"):
+            gr.Markdown("### Enter the transaction features below to predict fraud risk using the trained model.")
 
-    result = gr.HTML(label="Prediction Result")
+            result = gr.HTML(label="Prediction Result")
 
-    with gr.Row():
-        with gr.Column():
-            v14 = gr.Number(label="V14", value=SAMPLE_NORMAL["V14"])
-            v17 = gr.Number(label="V17", value=SAMPLE_NORMAL["V17"])
-            v10 = gr.Number(label="V10", value=SAMPLE_NORMAL["V10"])
-            v12 = gr.Number(label="V12", value=SAMPLE_NORMAL["V12"])
-            v11 = gr.Number(label="V11", value=SAMPLE_NORMAL["V11"])
-            v16 = gr.Number(label="V16", value=SAMPLE_NORMAL["V16"])
-        with gr.Column():
-            v4 = gr.Number(label="V4", value=SAMPLE_NORMAL["V4"])
-            v9 = gr.Number(label="V9", value=SAMPLE_NORMAL["V9"])
-            v18 = gr.Number(label="V18", value=SAMPLE_NORMAL["V18"])
-            v7 = gr.Number(label="V7", value=SAMPLE_NORMAL["V7"])
-            v3 = gr.Number(label="V3", value=SAMPLE_NORMAL["V3"])
-            amount = gr.Number(label="Amount", value=SAMPLE_NORMAL["Amount"])
+            with gr.Row():
+                with gr.Column():
+                    v14 = gr.Slider(minimum=-20, maximum=20, value=SAMPLE_NORMAL["V14"],
+                                   label="V14", elem_classes="orange-slider")
+                    v17 = gr.Slider(minimum=-20, maximum=20, value=SAMPLE_NORMAL["V17"],
+                                   label="V17", elem_classes="orange-slider")
+                    v10 = gr.Slider(minimum=-20, maximum=20, value=SAMPLE_NORMAL["V10"],
+                                   label="V10", elem_classes="orange-slider")
+                    v12 = gr.Slider(minimum=-20, maximum=20, value=SAMPLE_NORMAL["V12"],
+                                   label="V12", elem_classes="orange-slider")
+                    v11 = gr.Slider(minimum=-20, maximum=20, value=SAMPLE_NORMAL["V11"],
+                                   label="V11", elem_classes="orange-slider")
+                    v16 = gr.Slider(minimum=-20, maximum=20, value=SAMPLE_NORMAL["V16"],
+                                   label="V16", elem_classes="orange-slider")
+                with gr.Column():
+                    v4 = gr.Slider(minimum=-20, maximum=20, value=SAMPLE_NORMAL["V4"],
+                                  label="V4", elem_classes="orange-slider")
+                    v9 = gr.Slider(minimum=-20, maximum=20, value=SAMPLE_NORMAL["V9"],
+                                  label="V9", elem_classes="orange-slider")
+                    v18 = gr.Slider(minimum=-20, maximum=20, value=SAMPLE_NORMAL["V18"],
+                                   label="V18", elem_classes="orange-slider")
+                    v7 = gr.Slider(minimum=-20, maximum=20, value=SAMPLE_NORMAL["V7"],
+                                  label="V7", elem_classes="orange-slider")
+                    v3 = gr.Slider(minimum=-20, maximum=20, value=SAMPLE_NORMAL["V3"],
+                                  label="V3", elem_classes="orange-slider")
+                    amount = gr.Slider(minimum=0, maximum=1000, value=SAMPLE_NORMAL["Amount"],
+                                      label="Amount", elem_classes="orange-slider")
 
-    with gr.Row():
-        predict_btn = gr.Button("🔍 Predict", variant="primary")
-        load_normal_btn = gr.Button("Load Sample Normal Case")
-        load_fraud_btn = gr.Button("Load Sample Fraud Case")
-        clear_btn = gr.Button("Clear")
+            with gr.Row():
+                predict_btn = gr.Button("🔍 Predict", variant="primary")
+                load_normal_btn = gr.Button("Load Sample Normal Case")
+                load_fraud_btn = gr.Button("Load Sample Fraud Case")
+                clear_btn = gr.Button("Clear")
 
-    gr.Markdown("### Group Members: Khadija Edarzi & Similoluwa Okunowo")
+            gr.Markdown("### Group Members: Khadija Edarzi & Similoluwa Okunowo")
+
+        with gr.Tab("📖 About"):
+            gr.Markdown(load_about_markdown())
 
     predict_btn.click(
         fn=wrapped_predict_ui,
