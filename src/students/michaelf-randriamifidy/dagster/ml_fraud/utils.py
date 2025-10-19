@@ -1,16 +1,14 @@
 import os
+import tempfile
 from datetime import datetime
-
 import dagster_slack
 import joblib
+import matplotlib.pyplot as plt
 import mlflow
 import numpy as np
 import requests
-from sklearn.metrics import confusion_matrix
-
-import matplotlib.pyplot as plt
 import seaborn as sns
-import tempfile
+from sklearn.metrics import confusion_matrix
 
 
 class ClientDownloader:
@@ -40,7 +38,17 @@ class ClientDownloader:
         except IOError as e:
             raise RuntimeError(f"Failed to write file: {e}")
 
-
+def get_experiment(mlflow_client, name):
+    try:
+        experiment = mlflow_client.get_experiment_by_name("name")
+        if experiment is None:
+            experiment_id = mlflow_client.create_experiment("name")
+        else:
+            experiment_id = experiment.experiment_id
+    except Exception:  # Handle cases where get_experiment_by_name might raise error if not found
+        experiment_id = mlflow_client.create_experiment("name")
+    experiment_id
+    
 def post_message_in_slack(slack: dagster_slack.SlackResource,
                             message: str,
                             channel: str = "aims_course_october2025"
@@ -85,9 +93,14 @@ def promote_model_to_production(model_name: str, model_version: str, mlflow_clie
     )
 
 
-def dump_model_to_pickle(model_name: str, model_version: str, context) -> None:
+def get_model_by_name(model_name: str, model_version: str):
     model_uri = f"models:/{model_name}/{model_version}"
-    model = mlflow.pyfunc.load_model(model_uri)
+    model = mlflow.sklearn.load_model(model_uri)
+    return model
+
+
+def dump_model_to_pickle(model_name: str, model_version: str, context) -> None:
+    model = get_model_by_name(model_name, model_version)
 
     DUMP_PATH = os.path.join(os.getcwd(), "fraud_detector.pkl")
     context.log.info(f"Dump promoted model to pickle file at {DUMP_PATH}")
@@ -109,7 +122,7 @@ def calculate_false_positive_rate(y_true: np.ndarray, y_pred: np.ndarray) -> flo
         float: False Positive Rate
     """
     tn, fp, _, _ = confusion_matrix(y_true, y_pred).ravel()
-    return fp / (fp + tn)
+    return float(fp / (fp + tn))
 
 
 def to_native(val):
@@ -123,19 +136,17 @@ def random_forest_summary_message(authors, accuracy, recall, fpr, n_estimators):
     time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     message = (
-        f"**Fraud Detection**\n"
-        f"**Model Training Summary**\n"
-        f"----------------------------------\n"
-        f" Model Type: Random Forest\n"
-        # f" Dataset: {data_name}\n"
-        f" Authors: {authors}\n"
-        f" n_estimators: {n_estimators}\n"
-        f" Accuracy: {accuracy:.4f}\n"
-        f" Recall: {recall:.4f}\n"
-        f" False Positive Rate (FPR): {fpr:.4f}\n"
-        f" Timestamp: {time_now}\n"
-        f"----------------------------------"
-    )
+    f"*Fraud Detection — Model Test Summary*\n"
+    f"-----------------------------\n"
+    f"*👩‍💻 Authors:* {authors}\n"
+    f"*🧩 Model Type:* `RandomForest`\n"
+    f"*🌲 n_estimators:* `{n_estimators}`\n"
+    f"*✅ Accuracy:* `{accuracy:.4f}`\n"
+    f"*🎯 Recall:* `{recall:.4f}`\n"
+    f"*🚨 False Positive Rate (FPR):* `{fpr:.4f}`\n"
+    f"*🕒 Timestamp:* `{time_now}`\n"
+    f"-----------------------------"
+)
     return message
 
 
@@ -154,5 +165,5 @@ def log_confusion_matrix(y_true, y_pred, labels=None, artifact_name="confusion_m
         path = os.path.join(tmpdir, artifact_name)
         plt.savefig(path)
         mlflow.log_artifact(path, artifact_path="plots")
-    
-    plt.close()    
+
+    plt.close()

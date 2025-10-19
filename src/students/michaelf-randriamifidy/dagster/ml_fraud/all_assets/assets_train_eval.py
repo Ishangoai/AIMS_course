@@ -1,7 +1,5 @@
 
 import dagster as dg
-import dagster_slack
-import hyperopt
 import mlflow
 import mlflow.sklearn as ms
 import pandas as pd
@@ -15,13 +13,9 @@ from sklearn.model_selection import (
 from ...client_consumers import slack_provider
 from ...ml.resources import mlflow_resource
 from ..resources import FraudTuningConfig
-from ..utils import (
-    calculate_false_positive_rate, 
-    post_message_in_slack, 
-    random_forest_summary_message, 
-    to_native,
-    log_confusion_matrix
-)
+from ..utils import calculate_false_positive_rate, get_experiment, log_confusion_matrix, to_native
+
+EXP_FRAUD_DETECTION = "fraud_detection"
 
 
 @dg.asset(
@@ -36,7 +30,7 @@ def tune_random_forest_hyperparameters(
     pandas_data_df: pd.DataFrame
 ) -> dict:
     mlflow_client = context.resources.mlflow_tracking
-    context.log.info("Starting hyperparameter tuning for Ridge model.")
+    context.log.info("Starting hyperparameter tuning for RandomForest model.")
 
     clean_df = pandas_data_df
 
@@ -67,93 +61,67 @@ def tune_random_forest_hyperparameters(
     context.log.info(f"Data split: X_train_val: {X_train_val.shape}, X_test: {X_test.shape}")  # type: ignore
 
     # Define Hyperopt search space for RandomForest n_estimators
-    n_estimators_list = [10, 20, 30]
-    search_space = {
-        'n_estimators': hyperopt.hp.choice('n_estimators',
-                                           n_estimators_list)
-    }
+    grid_n_estimators = [10, 20, 30]
 
     # MLflow experiment context for nested runs
-    # Ensure the experiment exists or is created
-    try:
-        experiment = mlflow_client.get_experiment_by_name("fraud_detection")
-        if experiment is None:
-            experiment = mlflow_client.create_experiment("fraud_detection")
-            experiment_id = experiment.experiment_id
-        else:
-            experiment_id = experiment.experiment_id
-    except Exception:  # Handle cases where get_experiment_by_name might raise error if not found
-        experiment_id = mlflow_client.create_experiment("fraud_detection")
 
-    trials = hyperopt.Trials()
+    experiment_id = get_experiment(mlflow_client, EXP_FRAUD_DETECTION)
     k_folds = 3
-    # Objective function for Hyperopt
 
-    def objective(params):
-        trial_num = len(trials.trials)
+    best_f1 = -float('inf')
+    best_params = {}
+
+    for trial_num, n_estimators in enumerate(grid_n_estimators):
         try:
-            n_estimators = int(params['n_estimators'])
-            # Split train_val further into training_for_hyperopt and validation_for_hyperopt
-            X_train_h, X_val_h, y_train_h, y_val_h = train_test_split(X_train_val,
-                                                                y_train_val,
-                                                                test_size=0.2,
-                                                                random_state=42,
-                                                                shuffle=True)
+            # Split train_val further for evaluation
+            X_train_h, X_val_h, y_train_h, _ = train_test_split(
+                X_train_val, y_train_val, test_size=0.2, random_state=42, shuffle=True
+            )
 
-            if len(X_train_h) == 0 or len(X_val_h) == 0:
-                # This case should be rare given prior checks but good to have
-                return {'loss': float('inf'), 'status': hyperopt.STATUS_OK, 'params': params}  # Penalize if split fails
-            run_name = f"hyperopt_trial_{trial_num}_n_estimators_{n_estimators:.4f}"
+            if len(X_train_h) == 0 or len(X_val_h) == 0 or k_folds >= len(X_train_h):
+                context.log.warning(f"Trial {trial_num}: invalid split, skipping")
+                continue
+
+            run_name = f"gridsearch_trial_{trial_num}_n_estimators_{n_estimators:.4f}"
 
             model = RandomForestClassifier(n_estimators=n_estimators,
-                                            random_state=42,
-                                            n_jobs=-1
-                                            )
+                                                random_state=42,
+                                                n_jobs=-1
+                                                )
             model.fit(X_train_h, y_train_h)
-            preds = model.predict(X_val_h)
+
             f1 = cross_val_score(model, X_train_h, y_train_h, cv=k_folds, scoring='f1').mean()
-            return {'loss': -f1, 'status': hyperopt.STATUS_OK, 'params': params}
+            with mlflow_client.start_run(experiment_id=experiment_id,
+                            run_name=run_name,
+                            nested=True):
+                context.log.info(f"Trial {trial_num} successful: params={n_estimators}, f1={f1:.4f}")
+            if f1 > best_f1:
+                best_f1 = f1
+                best_params = {'n_estimators': n_estimators}
         except Exception as e:
-            return {'loss': float('inf'), 'status': hyperopt.STATUS_FAIL, 'params': params, 'error_message': str(e)}
+            context.log.error(f"Trial {trial_num} failed: {e}")
 
-    best_hyperparams = hyperopt.fmin(
-        fn=objective,
-        space=search_space,
-        algo=hyperopt.tpe.suggest,
-        # max_evals=2,
-        max_evals=config.max_hyperopt_evals,  # Number of iterations
-        trials=trials
-    )
-    context.log.info(f"fmin completed. Returned best_hyperparams: {best_hyperparams}")
-    best_trial_info = trials.best_trial
+    context.log.info(f"gridsearch completed, Best params: {best_params}, Best F1: {best_f1:.4f}")
+
     best_n_estimators_to_log = float('nan')  # Initialize
-    best_f1_score_to_log = float('inf')  # Initialize
+    best_f1_score_to_log = -float('inf')  # Initialize
 
-    if best_trial_info is None:
-        # context.log.error("trials.best_trial is None.")
-        if best_hyperparams:
-            # context.log.warning(f"Using fmin's output: {best_hyperparams}")
-            best_index = best_hyperparams.get('n_estimators', None)
-            best_n_estimators_to_log = n_estimators_list[best_index] if best_index is None else None
-            # best_f1_score_to_log remains float('inf')
-        else:
-            raise ValueError("Hyperopt tuning failed: fmin returned no parameters and no successful trials found.")
+    if best_params:
+        best_n_estimators_to_log = best_params["n_estimators"]
     else:
-        best_f1_score_to_log = -best_trial_info['result']['loss']
-        n_estimators_from_best_trial = best_trial_info['misc']['vals']['n_estimators'][0]
-        best_n_estimators_to_log = n_estimators_list[n_estimators_from_best_trial]
-        context.log.info(
-            f"Hyperopt best n_estimators (fmin): {best_n_estimators_to_log}, "  # type: ignore
-            f"Best validation_f1_score (trials.best_trial): {best_f1_score_to_log:.4f}"
-        )
+        raise ValueError("gridsearch tuning failed: no successful trials found.")
 
     context.log.info(f"Final best n_estimators: {best_n_estimators_to_log:.4f}, Corresponding f1_score: {best_f1_score_to_log:.4f}")
-    mlflow_client.log_param("best_random_forest_n_estimators", best_n_estimators_to_log)
-    if best_f1_score_to_log != float('inf'):
-        mlflow_client.log_metric("best_hyperopt_validation_f1_score", best_f1_score_to_log)
-    else:
-        # log something to indicate the metric wasn't reliably found
-        mlflow_client.log_metric("best_hyperopt_validation_f1_score_unavailable", 0.0)
+
+    with mlflow_client.start_run(experiment_id=experiment_id,
+                                run_name="best_gridsearch_trial",
+                                nested=True):
+        mlflow_client.log_param("best_random_forest_n_estimators", best_n_estimators_to_log)
+        if best_f1_score_to_log != float('inf'):
+            mlflow_client.log_metric("best_gridsearch_validation_f1_score", best_f1_score_to_log)
+        else:
+            # log something to indicate the metric wasn't reliably found
+            mlflow_client.log_metric("best_gridsearch_validation_f1_score_unavailable", 0.0)
 
     final_best_params_output = {'n_estimators': int(best_n_estimators_to_log)}
 
@@ -179,6 +147,7 @@ def train_tuned_model_fraud(
     tune_random_forest_hyperparameters
 ) -> dict:
     mlflow_client = context.resources.mlflow_tracking
+    experiment_id = get_experiment(mlflow_client, EXP_FRAUD_DETECTION)
     context.log.info("Starting final model training with tuned hyperparameters.")
 
     best_params = tune_random_forest_hyperparameters["best_params"]
@@ -206,8 +175,10 @@ def train_tuned_model_fraud(
         "final_train_samples": len(X_train_val),
         "final_test_samples": len(X_test)
     }
-    mlflow_client.log_params(train_params_log)
-    context.log.info(f"Logged final training parameters to MLflow: {train_params_log}")
+    with mlflow_client.start_run(experiment_id=experiment_id,
+                            nested=True):
+        mlflow_client.log_params(train_params_log)
+        context.log.info(f"Logged final training parameters to MLflow: {train_params_log}")
 
     return {
         "model": final_model,
@@ -229,8 +200,9 @@ def test_model_fraud(
     context: dg.AssetExecutionContext,
     train_tuned_model_fraud: dict
 ) -> dg.MaterializeResult:
-    slack: dagster_slack.SlackResource = context.resources.slack
+    # slack: dagster_slack.SlackResource = context.resources.slack
     mlflow_client = context.resources.mlflow_tracking
+    experiment_id = get_experiment(mlflow_client, EXP_FRAUD_DETECTION)
     context.log.info("Starting final model evaluation.")
 
     model = train_tuned_model_fraud["model"]
@@ -261,18 +233,22 @@ def test_model_fraud(
     accuracy = accuracy_score(y_test, preds)
     recall = recall_score(y_test, preds)
     fpr = calculate_false_positive_rate(y_test, preds)
-    context.log.info(f"Final Model Evaluation Metrics on Test Set: accuracy={accuracy:.4f}, recall={recall:.4f}, fpr={fpr:.4f}")
 
-    # Log confusion matrix as artifact
-    context.log.info("Logging Confusion matrix to Mlflow Artifacts")
-    log_confusion_matrix(y_test, preds, labels=[0, 1])
-    context.log.info("Confusion matrix logged as Artifact to Mlflow")
+    with mlflow_client.start_run(experiment_id=experiment_id,
+                            run_name="confusion_matrix",
+                            nested=True):
+        context.log.info("Final Model Evaluation Metrics on Test Set"
+                ": accuracy={accuracy:.4f}, recall={recall:.4f}, fpr={fpr:.4f}")
+        context.log.info("Logging Confusion matrix to Mlflow Artifacts")
+        log_confusion_matrix(y_test, preds, labels=[0, 1])
+        context.log.info("Confusion matrix logged as Artifact to Mlflow")
 
     eval_metrics = {"test_accuracy": accuracy, "test_recall": recall, "test_fpr": fpr}
+
     mlflow_client.log_metrics(eval_metrics)
     context.log.info(f"Logged final evaluation metrics to MLflow: {eval_metrics}")
 
-    registered_model_name = "tuned-fraud-identifier"
+    registered_model_name = "tuned-fraud-detector"
     model_version_info = None
 
     with mlflow.start_run(nested=True) as current_run:
@@ -280,7 +256,7 @@ def test_model_fraud(
 
         log_model_info = ms.log_model(
             sk_model=model,
-            artifact_path="tuned_fraud_identifier",
+            artifact_path="tuned_fraud_detector",
             input_example=pd.DataFrame(X_test[:min(5, len(X_test))], columns=feature_names),
             registered_model_name=registered_model_name
         )
@@ -320,18 +296,18 @@ def test_model_fraud(
         "status": "evaluated_successfully"
     }
 
-    authors = "Rado Fitiavana and Michael Fitiavana"
-    hyperparameters = model.get_params()
-    n_estimators = hyperparameters["n_estimators"]
-    message = random_forest_summary_message(authors, accuracy, recall, fpr, n_estimators)
-    channel = "aims_course_october2025"
+    # authors = "Rado Fitiavana and Michael Fitiavana"
+    # hyperparameters = model.get_params()
+    # n_estimators = hyperparameters["n_estimators"]
+    # message = random_forest_summary_message(authors, accuracy, recall, fpr, n_estimators)
+    # channel = "aims_course_october2025"
 
-    try:
-        post_message_in_slack(slack, message, channel)
-        context.log.info(f"The following message is posted to Slack {channel} \n", message)
-    except Exception as e:
-        error_msg = f"Error while posting model summary: {e}"
-        context.log.error(error_msg)
+    # try:
+    #     post_message_in_slack(slack, message, channel)
+    #     context.log.info(f"The following message is posted to Slack {channel} \n", message)
+    # except Exception as e:
+    #     error_msg = f"Error while posting model summary: {e}"
+    #     context.log.error(error_msg)
 
     return dg.MaterializeResult(
         value=output_value_for_downstream,

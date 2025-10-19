@@ -1,15 +1,22 @@
-
 import dagster as dg
+import dagster_slack
 
+from ...client_consumers import slack_provider
 from ...ml.resources import mlflow_client, mlflow_resource
 from ..resources import FraudPromotionConfig
 from ..utils import (
     archive_existing_production_models,
     dump_model_to_pickle,
+    get_experiment,
     get_latest_staging_version,
+    get_model_by_name,
+    post_message_in_slack,
     promote_model_to_production,
+    random_forest_summary_message,
     was_model_promoted_to_staging,
 )
+
+EXP_FRAUD_DETECTION = "fraud_detection"
 
 
 @dg.asset(
@@ -83,6 +90,7 @@ def promote_to_staging(
 
             # Return successful result with status and relevant metadata
             context.log.info(f"Model '{model_name}' (version {model_version}) promoted to Staging.")
+
             return dg.MaterializeResult(
                 value={
                     "status": "promoted_to_staging",
@@ -126,7 +134,8 @@ def promote_to_staging(
 
 @dg.asset(
     description="Promotes the best model from Staging to Production",
-    resource_defs={"mlflow_tracking": mlflow_resource, "mlflow_client": mlflow_client},
+    resource_defs={"mlflow_tracking": mlflow_resource, "mlflow_client": mlflow_client,
+                "slack": slack_provider},
     compute_kind="python",
     group_name="promote_model"
 )
@@ -136,6 +145,8 @@ def promote_to_production(
 ) -> dg.MaterializeResult:
 
     mlflow_client = context.resources.mlflow_client
+    slack: dagster_slack.SlackResource = context.resources.slack
+
     context.log.info("Starting model promotion to Production.")
 
     if not was_model_promoted_to_staging(promote_to_staging):
@@ -167,6 +178,26 @@ def promote_to_production(
             dump_model_to_pickle(prod_model_name, prod_model_version, context)
 
             context.log.info(f"Model '{prod_model_name}' (version {prod_model_version}) promoted to Production.")
+
+            authors = "Rado Fitiavana and Michael Fitiavana"
+            model = get_model_by_name(prod_model_name, prod_model_version)
+            hyperparameters = model.get_params()
+            n_estimators = hyperparameters["n_estimators"]
+            eval_metrics = promote_to_staging["metrics"]
+            context.log.info(f"{eval_metrics}")
+            accuracy = eval_metrics["test_accuracy"]
+            recall = eval_metrics["test_recall"]
+            fpr = eval_metrics["test_fpr"]
+            message = random_forest_summary_message(authors, accuracy, recall, fpr, n_estimators)
+            channel = "aims_course_october2025"
+
+            try:
+                post_message_in_slack(slack, message, channel)
+                context.log.info(f"The following message is posted to Slack {channel} \n", message)
+            except Exception as e:
+                error_msg = f"Error while posting model summary: {e}"
+                context.log.error(error_msg)
+
             return dg.MaterializeResult(
                 value={
                     "status": "promoted_to_production",
