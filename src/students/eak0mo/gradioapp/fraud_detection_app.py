@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 import gradio as gr
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 from gradioapp.utils.fraud_utils import predict_fraud
+from matplotlib.figure import Figure
 
 # -----------------------------
 # Example transaction defaults
@@ -20,21 +21,87 @@ EXAMPLE_TRANSACTION: list[float] = [
 
 
 # -----------------------------
-# Donut Meter Visualization
+# Donut Meter Visualization (Matplotlib)
 # -----------------------------
-def wrapped_predict(*args: Any) -> tuple[go.Figure, str]:
-    """Predicts fraud probability and visualizes it as a labeled donut meter."""
+def donut_meter_matplotlib(prob: float, status: str, color: str) -> Figure:
+    """Render a donut (pie with hole) showing fraud probability."""
+    prob = max(0.0, min(1.0, prob))  # Clamp 0–1
 
-    # Safely parse all inputs
+    sizes = [prob, 1 - prob]
+    colors = ["#e74c3c", "#2ecc71"]  # Red (fraud), green (legit)
+    labels = ["Fraudulent", "Legitimate"]
+
+    fig, ax = plt.subplots(figsize=(5.5, 5.5))
+    wedges = ax.pie(
+        sizes,
+        colors=colors,
+        startangle=90,
+        counterclock=False,
+        wedgeprops=dict(width=0.4, edgecolor="white", linewidth=2),
+    )
+
+    # Center text
+    ax.text(
+        0,
+        0.05,
+        f"{prob * 100:.1f}%",
+        ha="center",
+        va="center",
+        fontsize=26,
+        fontweight="bold",
+        color=color,
+        family="sans-serif",
+    )
+
+    ax.text(
+        0,
+        -0.15,
+        status,
+        ha="center",
+        va="center",
+        fontsize=13,
+        color="#333",
+        family="sans-serif",
+    )
+
+    legend_labels = [
+        f"{labels[0]} ({sizes[0] * 100:.1f}%)",
+        f"{labels[1]} ({sizes[1] * 100:.1f}%)",
+    ]
+    ax.legend(
+        wedges,  # type: ignore
+        legend_labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.15),
+        ncol=2,
+        frameon=False,
+        fontsize=11,
+    )
+
+    ax.set_title(
+        "Fraud Probability Donut Meter",
+        fontsize=16,
+        color="#3b0d91",
+        pad=14,
+        weight="bold",
+    )
+    ax.set(aspect="equal")
+    plt.tight_layout()
+
+    return fig
+
+
+# -----------------------------
+# Wrapped predict function
+# -----------------------------
+def wrapped_predict(*args: Any) -> tuple[Figure, str]:
+    """Predicts fraud probability and visualizes it as a labeled donut meter."""
     inputs: list[float] = []
     for i, arg in enumerate(args):
-        if arg is None:
+        try:
+            inputs.append(float(arg) if arg is not None else EXAMPLE_TRANSACTION[i])
+        except (ValueError, TypeError):
             inputs.append(EXAMPLE_TRANSACTION[i])
-        else:
-            try:
-                inputs.append(float(arg))
-            except (ValueError, TypeError):
-                inputs.append(EXAMPLE_TRANSACTION[i])
 
     result: str = predict_fraud(inputs)
 
@@ -49,7 +116,6 @@ def wrapped_predict(*args: Any) -> tuple[go.Figure, str]:
     except (IndexError, ValueError):
         prob = 0.0
 
-    # Compute colors and status label dynamically
     if prob < 0.33:
         color = "#2ecc71"  # Green
         status = "Legitimate ✅"
@@ -60,61 +126,8 @@ def wrapped_predict(*args: Any) -> tuple[go.Figure, str]:
         color = "#e74c3c"  # Red
         status = "Fraudulent 🚨"
 
-    # --- Donut chart ---
-    fig = go.Figure()
+    fig = donut_meter_matplotlib(prob, status, color)
 
-    # Add donut pie chart
-    fig.add_trace(
-        go.Pie(
-            labels=["Fraudulent", "Legitimate"],
-            values=[prob, 1 - prob],
-            hole=0.65,
-            direction="clockwise",
-            textinfo="label+percent",
-            textfont=dict(size=14, color="#333", family="Inter, sans-serif"),
-            marker=dict(
-                colors=["#e74c3c", "#2ecc71"],
-                line=dict(color="#f9f9f9", width=3),
-            ),
-            hoverinfo="label+percent",
-        )
-    )
-
-    # Add center label
-    fig.add_annotation(
-        text=f"<b>{prob * 100:.1f}%</b><br><span style='font-size:14px'>{status}</span>",
-        showarrow=False,
-        font=dict(size=22, color=color, family="Inter, sans-serif"),
-        x=0.5,
-        y=0.5,
-        xanchor="center",
-        yanchor="middle",
-    )
-
-    # --- Update layout (fixed syntax) ---
-    fig.update_layout(
-        title=dict(
-            text="Fraud Probability Donut Meter",
-            font=dict(size=22, color="#3b0d91", family="Inter, sans-serif"),
-            x=0.5,
-        ),
-        showlegend=True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=-0.2,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=14, family="Inter, sans-serif"),
-        ),
-        height=450,
-        width=450,
-        margin=dict(l=40, r=40, t=80, b=60),
-        paper_bgcolor="#f9f9f9",
-        plot_bgcolor="#f9f9f9",
-    )
-
-    # Styled HTML output
     fraud_text = (
         f"<div style='text-align:center; font-size:20px; margin-top:10px;'>"
         f"<b style='color:{color};'>{result}</b></div>"
@@ -160,7 +173,6 @@ with gr.Blocks(
     }
     """,
 ) as fraud_app:
-    # Header
     gr.Markdown(
         """
         <div style='text-align:center;'>
@@ -170,7 +182,7 @@ with gr.Blocks(
                 <strong>Fraudulent</strong> or <strong>Legitimate</strong>.
             </p>
             <p style='font-size:14px; color:#777;'>
-                Built by: Elisha Komolafe 🇳🇬 & Lionel Cedric Gohouede 🇧🇯(2025)
+                Built by: Elisha Komolafe 🇳🇬 & Lionel Cedric Gohouede 🇧🇯 (2025)
             </p>
         </div>
         """,
@@ -178,7 +190,6 @@ with gr.Blocks(
 
     gr.Markdown("### 🧮 Input Transaction Features")
 
-    # Input features (4 columns × 7 sliders)
     with gr.Row():
         feature_inputs: list[gr.Slider] = []
         for col in range(4):
@@ -195,26 +206,22 @@ with gr.Blocks(
                         )
                     )
 
-    # Amount input
     amount = gr.Textbox(
         label="💵 Transaction Amount",
         placeholder="Enter amount (e.g. 120.50)",
         value=str(EXAMPLE_TRANSACTION[28]),
     )
 
-    # Action buttons
     with gr.Row():
         predict_btn = gr.Button("🚀 Predict", variant="primary")
         example_btn = gr.Button("💡 Example")
         reset_btn = gr.Button("🔄 Reset")
 
-    # Visualization
     gr.Markdown("### 🔍 Prediction Visualization")
     with gr.Column(elem_classes=["centered-container"]):
         prob_chart = gr.Plot(label="Fraud Probability Donut Meter")
         result_html = gr.HTML()
 
-    # Bind events
     inputs: list[Any] = feature_inputs + [amount]
     predict_btn.click(fn=wrapped_predict, inputs=inputs, outputs=[prob_chart, result_html])
     example_btn.click(fn=fill_example, outputs=inputs)

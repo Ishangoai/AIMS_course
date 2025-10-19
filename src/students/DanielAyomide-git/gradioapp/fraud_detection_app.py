@@ -1,12 +1,14 @@
 import re
 
 import gradio as gr
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-
-# Assuming this import works in your environment
 from gradioapp.utils.fraud_utils import predict_fraud
+from matplotlib.figure import Figure
+
+# ✅ Add these imports:
+from matplotlib.projections.polar import PolarAxes
 
 # Example transaction values for testing
 EXAMPLE_TRANSACTION = [
@@ -45,8 +47,76 @@ EXAMPLE_TRANSACTION = [
 COLUMN_NAMES = [f"V{i + 1}" for i in range(28)] + ["Amount"]
 
 
+def create_matplotlib_gauge(prob: float, title: str, height: int = 350) -> Figure:
+    """
+    Creates a simple Matplotlib approximation of a gauge chart.
+    Returns a Matplotlib Figure object.
+    """
+    plt.close("all")
+
+    # ✅ Explicit type for polar axis
+    fig, ax = plt.subplots(subplot_kw={"projection": "polar"}, figsize=(6, 6))  # type: ignore
+    ax: PolarAxes  # type: ignore
+
+    # 1. Background Arc (The "Gauge")
+    # Define colors for ranges (0-50% green, 50-100% pink)
+    colors = ["lightgreen", "pink"]
+    # Create the arcs
+    ax.bar(0, 1.0, width=np.pi, bottom=0.0, linewidth=0, align="edge", color=colors[0], edgecolor=None, alpha=0.5)
+    ax.bar(
+        np.pi / 2,
+        1.0,
+        width=np.pi / 2,
+        bottom=0.0,
+        linewidth=0,
+        align="edge",
+        color=colors[1],
+        edgecolor=None,
+        alpha=0.5,
+    )
+
+    fig, ax = plt.subplots(subplot_kw={"projection": "polar"}, figsize=(6, 6))  # type:ignore
+
+    # Gauge arcs (0-50% and 50-100%)
+    # Matplotlib polar angle is in radians, 0 is east, positive is counter-clockwise.
+    # We want 0-100% to go from 180 deg (pi) down to 0 deg.
+
+    # Range 0-50% (100% to 50% on the plot)
+    # Start angle: pi, End angle: pi/2
+    ax.barh(np.linspace(np.pi / 2, np.pi, 50), 1, color="lightgreen", align="edge", height=np.pi / 100)
+
+    # Range 50-100% (50% to 0% on the plot)
+    # Start angle: pi/2, End angle: 0
+    ax.barh(np.linspace(0, np.pi / 2, 50), 1, color="pink", align="edge", height=np.pi / 100)
+
+    # The actual pointer
+    pointer_color = "red" if prob > 0.5 else "green"
+
+    # Pointer angle: 180 deg (pi) for 0% to 0 deg (0) for 100%
+    pointer_angle = np.pi * (1 - prob)
+
+    # Draw the pointer
+    ax.plot([pointer_angle, pointer_angle], [0, 1], color=pointer_color, linewidth=5, solid_capstyle="round")
+    ax.plot([0], [0], marker="o", markersize=10, color="black")  # Center pivot
+
+    # Set limits and style
+    ax.set_theta_zero_location("W")  # Set 0 degree to the West (left)
+    ax.set_theta_direction(-1)  # Clockwise direction
+    ax.set_thetamin(0)  # Start at 0 degrees
+    ax.set_thetamax(180)  # End at 180 degrees
+    ax.set_rticks([])  # Remove radial ticks
+    ax.set_xticks(np.linspace(0, np.pi, 5))  # Add tick marks for 0%, 25%, 50%, 75%, 100%
+    ax.set_xticklabels(["100%", "75%", "50%", "25%", "0%"])  # Relabel ticks
+    ax.tick_params(axis="x", pad=10)  # Add padding to labels
+
+    ax.set_title(f"{title}\n{prob * 100:.1f}%", va="bottom")
+    fig.subplots_adjust(top=0.85)
+
+    return fig
+
+
 def wrapped_predict(*args):
-    """Predicts fraud for a single transaction and returns result, HTML bar, and Plotly gauge."""
+    """Predicts fraud for a single transaction and returns result, HTML bar, and Matplotlib gauge."""
     # Handle missing inputs with example defaults
     inputs = [arg if arg is not None else EXAMPLE_TRANSACTION[i] for i, arg in enumerate(args)]
 
@@ -73,21 +143,10 @@ def wrapped_predict(*args):
     </div>
     """
 
-    # Create a Plotly gauge for visual appeal
-    gauge = go.Figure(
-        go.Indicator(
-            mode="gauge+number",
-            value=prob * 100,
-            title={"text": "Fraud Probability (%)"},
-            gauge={
-                "axis": {"range": [0, 100]},
-                "bar": {"color": "red" if prob > 0.5 else "green"},
-                "steps": [{"range": [0, 50], "color": "lightgreen"}, {"range": [50, 100], "color": "pink"}],
-            },
-        )
-    )
+    # Create a Matplotlib gauge
+    gauge_fig = create_matplotlib_gauge(prob, title="Fraud Probability (%)")
 
-    return result, bar_html, gauge
+    return result, bar_html, gauge_fig
 
 
 def fill_example():
@@ -149,44 +208,34 @@ def descriptive_analysis(csv_file):
 def generate_batch_analysis_viz(predictions_df):
     """
     Generates a gauge for the average fraud probability and a histogram
-    for the probability distribution across the predicted dataset.
-    Both figures are set to the same height (350px).
+    for the probability distribution across the predicted dataset using Matplotlib.
     """
     if predictions_df.empty or "Fraud Probability" not in predictions_df.columns:
-        return "No prediction data available for visualization.", go.Figure(), go.Figure()
+        return "No prediction data available for visualization.", Figure(), Figure()
 
     probabilities = predictions_df["Fraud Probability"]
-    avg_prob = probabilities.mean() * 100
+    avg_prob = probabilities.mean()
 
-    # 1. Average Probability Gauge Chart (Plotly)
-    gauge_fig = go.Figure(
-        go.Indicator(
-            mode="gauge+number",
-            value=avg_prob,
-            title={"text": "Average Fraud Probability (%)"},
-            gauge={
-                "axis": {"range": [0, 100]},
-                "bar": {"color": "red" if avg_prob > 5 else "green"},
-                "steps": [{"range": [0, 5], "color": "lightgreen"}, {"range": [5, 100], "color": "pink"}],
-                # Note: Setting a low threshold (5%) for "Fraud" in batch context
-            },
-        )
-    )
-    # Set explicit height for equal size
-    gauge_fig.update_layout(height=350, margin=dict(t=50, b=0, l=0, r=0))
+    # 1. Average Probability Gauge Chart (Matplotlib)
+    # The Matplotlib gauge creation is now its own function for reusability
+    gauge_fig = create_matplotlib_gauge(avg_prob, title="Average Fraud Probability (%)")
 
-    # 2. Probability Distribution Histogram (Plotly Express)
-    hist_fig = px.histogram(
+    # 2. Probability Distribution Histogram (Matplotlib)
+    plt.close("all")  # Close previous figures
+    hist_fig, ax = plt.subplots(figsize=(7, 4))  # Adjusted size for similar proportion
+
+    # Use Matplotlib's hist function
+    ax.hist(
         probabilities,
-        x="Fraud Probability",
-        nbins=20,
-        title="Distribution of Fraud Probabilities",
-        color_discrete_sequence=["#4B8BBE"],
+        bins=20,
+        color="#4B8BBE",  # Use the Plotly Express default blue for consistency
+        edgecolor="black",  # Add edge color for better bin separation
     )
-    # Set explicit height for equal size
-    hist_fig.update_layout(
-        xaxis_title="Fraud Probability (0.0 to 1.0)", yaxis_title="Count of Transactions", height=350
-    )
+
+    ax.set_title("Distribution of Fraud Probabilities")
+    ax.set_xlabel("Fraud Probability (0.0 to 1.0)")
+    ax.set_ylabel("Count of Transactions")
+    plt.tight_layout()  # Adjust layout to prevent labels from overlapping
 
     return f"Analysis complete for {len(predictions_df)} predictions.", gauge_fig, hist_fig
 
@@ -222,6 +271,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as fraud_app:
     reset_btn = gr.Button("Reset Inputs")
     result = gr.Textbox(label="Prediction Result")
     prob_bar = gr.HTML(label="Fraud Probability")
+    # Change gr.Plot to accept Matplotlib figure
     prob_chart = gr.Plot(label="Fraud Probability Gauge")
     inputs = sliders_1 + sliders_2 + [Amount]
     predict_btn.click(fn=wrapped_predict, inputs=inputs, outputs=[result, prob_bar, prob_chart])
@@ -270,6 +320,7 @@ with gr.Blocks(css="body {background: #f2f7ff;}") as fraud_app:
 
         # Row for equal height charts
         with gr.Row():
+            # Change gr.Plot to accept Matplotlib figures
             avg_prob_gauge = gr.Plot(label="Average Fraud Probability Gauge")
             prob_histogram = gr.Plot(label="Probability Distribution Histogram")
 
