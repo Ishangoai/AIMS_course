@@ -1,0 +1,257 @@
+import os
+import tempfile
+import zipfile
+
+import gradio as gr
+from gradioapp.utils.image_assignment_utils import transform_image
+from PIL import Image
+
+
+# ==============================
+# Functions for Single Image
+# ==============================
+def transform_single_image(image, grayscale_or_not, brightness, contrast_factor, degree, threshold, remove_bg):
+    """Apply transformations to a single image."""
+    if image is None:
+        return None
+    return transform_image(image, grayscale_or_not, brightness, contrast_factor, degree, threshold, remove_bg)
+
+
+def download_single_image(image):
+    """Save single image to temporary file for download."""
+    if image is None:
+        gr.Warning("No image to download!")
+        return None
+
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+    if not isinstance(image, Image.Image):
+        image = Image.fromarray(image)
+    image.save(temp_file.name)
+    temp_file.close()
+    return temp_file.name
+
+
+def reset_single_controls():
+    """Reset single image controls."""
+    return "No Grayscale", 1.0, 1.0, 0, False, 200
+
+
+# ==============================
+# Functions for Batch Processing
+# ==============================
+def transform_folder(files, grayscale_or_not, brightness, contrast_factor, degree, threshold, remove_bg):
+    """Transform all images in uploaded folder and return a ZIP file."""
+    if not files:
+        return "No files uploaded", None
+
+    temp_dir = tempfile.mkdtemp()
+    output_dir = os.path.join(temp_dir, "transformed_images")
+    os.makedirs(output_dir, exist_ok=True)
+
+    processed_count = 0
+    failed_count = 0
+    failed_files = []
+
+    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
+
+    try:
+        for file_obj in files:
+            file_path = file_obj.name
+            file_name = os.path.basename(file_path)
+            file_ext = os.path.splitext(file_name)[1].lower()
+
+            if file_ext not in image_extensions:
+                continue
+
+            try:
+                image = Image.open(file_path)
+                transformed_image = transform_image(
+                    image, grayscale_or_not, brightness, contrast_factor,
+                    degree, threshold, remove_bg
+                )
+
+                output_path = os.path.join(output_dir, file_name)
+
+                if file_ext in ['.jpg', '.jpeg'] and transformed_image.mode == 'RGBA':
+                    rgb_image = Image.new('RGB', transformed_image.size, (255, 255, 255))
+                    rgb_image.paste(transformed_image, mask=transformed_image.split()[3])
+                    rgb_image.save(output_path, quality=95)
+                else:
+                    transformed_image.save(output_path)
+
+                processed_count += 1
+
+            except Exception as e:
+                failed_count += 1
+                failed_files.append(f"{file_name}: {str(e)}")
+                continue
+
+        if processed_count == 0:
+            return "No images could be processed", None
+
+        zip_path = os.path.join(temp_dir, "transformed_images.zip")
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files_in_dir in os.walk(output_dir):
+                for file in files_in_dir:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, output_dir)
+                    zipf.write(file_path, arcname)
+
+        status_msg = f"Successfully processed {processed_count} images!"
+        if failed_count > 0:
+            status_msg += f"\n{failed_count} images failed:"
+            for failed in failed_files[:5]:
+                status_msg += f"\n  - {failed}"
+            if len(failed_files) > 5:
+                status_msg += f"\n  ... and {len(failed_files) - 5} more"
+
+        return status_msg, zip_path
+
+    except Exception as e:
+        return f"Error: {str(e)}", None
+
+
+def reset_batch_controls():
+    """Reset batch processing controls."""
+    return "No Grayscale", 1.0, 1.0, 0, False, 200
+
+
+# ==============================
+# CSS
+# ==============================
+css = """
+.shadow-box {
+    border: 2px solid #ddd;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    padding: 20px;
+    border-radius: 8px;
+    background-color: white;
+}
+"""
+
+# ==============================
+# Gradio Interface
+# ==============================
+with gr.Blocks(css=css) as app:
+    gr.HTML("<hr>")
+    gr.Markdown('<center><h1>Image Transformer</h1></center>')
+    gr.HTML("<hr>")
+
+    # ==============================
+    # TAB 1: Single Image Processing
+    # ==============================
+    with gr.Tab("Single Image"):
+        gr.Markdown("### Transform a single image")
+
+        with gr.Row():
+            with gr.Column(scale=1, elem_classes="shadow-box"):
+                single_image = gr.Image(label="Input Image", type="pil")
+
+                single_grayscale = gr.Radio(
+                    choices=["Grayscale", "No Grayscale"],
+                    value="No Grayscale",
+                    label="Grayscale",
+                )
+                single_brightness = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Brightness")
+                single_contrast = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Contrast")
+                single_degree = gr.Slider(-180, 180, value=0, step=1, label="Rotation")
+                single_remove_bg = gr.Checkbox(label="Remove White Background", value=False)
+                single_threshold = gr.Slider(100, 255, value=200, step=5, label="Threshold")
+
+            with gr.Column(scale=1, elem_classes="shadow-box"):
+                single_output = gr.Image(label="Result")
+
+                with gr.Row():
+                    single_reset_btn = gr.Button("Reset", scale=1)
+                    single_download_btn = gr.Button("Download", scale=1)
+
+                single_download_file = gr.File(label="Download image here")
+
+        # Single image controls
+        single_controls = [
+            single_image, single_grayscale, single_brightness,
+            single_contrast, single_degree, single_threshold, single_remove_bg
+        ]
+
+        for ctrl in single_controls:
+            ctrl.change(transform_single_image, inputs=single_controls, outputs=single_output)
+
+        single_reset_btn.click(
+            fn=reset_single_controls,
+            outputs=[single_grayscale, single_brightness, single_contrast,
+                    single_degree, single_remove_bg, single_threshold]
+        )
+
+        single_download_btn.click(
+            fn=download_single_image,
+            inputs=[single_output],
+            outputs=[single_download_file]
+        )
+
+    # ==============================
+    # TAB 2: Batch Processing
+    # ==============================
+    with gr.Tab("Batch Processing"):
+        gr.Markdown("### Transform multiple images at once")
+
+        with gr.Row():
+            with gr.Column(scale=1, elem_classes="shadow-box"):
+                gr.Markdown("#### Upload & Settings")
+
+                batch_files = gr.File(
+                    file_count="multiple",
+                    label="Select multiple images",
+                    file_types=["image"]
+                )
+
+                batch_grayscale = gr.Radio(
+                    ["Grayscale", "No Grayscale"],
+                    value="No Grayscale",
+                    label="Grayscale"
+                )
+                batch_brightness = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Brightness")
+                batch_contrast = gr.Slider(0.5, 1.5, value=1.0, step=0.1, label="Contrast")
+                batch_degree = gr.Slider(-180, 180, value=0, step=1, label="Rotation")
+                batch_remove_bg = gr.Checkbox(label="Remove White Background", value=False)
+                batch_threshold = gr.Slider(100, 255, value=200, step=5, label="Threshold")
+
+                with gr.Row():
+                    batch_reset_btn = gr.Button("Reset", scale=1)
+                    batch_submit_btn = gr.Button("Transform All Images", scale=2, variant="primary")
+
+            with gr.Column(scale=1, elem_classes="shadow-box"):
+                gr.Markdown("#### Results")
+
+                batch_output_text = gr.Textbox(
+                    label="Status",
+                    lines=10,
+                    interactive=False
+                )
+
+                batch_download_zip = gr.File(
+                    label="Download ZIP file with all transformed images"
+                )
+
+                gr.Markdown("""
+                **Instructions:**
+                1. Upload multiple images (JPG, PNG, BMP, GIF, etc.)
+                2. Configure transformation settings
+                3. Click "Transform All Images"
+                4. Download the ZIP file with all transformed images
+                """)
+
+        # Batch processing controls
+        batch_reset_btn.click(
+            fn=reset_batch_controls,
+            outputs=[batch_grayscale, batch_brightness, batch_contrast,
+                    batch_degree, batch_remove_bg, batch_threshold]
+        )
+
+        batch_submit_btn.click(
+            fn=transform_folder,
+            inputs=[
+                batch_files, batch_grayscale, batch_brightness,
+                batch_contrast, batch_degree, batch_threshold, batch_remove_bg
+            ],
+            outputs=[batch_output_text, batch_download_zip]
+        )

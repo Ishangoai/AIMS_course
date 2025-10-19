@@ -8,6 +8,7 @@ from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
+from gradioapp.fraud import app as fraud_app
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.image_app import app as image_app
 
@@ -19,6 +20,7 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
+    4. [**Fraud Detection App**](/fraud_app/)
     -----
     """),
     version="1.0.0",
@@ -130,3 +132,4 @@ gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, image_app, path="/image_app")
+gr.mount_gradio_app(app, fraud_app, path="/fraud_app")

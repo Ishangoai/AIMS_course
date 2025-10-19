@@ -27,6 +27,14 @@ mlflow_resource = mlflow_tracking.configured(
     }
 )
 
+mlflow_fraud_resource = mlflow_tracking.configured(
+    {
+        # Point MLflow to use the local SQLite database
+        "mlflow_tracking_uri": "sqlite:///ml_fraud_detection.db",
+        "experiment_name": "ml_fraud_detection",
+    }
+)
+
 
 # Raw MlflowClient for advanced API access (transition_model_version_stage,....)
 @dg.resource
@@ -45,59 +53,35 @@ class CDSAPIResource(dg.ConfigurableResource):
 
 # configuration for the raw_xarray_dataset asset
 class Era5RequestConfig(dg.Config):
-    product_type: str = pyd.Field(
-        default="reanalysis",
-        description="The product type to request"
-    )
-    variable: str = pyd.Field(
-        default="2m_temperature",
-        description="The meteorological variable to retrieve"
-    )
-    year: str = pyd.Field(
-        default="2023",
-        description="The year for which to retrieve data"
-    )
-    month: str = pyd.Field(
-        default="01",
-        description="The month for which to retrieve data"
-    )
-    day: list[str] = pyd.Field(
-        default=[f"{i:02d}" for i in range(1, 16)],
-        description="A list of days to retrieve"
-    )
+    product_type: str = pyd.Field(default="reanalysis", description="The product type to request")
+    variable: str = pyd.Field(default="2m_temperature", description="The meteorological variable to retrieve")
+    year: str = pyd.Field(default="2023", description="The year for which to retrieve data")
+    month: str = pyd.Field(default="01", description="The month for which to retrieve data")
+    day: list[str] = pyd.Field(default=[f"{i:02d}" for i in range(1, 16)], description="A list of days to retrieve")
     time: list[str] = pyd.Field(
-        default=["00:00", "06:00", "12:00", "18:00"],
-        description="Times of day to retrieve data"
+        default=["00:00", "06:00", "12:00", "18:00"], description="Times of day to retrieve data"
     )
-    area: list[float] = pyd.Field(
-        default=[50.0, -5.0, 45.0, 5.0],
-        description="Area: [North, West, South, East]"
-    )
-    format: str = pyd.Field(
-        default="netcdf",
-        description="Format to download (e.g., netcdf)"
-    )
+    area: list[float] = pyd.Field(default=[50.0, -5.0, 45.0, 5.0], description="Area: [North, West, South, East]")
+    format: str = pyd.Field(default="netcdf", description="Format to download (e.g., netcdf)")
 
 
 class TuningConfig(dg.Config):
     """Configuration for model tuning and optimization"""
+
     max_hyperopt_evals: int = pyd.Field(
-        default=20,
-        description="Maximum number of evaluations allowed by Hyperopt during model tuning."
+        default=20, description="Maximum number of evaluations allowed by Hyperopt during model tuning."
     )
 
 
 class PromotionConfig(dg.Config):
     """Configuration for model promotion thresholds"""
+
     staging_mse_threshold: float = pyd.Field(
-        default=1.5,
-        description="Maximum acceptable MSE for promoting a model to Staging."
+        default=1.5, description="Maximum acceptable MSE for promoting a model to Staging."
     )
     staging_mae_threshold: float = pyd.Field(
-        default=1.5,
-        description="Maximum acceptable MAE for promoting a model to Staging."
+        default=1.5, description="Maximum acceptable MAE for promoting a model to Staging."
     )
     staging_r2_threshold: float = pyd.Field(
-        default=0.8,
-        description="Minimum acceptable R2 for promoting a model to Staging."
+        default=0.8, description="Minimum acceptable R2 for promoting a model to Staging."
     )
