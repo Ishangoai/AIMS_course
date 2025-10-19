@@ -273,26 +273,26 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
                                 gr.Markdown("**🕐 Core Features**")
                                 # Time, V1-V10
                                 time.info = "Transaction time"
-                                gr.Group(components=[time] + v_col1)  # Group them for layout
+                                gr.Group(components=[time] + v_col1)  # Group them for layout  # type: ignore
 
                             # Input Column 2
                             with gr.Column():
                                 gr.Markdown("**🔢 Additional Features**")
                                 # V11-V20
-                                gr.Group(components=v_col2)
+                                gr.Group(components=v_col2)  # type: ignore
 
                         with gr.Row():
                             # Input Column 3
                             with gr.Column():
                                 gr.Markdown("**📈 Extended Features**")
                                 # V21-V24
-                                gr.Group(components=v_col3)
+                                gr.Group(components=v_col3)  # type: ignore
 
                             # Input Column 4
                             with gr.Column():
                                 gr.Markdown("**🎯 Final Features**")
                                 # V25-V28, Amount
-                                gr.Group(components=v_col4 + [amount])
+                                gr.Group(components=v_col4 + [amount])  # type: ignore
                                 amount.info = "Transaction amount"
 
                 # Results Column
