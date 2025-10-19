@@ -225,11 +225,12 @@ def tune_hyperparameters(
     description="Trains the final RandomForest model using the best hyperparameters and logs metrics to MLflow.",
     compute_kind="python",
     required_resource_keys={"fraud_mlflow"},
+    deps=["split_dataset", "tune_hyperparameters"]
 )
 def train_model(
     context: dg.AssetExecutionContext,
-    tune_hyperparameters: Tuple[RandomForestClassifier, Dict[str, Any]],
-    split_dataset: Dict[str, Any],
+        tune_hyperparameters: Tuple[RandomForestClassifier, Dict[str, Any]],
+        split_dataset: Dict[str, Any],
 ) -> dg.MaterializeResult:
     """Train final model with best hyperparameters and log to MLflow."""
 

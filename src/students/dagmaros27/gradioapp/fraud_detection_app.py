@@ -1,8 +1,9 @@
-import gradio as gr
+import json
 import os
+
+import gradio as gr
 import joblib
 import numpy as np
-import json
 
 # ---------------------------------------------------------------------------
 # Load model
@@ -18,6 +19,8 @@ except Exception as e:
 # ---------------------------------------------------------------------------
 # Prediction function
 # ---------------------------------------------------------------------------
+
+
 def predict_fraud(features: list):
     """
     Predict fraud risk using the loaded model.
@@ -26,37 +29,40 @@ def predict_fraud(features: list):
     """
     if fraud_model is None:
         return "Error: Model not loaded", 0, "error"
-    
+
     try:
         features_np = np.array(features).reshape(1, -1)
         prediction = fraud_model.predict(features_np)[0]
         fraud_prob = fraud_model.predict_proba(features_np)[0][1]
-        
+
         if prediction == 1:
-            return f"⚠️ FRAUDULENT", fraud_prob, "high"
+            return "⚠️ FRAUDULENT", fraud_prob, "high"
         else:
-            return f"✅ LEGITIMATE", fraud_prob, "low"
+            return "✅ LEGITIMATE", fraud_prob, "low"
     except Exception as e:
         return f"Error: {str(e)}", 0, "error"
 
 # ---------------------------------------------------------------------------
 # Wrapper functions
 # ---------------------------------------------------------------------------
+
+
 def wrapped_predict_direct(*args):
     features = list(args)
     text, prob, risk = predict_fraud(features)
     return text, prob, risk
 
+
 def predict_from_json(json_input):
     try:
         data = json.loads(json_input)
-        
+
         if not isinstance(data, dict):
             return "Invalid JSON format. Expected object.", 0, "error"
-        
+
         required_keys = ["Time"] + [f"V{i}" for i in range(1, 29)] + ["Amount"]
         features = []
-        
+
         for key in required_keys:
             if key not in data:
                 return f"Missing required field: {key}", 0, "error"
@@ -64,11 +70,12 @@ def predict_from_json(json_input):
                 features.append(float(data[key]))
             except (ValueError, TypeError):
                 return f"Invalid value for {key}. Must be numeric.", 0, "error"
-        
+
         text, prob, risk = predict_fraud(features)
         return text, prob, risk
     except json.JSONDecodeError:
         return "Invalid JSON format. Please check your input.", 0, "error"
+
 
 def get_risk_color(risk_level):
     if risk_level == "high":
@@ -77,6 +84,7 @@ def get_risk_color(risk_level):
         return "#44ff44"
     else:
         return "#cccccc"
+
 
 # Sample JSON
 SAMPLE_JSON = json.dumps({
@@ -123,16 +131,16 @@ with gr.Blocks(
     ),
     css="""
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    .fraud-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+    .fraud-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     padding: 30px; color: white; border-radius: 15px; text-align: center; }
     .fraud-header h1 { margin: 0; font-size: 2.5em; }
     .fraud-header p { margin: 10px 0 0 0; font-size: 1.1em; opacity: 0.9; }
     .result-box { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
                   padding: 25px; border-radius: 15px; border-left: 5px solid #667eea; }
-    .prob-meter { width: 100%; height: 60px; background: #f0f0f0; 
-                  border-radius: 10px; position: relative; overflow: hidden; }
+    .prob-meter { width: 100%; height: 60px; background: #f0f0f0;
+                  border-radius: 10px; position: relative; overflow: hidden; color:black; }
     .prob-fill { height: 100%; background: linear-gradient(90deg, #44ff44 0%, #ffaa00 50%, #ff4444 100%);
-                 display: flex; align-items: center; justify-content: center; 
+                 display: flex; align-items: center; justify-content: center;
                  color: white; font-weight: bold; font-size: 18px; }
     """
 ) as fraud_app:
@@ -146,7 +154,7 @@ with gr.Blocks(
             with gr.Row():
                 with gr.Column(scale=3):
                     gr.Markdown("### Transaction Features")
-                    
+
                     with gr.Row():
                         time = gr.Number(
                             label="⏱️ Time (seconds)",
@@ -158,7 +166,7 @@ with gr.Blocks(
                             value=100,
                             scale=1
                         )
-                    
+
                     # V features in grid
                     v_inputs = []
                     for i in range(1, 29):
@@ -171,13 +179,13 @@ with gr.Blocks(
                                 scale=1
                             )
                             v_inputs.append(v_input)
-                    
+
                     predict_btn_direct = gr.Button(
                         "🔍 Analyze Transaction",
                         size="lg",
                         variant="primary"
                     )
-                
+
                 with gr.Column(scale=2):
                     gr.Markdown("### 📊 Analysis Result")
                     prediction_text = gr.Textbox(
@@ -185,29 +193,29 @@ with gr.Blocks(
                         interactive=False,
                         scale=1
                     )
-                    
+
                     prob_value = gr.Number(
                         label="Risk Probability",
                         interactive=False,
                         scale=1
                     )
-                    
+
                     prob_display = gr.HTML()
-            
+
             def update_direct(*args):
-                text, prob, risk = wrapped_predict_direct(*args)
+                text, prob, _risk = wrapped_predict_direct(*args)
                 prob_html = f"""
                 <div style="background: #f0f0f0; border-radius: 10px; overflow: hidden; height: 50px;">
-                    <div style="width: {prob*100}%; height: 100%; 
+                    <div style="width: {prob * 100}%; height: 100%;
                                background: linear-gradient(90deg, #44ff44 0%, #ffaa00 50%, #ff4444 100%);
                                display: flex; align-items: center; justify-content: center;
                                color: white; font-weight: bold; font-size: 16px;">
-                        {prob*100:.1f}%
+                        {prob * 100:.1f}%
                     </div>
                 </div>
                 """
                 return text, prob, prob_html
-            
+
             predict_btn_direct.click(
                 fn=update_direct,
                 inputs=[time] + v_inputs + [amount],
@@ -219,56 +227,57 @@ with gr.Blocks(
             with gr.Row():
                 with gr.Column(scale=3):
                     json_input = gr.Textbox(
-                        label="Paste JSON Transaction Data",
+                        label="Paste your JSON transaction data here",
                         lines=20,
                         placeholder="Paste your JSON here...",
                         value=SAMPLE_JSON
                     )
-                    
+
                     predict_btn_json = gr.Button(
                         "🔍 Analyze Transaction",
                         size="lg",
                         variant="primary"
                     )
-                
+
                 with gr.Column(scale=2):
                     gr.Markdown("### 📋 JSON Format")
                     gr.Markdown(f"""
                     Expected structure with all 30 features:
+
                     ```json
                     {SAMPLE_JSON}
                     ```
                     """)
-                    
+
                     gr.Markdown("### 📊 Analysis Result")
                     prediction_text_json = gr.Textbox(
                         label="Status",
                         interactive=False,
                         scale=1
                     )
-                    
+
                     prob_value_json = gr.Number(
                         label="Risk Probability",
                         interactive=False,
                         scale=1
                     )
-                    
+
                     prob_display_json = gr.HTML()
-            
+
             def update_json(json_str):
-                text, prob, risk = predict_from_json(json_str)
+                text, prob, _risk = predict_from_json(json_str)
                 prob_html = f"""
                 <div style="background: #f0f0f0; border-radius: 10px; overflow: hidden; height: 50px;">
-                    <div style="width: {prob*100}%; height: 100%; 
+                    <div style="width: {prob * 100}%; height: 100%;
                                background: linear-gradient(90deg, #44ff44 0%, #ffaa00 50%, #ff4444 100%);
                                display: flex; align-items: center; justify-content: center;
                                color: white; font-weight: bold; font-size: 16px;">
-                        {prob*100:.1f}%
+                        {prob * 100:.1f}%
                     </div>
                 </div>
                 """
                 return text, prob, prob_html
-            
+
             predict_btn_json.click(
                 fn=update_json,
                 inputs=json_input,
@@ -282,8 +291,5 @@ with gr.Blocks(
     The probability meter shows the risk level: **Green (Low) → Yellow (Medium) → Red (High)**
     """)
 
-# ---------------------------------------------------------------------------
-# Launch app
-# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     fraud_app.launch(server_name="0.0.0.0", server_port=7861)
