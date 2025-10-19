@@ -241,13 +241,7 @@ with gr.Blocks(
 
                 with gr.Column(scale=2):
                     gr.Markdown("### 📋 JSON Format")
-                    gr.Markdown(f"""
-                    Expected structure with all 30 features:
-
-                    ```json
-                    {SAMPLE_JSON}
-                    ```
-                    """)
+                    gr.Code(SAMPLE_JSON, language="json")
 
                     gr.Markdown("### 📊 Analysis Result")
                     prediction_text_json = gr.Textbox(
