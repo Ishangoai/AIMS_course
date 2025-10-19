@@ -252,7 +252,7 @@ def test_rf_model(
 
     eval_metrics = {"test_accuracy": accuracy, "test_precision": precision,
                     "test_recall": recall, "test_f1_score": f1}
-    mlflow_client.log_metrics(eval_metrics)
+    # mlflow_client.log_metrics(eval_metrics)
     context.log.info(f"Logged final evaluation metrics to MLflow: {eval_metrics}")
 
     registered_model_name = "tuned-fraud-detector"
@@ -314,6 +314,10 @@ def test_rf_model(
             )
 
         context.log.info(f"ROC curve logged to MLflow: {roc_path}")
+
+        mlflow_client.log_metrics(eval_metrics)
+        mlflow_client.log_metric("test_AUC", roc_auc)
+        context.log.info(f"Logged final evaluation metrics to MLflow: {eval_metrics}")
 
         log_model_info = ms.log_model(
             sk_model=model,

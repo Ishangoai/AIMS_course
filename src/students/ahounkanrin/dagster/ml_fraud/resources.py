@@ -1,6 +1,7 @@
 import dagster as dg
 import pydantic as pyd
 
+
 class PromotionConfig(dg.Config):
     """Configuration for model promotion thresholds"""
     staging_accuracy_threshold: float = pyd.Field(
