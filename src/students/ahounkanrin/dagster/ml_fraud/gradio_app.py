@@ -30,7 +30,11 @@ def predict_fraud(*input_features):
                                      "V11", "V12", "V13", "V14", "V15", "V16", "V17",
                                      "V18", "V19", "V20", "V21", "V22", "V23", "V24",
                                      "V25", "V26", "V27", "V28", "Amount"]
-    input_df = pd.DataFrame([input_features], columns=feature_names)
+    # input_df = pd.DataFrame([input_features], columns=feature_names)
+    input_df = pd.DataFrame()
+    for i in range(len(feature_names)):
+        input_df[feature_names[i]] = input_features[i]
+
     prediction = model.predict(input_df)
     predicted_value = int(prediction[0])
     if predicted_value == 1:
