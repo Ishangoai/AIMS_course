@@ -169,16 +169,15 @@ with gr.Blocks(
 
                     # V features in grid
                     v_inputs = []
-                    for i in range(1, 29):
-                        if i % 4 == 1:
-                            row = gr.Row()
-                        with row:
-                            v_input = gr.Number(
-                                label=f"V{i}",
-                                value=0,
-                                scale=1
-                            )
-                            v_inputs.append(v_input)
+                    for i in range(1, 29, 4):
+                        with gr.Row():
+                            for j in range(i, min(i + 4, 29)):
+                                v_input = gr.Number(
+                                    label=f"V{j}",
+                                    value=0,
+                                    scale=1
+                                )
+                                v_inputs.append(v_input)
 
                     predict_btn_direct = gr.Button(
                         "🔍 Analyze Transaction",
