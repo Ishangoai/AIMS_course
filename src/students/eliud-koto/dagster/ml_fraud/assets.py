@@ -1,15 +1,16 @@
 import os
 import pickle
 import time
+from typing import Dict, Any
 
 import dagster as dg
 import dagster_slack
 import joblib
 import matplotlib.pyplot as plt
+import mlflow
+import mlflow.sklearn as mlflow_sklearn
 
 # Import mlflow for type checking/attribute access resolution
-import mlflow
-import mlflow.sklearn
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -431,13 +432,20 @@ def fraud_test_model(
     mlflow_client.log_metric("test_recall", recall)
     mlflow_client.log_metric("test_f1_score", f1)
 
-    # Log per-class metrics
-    # FIX 5: Explicit type check (isinstance) to ensure 'metrics' is a dictionary,
-    # resolving the "Cannot access attribute 'items' for class 'str'" error.
+    # Log per-class and summary metrics from the classification report
+    # This section incorporates the necessary type checks to handle the mixed structure 
+    # (dicts for classes, floats for summaries) of the report.
     for label, metrics in report.items():
         if isinstance(metrics, dict):
+            # Handle per-class metrics (e.g., '0', '1', 'macro avg')
             for metric_name, value in metrics.items():
-                mlflow_client.log_metric(f"test_{label}_{metric_name}", value)
+                # Ensure the value is numeric before logging to MLflow
+                if isinstance(value, (int, float)):
+                    mlflow_client.log_metric(f"test_{label}_{metric_name}", value)
+        
+        # Handle top-level summary metrics (e.g., 'accuracy')
+        elif isinstance(metrics, (int, float)):
+            mlflow_client.log_metric(f"test_{label}", metrics)
 
     # Post comprehensive results to Slack
     slack = context.resources.slack_messenger
@@ -633,7 +641,8 @@ def save_tuned_model(
 
     # Log model to MLflow properly
     # FIX 6: Using the globally imported mlflow.sklearn resolves the private import error.
-    mlflow.sklearn.log_model(
+ 
+    mlflow_sklearn.log_model(
         sk_model=best_model,
         artifact_path="model",  # This is important!
         registered_model_name="fraud_detection_model"  # Register in Model Registry
