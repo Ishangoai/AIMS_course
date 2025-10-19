@@ -435,7 +435,7 @@ def fraud_test_model(
     # Log per-class and summary metrics from the classification report
     # This section incorporates the necessary type checks to handle the mixed structure 
     # (dicts for classes, floats for summaries) of the report.
-    for label, metrics in report.items():
+    for label, metrics in report.items(): # type: ignore
         if isinstance(metrics, dict):
             # Handle per-class metrics (e.g., '0', '1', 'macro avg')
             for metric_name, value in metrics.items():
