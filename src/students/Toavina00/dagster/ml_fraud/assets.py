@@ -8,6 +8,8 @@ import dagster as dg
 import dagster_slack
 import matplotlib.pyplot as plt
 import mlflow
+from mlflow.entities.model_registry import ModelVersion
+from mlflow.models import infer_signature
 import mlflow.sklearn as ms
 import numpy as np
 import pandas as pd
@@ -64,6 +66,19 @@ def _dump_figure(fig: Figure) -> np.ndarray:
     buf.close()
 
     return image
+
+
+def _dump_model_version(model_version: ModelVersion):
+    """Dump model version into dict"""
+
+    model_version_info = {
+        "name": model_version.name,
+        "version": model_version.version,
+        "status": model_version.status,
+        "aliases": model_version.aliases,
+        "model_uri": f"models:/{model_version.name}/{model_version.version}",
+    }
+    return model_version_info
 
 
 @dg.asset(
@@ -252,8 +267,6 @@ def tuned_model(
     X_train = training_data.drop(columns="Class")
     y_train = training_data["Class"]
 
-    registered_model_name = "tuned-fraud-detector"
-
     model = RandomForestClassifier(**tuned_hyperparameters)
     metrics, model_version_info = {}, {}
 
@@ -280,26 +293,21 @@ def tuned_model(
         mlflow.log_image(image, "train_confusion_matrix.png")
 
         log_model_info = ms.log_model(
-            sk_model=tuned_model,
+            sk_model=model,
             artifact_path="tuned_fraud_detector",
-            input_example=X_train.iloc[: min(5, X_train.shape[0]), :],
+            signature=infer_signature(X_train, y_pred),
             registered_model_name=registered_model_name,
         )
         context.log.info(f"Model logged to MLflow Run ID: {run.info.run_id}")
         context.log.info(f"Logged model artifact URI: {log_model_info.model_uri}")
 
-        model_versions = mlflow.search_model_versions(filter_string=f"name='{registered_model_name}'")
-        matching_versions = [mv for mv in model_versions if mv.run_id == run.info.run_id]
+        model_versions = mlflow.search_model_versions(
+            filter_string=f"run_id='{run.info.run_id}' and name='{registered_model_name}'"
+        )
 
-        if matching_versions:
-            registered_model_version = matching_versions[0]
-            model_version_info = {
-                "name": registered_model_version.name,
-                "version": registered_model_version.version,
-                "status": registered_model_version.status,
-                "stage": registered_model_version.current_stage,
-                "model_uri": f"models:/{registered_model_version.name}/{registered_model_version.version}",
-            }
+        if model_versions:
+            registered_model_version = model_versions[0]
+            model_version_info = _dump_model_version(registered_model_version)
             context.log.info("Successfully retrieved registered model version info from registry.")
         else:
             context.log.error(
@@ -372,7 +380,7 @@ def model_evaluation(
         mlflow.log_image(image, "test_confusion_matrix.png")
 
     return dg.MaterializeResult(
-        value=metrics,
+        value={**tuned_model, "evaluation": metrics},
         metadata={
             "f1 score": f"{metrics['f1-score']:.2f}",
             "accuracy score": f"{metrics['accuracy']:.2f}",
@@ -401,7 +409,7 @@ def slack_eval_report(
         channel="aims_course_october2025",
         text=f"""\
 Classification Report
-{"\n".join(f"- {k}: {v}" for (k, v) in model_evaluation.items())}
+{"\n".join(f"- {k}: {v}" for (k, v) in model_evaluation["evaluation"].items())}
 
 Run by: {os.environ.get("GITHUB_USER", "default")}
 """,
@@ -417,7 +425,6 @@ Run by: {os.environ.get("GITHUB_USER", "default")}
 def model_promotion_staging(
     context: dg.AssetExecutionContext,
     config: FraudPromotionConfig,
-    tuned_model: dict,
     model_evaluation: dict,
 ) -> dg.MaterializeResult:
     context.log.info("Evaluating model for staging")
@@ -429,39 +436,47 @@ def model_promotion_staging(
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
 
-    if ("name" not in tuned_model) or ("version" not in tuned_model):
+    if ("name" not in model_evaluation) or ("version" not in model_evaluation):
         raise Exception("No model passed for promotion")
 
-    model_name = tuned_model["name"]
-    model_version = tuned_model["version"]
+    model_name = model_evaluation["name"]
+    model_version = model_evaluation["version"]
 
-    f1_score = model_evaluation.get("f1-score", 0.0)
-    acc_score = model_evaluation.get("accuracy", 0.0)
+    if "evaluation" not in model_evaluation:
+        raise Exception("No evaluation results")
+
+    f1_score = model_evaluation["evaluation"].get("f1-score", 0.0)
+    acc_score = model_evaluation["evaluation"].get("accuracy", 0.0)
 
     F1_THRESH = config.staging_f1_threshold
     ACC_THRESH = config.staging_acc_threshold
 
     if (f1_score > F1_THRESH) and (acc_score > ACC_THRESH):
         context.log.info(f"Model '{model_name}' (version {model_version}) meets criteria. Promoting to Staging")
-        mlflow_client.transition_model_version_stage(name=model_name, version=model_version, stage="Staging")
+        mlflow_client.set_registered_model_alias(name=model_name, version=model_version, alias="staging")
 
         mv = mlflow_client.get_model_version(model_name, model_version)
-        tuned_model["stage"] = mv.current_stage
+        model_version_info = _dump_model_version(mv)
 
         return dg.MaterializeResult(
-            value={"promote_status": "success", **tuned_model},
+            value={**model_evaluation, **model_version_info},
             metadata={
                 "promote_status": "succes",
-                **{k: v for (k, v) in tuned_model.items() if k not in ["tuned_model"]},
+                **model_version_info,
             },
         )
 
     context.log.info(f"Model '{model_name}' (version {model_version}) failed to meet criteria.")
+    mlflow_client.set_registered_model_alias(name=model_name, version=model_version, alias="failed")
+
+    mv = mlflow_client.get_model_version(model_name, model_version)
+    model_version_info = _dump_model_version(mv)
+
     return dg.MaterializeResult(
-        value={"promote_status": "failure", **tuned_model},
+        value={**model_evaluation, **model_version_info},
         metadata={
             "promote_status": "failure",
-            **{k: v for (k, v) in tuned_model.items() if k not in ["tuned_model"]},
+            **model_version_info,
         },
     )
 
@@ -474,6 +489,7 @@ def model_promotion_staging(
 )
 def model_promotion_production(
     context: dg.AssetExecutionContext,
+    test_data: pd.DataFrame,
     model_promotion_staging: dict,
 ) -> dg.MaterializeResult:
     context.log.info("Evaluating model for production")
@@ -485,63 +501,71 @@ def model_promotion_production(
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
 
-    if "promote_status" not in model_promotion_staging:
-        raise Exception("No staging result")
-
     if ("name" not in model_promotion_staging) or ("version" not in model_promotion_staging):
         raise Exception("No model passed for promotion")
 
     model_name = model_promotion_staging["name"]
     model_version = model_promotion_staging["version"]
 
-    if model_promotion_staging["promote_status"] == "failure":
-        return dg.MaterializeResult(
-            value={**model_promotion_staging},
-            metadata={
-                "error": "model did not pass staging",
-                **{k: v for (k, v) in model_promotion_staging.items() if k not in ["tuned_model"]},
-            },
-        )
-
-    # Promote only Staged model
     mv = mlflow_client.get_model_version(model_name, model_version)
-    if mv.current_stage != "Staging":
-        model_promotion_staging["stage"] = mv.current_stage
+    model_version_info = _dump_model_version(mv)
+    if ("staging" not in mv.aliases) or ("production" in mv.aliases):
         return dg.MaterializeResult(
-            value={**model_promotion_staging},
+            value={**model_version_info},
             metadata={
-                "error": "model did not pass staging",
-                **{k: v for (k, v) in model_promotion_staging.items() if k not in ["tuned_model"]},
+                "promote_status": "failure",
+                "error": "model is not in staging",
+                **model_version_info,
             },
         )
 
-    # Some promotion criteria
+    # Replace production if better
     promote = True
 
+    try:
+        old_prod = mlflow_client.get_model_version_by_alias(model_name, "production")
+
+        if "evaluation" not in model_promotion_staging:
+            promote = False
+            raise Exception("No evaluation of new version")
+
+        old_model = mlflow.pyfunc.load_model(f"models:/{old_prod.name}/{old_prod.version}")
+        X_test = test_data.drop(columns="Class")
+        y_test = test_data["Class"]
+        y_pred = old_model.predict(X_test)
+        f1_old = f1_score(y_test, y_pred)
+        f1_new = model_promotion_staging["evaluation"].get("f1-score", 0.0)
+        promote = (f1_new - f1_old) > 0.02
+
+    except Exception as e:
+        context.log.info(f"Exception {e}")
+
     if not promote:
+        context.log.info(f"Model '{model_name}' (version {model_version}) failed to meet criteria.")
+
+        mv = mlflow_client.get_model_version(model_name, model_version)
+        model_version_info = _dump_model_version(mv)
+
         return dg.MaterializeResult(
-            value={**model_promotion_staging, "promote_status": "failure"},
+            value={**model_version_info},
             metadata={
-                "error": "model did not pass promotion criteria",
-                **{k: v for (k, v) in model_promotion_staging.items() if k not in ["tuned_model"]},
                 "promote_status": "failure",
+                "error": "model did not pass promotion criteria",
+                **model_version_info,
             },
         )
 
-    for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
-        if mv.current_stage == "Production":
-            context.log.info(f"Archiving previous Production model '{mv.name}' (version {mv.version})")
-            mlflow_client.transition_model_version_stage(name=mv.name, version=mv.version, stage="Archived")
-
     context.log.info(f"Model '{model_name}' (version {model_version}) meets criteria. Promoting to Production")
-    mlflow_client.transition_model_version_stage(name=model_name, version=model_version, stage="Production")
+    mlflow_client.delete_registered_model_alias(model_name, "staging")
+    mlflow_client.set_registered_model_alias(name=model_name, version=model_version, alias="production")
 
     mv = mlflow_client.get_model_version(model_name, model_version)
-    model_promotion_staging["stage"] = mv.current_stage
+    model_version_info = _dump_model_version(mv)
 
     return dg.MaterializeResult(
-        value={**model_promotion_staging},
+        value={**model_version_info},
         metadata={
-            **{k: v for (k, v) in model_promotion_staging.items() if k not in ["tuned_model"]},
+            "promote_status": "success",
+            **model_version_info,
         },
     )
