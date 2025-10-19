@@ -1,67 +1,59 @@
 """
 Utility functions for fraud detection Gradio app.
 Handles model loading, predictions, and visualizations.
+Updated to load from .pkl file with full Pyright type safety.
 """
 
 import os
+import pickle
 import tempfile
-from typing import Any, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
-import mlflow
-import mlflow.pyfunc
 import numpy as np
 import pandas as pd
+from matplotlib.figure import Figure
 
 
 class FraudDetectionModel:
     """Wrapper for fraud detection model with robust predict_proba support."""
 
-    def __init__(self, model_name: str = "fraud_detection_rf",
-                 model_stage: str = "latest",
-                 db_path: str = "mlflow_artifacts/mlflow_fraud_tracking.db"):
+    def __init__(self, model_path: str = "model.pkl") -> None:
         """
-        Initialize the fraud detection model.
+        Initialize the fraud detection model from a pickle file.
 
         Args:
-            model_name: Name of the registered model in MLflow
-            model_stage: Model stage/version to load
-            db_path: Path to MLflow tracking database
+            model_path: Path to the pickled model file
         """
-        self.model_name = model_name
-        self.model_stage = model_stage
-        self.db_path = os.path.abspath(db_path)
+        self.model_path = model_path
+        self.model: Any = None
 
-        # Set MLflow tracking URI
-        mlflow.set_tracking_uri(f"sqlite:///{self.db_path}")
+        # Load the pickled model
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model file not found at: {model_path}")
 
-        # Load model
-        model_uri = f"models:/{model_name}/{model_stage}"
-        self.model = mlflow.pyfunc.load_model(model_uri)
-
-        # Try to get the underlying sklearn model for predict_proba
-        self._sklearn_model = None
-        if hasattr(self.model, '_model_impl'):
-            self._sklearn_model = getattr(self.model._model_impl, 'sklearn_model', None)
+        print(f"Loading model from {model_path}...")
+        with open(model_path, 'rb') as f:
+            self.model = pickle.load(f)
+        print(f"Model loaded successfully: {type(self.model).__name__}")
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """Predict class labels."""
-        return self.model.predict(X)
+        predictions: np.ndarray = self.model.predict(X)
+        return predictions
 
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """
         Predict class probabilities.
         Falls back to binary predictions if predict_proba not available.
         """
-        # Try sklearn model first
-        if self._sklearn_model is not None and hasattr(self._sklearn_model, 'predict_proba'):
-            return self._sklearn_model.predict_proba(X)
-
-        # Try PyFuncModel directly
-        if hasattr(self.model, 'predict_proba'):
-            return self.model.predict_proba(X)  # pyright: ignore
+        # Check if model has predict_proba method
+        if hasattr(self.model, 'predict_proba') and callable(getattr(self.model, 'predict_proba')):
+            probabilities: np.ndarray = self.model.predict_proba(X)
+            return probabilities
 
         # Fallback: use predict and create pseudo-probabilities
+        print("Warning: Model doesn't have predict_proba, using fallback")
         predictions = self.predict(X)
         n_samples = len(predictions)
         proba = np.zeros((n_samples, 2))
@@ -75,7 +67,7 @@ class FraudDetectionModel:
         return proba
 
 
-def load_default_dataset(data_url: str) -> Tuple[pd.DataFrame, dict]:
+def load_default_dataset(data_url: str) -> Tuple[pd.DataFrame, Dict[str, Tuple[float, float]]]:
     """
     Load default dataset and compute feature ranges.
 
@@ -88,14 +80,12 @@ def load_default_dataset(data_url: str) -> Tuple[pd.DataFrame, dict]:
     df = pd.read_csv(data_url)
 
     # Define feature names (exclude 'Class' label)
-    # This still loads all features since default dataset has all 30,
-    # but downstream we use only the selected features.
     feature_names = ['Time', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10',
                      'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20',
                      'V21', 'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28', 'Amount']
 
-    # Compute ranges for sliders for all features in the dataset (if needed)
-    feature_ranges = {
+    # Compute ranges for sliders for all features in the dataset
+    feature_ranges: Dict[str, Tuple[float, float]] = {
         col: (float(df[col].min()), float(df[col].max()))
         for col in feature_names if col in df.columns
     }
@@ -103,9 +93,11 @@ def load_default_dataset(data_url: str) -> Tuple[pd.DataFrame, dict]:
     return df, feature_ranges
 
 
-def predict_single_transaction(model: FraudDetectionModel,
-                               slider_values: List[float],
-                               feature_names: List[str]) -> Tuple:
+def predict_single_transaction(
+    model: FraudDetectionModel,
+    slider_values: List[float],
+    feature_names: List[str]
+) -> Tuple[Figure, str]:
     """
     Predict fraud for a single transaction.
 
@@ -124,7 +116,7 @@ def predict_single_transaction(model: FraudDetectionModel,
     # Get prediction and probability
     pred = model.predict(input_df)[0]
     prob_array = model.predict_proba(input_df)[0]
-    fraud_prob = prob_array[1]  # Probability of fraud (class 1)
+    fraud_prob = float(prob_array[1])  # Probability of fraud (class 1)
 
     # Determine prediction text and color
     prediction_text = "FRAUD" if pred == 1 else "Not Fraud"
@@ -137,8 +129,12 @@ def predict_single_transaction(model: FraudDetectionModel,
     ax.set_yticks([])
     ax.set_xticks([0, 25, 50, 75, 100])
     ax.set_xlabel("Fraud Probability (%)", fontsize=12)
-    ax.set_title(f"{prediction_text} - {fraud_prob * 100:.1f}%",
-                fontsize=14, fontweight='bold', color=color)
+    ax.set_title(
+        f"{prediction_text} - {fraud_prob * 100:.1f}%",
+        fontsize=14,
+        fontweight='bold',
+        color=color
+    )
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
@@ -147,11 +143,13 @@ def predict_single_transaction(model: FraudDetectionModel,
     return fig, prediction_text
 
 
-def predict_batch_transactions(model: FraudDetectionModel,
-                               file: Optional[object],
-                               use_default: bool,
-                               default_df: pd.DataFrame,
-                               feature_names: List[str]) -> Tuple:
+def predict_batch_transactions(
+    model: FraudDetectionModel,
+    file: Optional[Any],
+    use_default: bool,
+    default_df: pd.DataFrame,
+    feature_names: List[str]
+) -> Tuple[Optional[Figure], Optional[Figure], Optional[Figure], Optional[Figure], Optional[Figure], Optional[str]]:
     """
     Predict fraud for a batch of transactions.
 
@@ -166,42 +164,47 @@ def predict_batch_transactions(model: FraudDetectionModel,
         Tuple of (5 matplotlib figures, csv_file_path)
     """
     # Load data
+    df: pd.DataFrame
     if use_default:
         df = default_df.copy()
     elif file is not None:
-        # FIX: Cast the file object to 'Any' to satisfy the type checker
-        # that it has a .name attribute (which it does at runtime via Gradio/tempfile).
-        file_path = cast(Any, file).name
+        # File from Gradio has .name attribute
+        file_path: str = file.name if hasattr(file, 'name') else str(file)
         df = pd.read_csv(file_path)
     else:
         return None, None, None, None, None, None
 
+    # Ensure feature columns are float type
     for col in feature_names:
         df[col] = df[col].astype(float)
 
     # Select features for prediction
-    features_to_predict = df[feature_names]
-    features_to_predict = cast(pd.DataFrame, features_to_predict)
+    # Ensure we get a DataFrame, not a Series
+    features_to_predict: pd.DataFrame = df[feature_names].copy()  # pyright: ignore
+
+    # Verify it's a DataFrame
+    if not isinstance(features_to_predict, pd.DataFrame):
+        raise TypeError(f"Expected DataFrame, got {type(features_to_predict)}")
 
     # Make predictions
-    preds = model.predict(features_to_predict)
-    probs = model.predict_proba(features_to_predict)
-    fraud_prob = probs[:, 1]
+    preds: np.ndarray = model.predict(features_to_predict)
+    probs: np.ndarray = model.predict_proba(features_to_predict)
+    fraud_prob: np.ndarray = probs[:, 1]
 
     # Add predictions to dataframe
     df["Fraud_Prediction"] = preds
     df["Fraud_Probability"] = fraud_prob
-    df["Fraud_Prediction_Label"] = df["Fraud_Prediction"].map({0: "Non-Fraud", 1: "Fraud"})  # pyright: ignore [reportArgumentType]
+    df["Fraud_Prediction_Label"] = df["Fraud_Prediction"].map({0: "Non-Fraud", 1: "Fraud"})  # pyright: ignore
 
     # Create visualizations
-    figures = []
+    figures: List[Figure] = []
 
     # Figure 1: Amount distribution by prediction (if 'Amount' exists in data)
     if "Amount" in df.columns:
         fig1, ax1 = plt.subplots(figsize=(10, 6))
         for label in df["Fraud_Prediction_Label"].unique():
             subset = df[df["Fraud_Prediction_Label"] == label]
-            ax1.hist(subset["Amount"], bins=30, alpha=0.6, label=label, edgecolor='black')
+            ax1.hist(subset["Amount"], bins=30, alpha=0.6, label=str(label), edgecolor='black')
         ax1.set_title("Distribution of Transaction Amounts by Prediction", fontsize=14, fontweight='bold')
         ax1.set_xlabel("Amount", fontsize=12)
         ax1.set_ylabel("Count", fontsize=12)
@@ -216,8 +219,14 @@ def predict_batch_transactions(model: FraudDetectionModel,
     fig2, ax2 = plt.subplots(figsize=(8, 8))
     counts = df["Fraud_Prediction_Label"].value_counts()
     colors = ["#4CAF50", "#F44336"]
-    ax2.pie(counts, labels=list(counts.index), autopct='%1.1f%%', colors=colors,
-            textprops={'fontsize': 12, 'fontweight': 'bold'}, startangle=90)
+    ax2.pie(
+        counts,
+        labels=list(counts.index),
+        autopct='%1.1f%%',
+        colors=colors,
+        textprops={'fontsize': 12, 'fontweight': 'bold'},
+        startangle=90
+    )
     ax2.set_title("Fraud vs Non-Fraud Proportion", fontsize=14, fontweight='bold')
     plt.tight_layout()
     figures.append(fig2)
@@ -228,7 +237,7 @@ def predict_batch_transactions(model: FraudDetectionModel,
         fig, ax = plt.subplots(figsize=(10, 6))
         for label in df["Fraud_Prediction_Label"].unique():
             subset = df[df["Fraud_Prediction_Label"] == label]
-            ax.hist(subset[feature], bins=30, alpha=0.6, label=label, edgecolor='black')
+            ax.hist(subset[feature], bins=30, alpha=0.6, label=str(label), edgecolor='black')
         ax.set_title(f"Distribution of {feature} by Prediction", fontsize=14, fontweight='bold')
         ax.set_xlabel(feature, fontsize=12)
         ax.set_ylabel("Count", fontsize=12)
@@ -246,7 +255,7 @@ def predict_batch_transactions(model: FraudDetectionModel,
         df.to_csv(tmp_file.name, index=False)
         csv_path = tmp_file.name
 
-    return (*figures, csv_path)
+    return (figures[0], figures[1], figures[2], figures[3], figures[4], csv_path)
 
 
 def create_summary_statistics(df: pd.DataFrame) -> str:
@@ -260,13 +269,17 @@ def create_summary_statistics(df: pd.DataFrame) -> str:
         Markdown formatted string
     """
     total = len(df)
-    fraud_count = (df["Fraud_Prediction"] == 1).sum()
+    fraud_count = int((df["Fraud_Prediction"] == 1).sum())
     non_fraud_count = total - fraud_count
-    fraud_pct = (fraud_count / total * 100) if total > 0 else 0
+    fraud_pct = (fraud_count / total * 100) if total > 0 else 0.0
 
-    avg_fraud_prob = df[df["Fraud_Prediction"] == 1]["Fraud_Probability"].mean() if fraud_count > 0 else 0
-    avg_amount_fraud = df[df["Fraud_Prediction"] == 1]["Amount"].mean() if fraud_count > 0 else 0
-    avg_amount_legit = df[df["Fraud_Prediction"] == 0]["Amount"].mean() if non_fraud_count > 0 else 0
+    avg_fraud_prob = float(df[df["Fraud_Prediction"] == 1]["Fraud_Probability"].mean()) if fraud_count > 0 else 0.0
+
+    avg_amount_fraud = 0.0
+    avg_amount_legit = 0.0
+    if "Amount" in df.columns:
+        avg_amount_fraud = float(df[df["Fraud_Prediction"] == 1]["Amount"].mean()) if fraud_count > 0 else 0.0
+        avg_amount_legit = float(df[df["Fraud_Prediction"] == 0]["Amount"].mean()) if non_fraud_count > 0 else 0.0
 
     summary = f"""
     ## 📊 Batch Prediction Summary
