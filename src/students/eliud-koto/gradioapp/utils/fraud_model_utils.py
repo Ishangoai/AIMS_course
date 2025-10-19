@@ -7,7 +7,14 @@ mlflow.set_tracking_uri("http://localhost:5000")
 
 
 base_dir = "/var/autofs/misc/home/eliud/Desktop/AIMS_course"
-model_path = f"{base_dir}/mlruns/1/562ddd67cc6b49619f8e7aea68cd6cfd/artifacts/tuned_random_forest_v1760881924.pkl"
+model_path = os.path.join(
+    base_dir,
+    "mlruns",
+    "1",
+    "562ddd67cc6b49619f8e7aea68cd6cfd",
+    "artifacts",
+    "tuned_random_forest_v1760881924.pkl"
+)
 
 model = joblib.load(model_path)
 
