@@ -6,15 +6,16 @@
 set -e # Stop the script if any command fails
 
 # Model and environment details
-MODEL_NAME="tuned-temp-forecaster"
-MODEL_STAGE="Production"
+MODEL_NAME="FraudDetectionModel"
+MODEL_STAGE="None"
 MLFLOW_PORT=5002
 
 # Get the directory where this script is located
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
+echo "SCRIPT_DIR: $SCRIPT_DIR"
 # Construct the path to the database
-DB_PATH="$SCRIPT_DIR/../../../../../mlflow_local_tracking.db"
+DB_PATH="mlflow_local_tracking.db"
 
 # Set the MLFLOW_TRACKING_URI for the mlflow command
 export MLFLOW_TRACKING_URI="sqlite:///$DB_PATH"
