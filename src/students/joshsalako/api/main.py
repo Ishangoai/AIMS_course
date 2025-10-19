@@ -5,6 +5,7 @@ import gradio as gr
 from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
+from dagster.ml_fraud.gradio_app import iface as fraud_app
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
@@ -20,6 +21,7 @@ app = FastAPI(
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Simple Image Editing App**](/image-app/)
+    5. [**Credit Card Fraud Detection App**](/fraud-detection/)
     -----
     """),
     version="1.0.0",
@@ -131,3 +133,4 @@ gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, image_app, path="/image-app")
+gr.mount_gradio_app(app, fraud_app, path="/fraud-detection")

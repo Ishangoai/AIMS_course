@@ -1,13 +1,14 @@
 import os
 import tempfile
-import threading
-import time
 from typing import Any, Dict, List
 
 import dagster as dg
 import dagster_slack
+import joblib
 import matplotlib.pyplot as plt
+import mlflow
 import mlflow.sklearn as ms
+import mlflow.tracking
 import numpy as np
 import pandas as pd
 from mlflow.models import infer_signature
@@ -402,8 +403,12 @@ def trained_fraud_model(
     except Exception:
         pass
 
-    with mlflow_client.start_run(experiment_id=experiment_id,
-    run_name=f"fraud_detection_training_{context.run_id[:8]}"):
+    with mlflow_client.start_run(
+        experiment_id=experiment_id,
+        run_name=f"fraud_detection_training_{context.run_id[:8]}"
+    ):
+        # Capture the run_id right after the run starts
+        run_id = mlflow.active_run().info.run_id
         mlflow_client.set_tag("model_type", "RandomForest")
         mlflow_client.set_tag("task", "fraud_detection")
 
@@ -508,9 +513,17 @@ def trained_fraud_model(
         if best_model is None:
             raise ValueError("No model was trained successfully")
 
+        # Save the model to a file and pass the path
+        model_path = tempfile.NamedTemporaryFile(suffix=".joblib", delete=False).name
+        joblib.dump(best_model, model_path)
+        context.log.info(f"Model saved to {model_path}")
+        output_value = {"model_path": model_path, "run_id": run_id}
+
         return dg.MaterializeResult(
-            value=best_model,
+            value=output_value,
             metadata={
+                "model_path": dg.MetadataValue.path(model_path),
+                "mlflow_run_id": dg.MetadataValue.text(run_id),
                 "best_params": dg.MetadataValue.text(str(best_params)),
                 "best_cv_recall": dg.MetadataValue.float(float(best_score)),
                 "n_estimators": dg.MetadataValue.int(best_params['n_estimators'] if best_params else 0),
@@ -527,17 +540,25 @@ def trained_fraud_model(
 )
 def check_trained_fraud_model(
     context: dg.AssetCheckExecutionContext,
-    trained_fraud_model: RandomForestClassifier
+    trained_fraud_model: Dict[str, str]
 ) -> dg.AssetCheckResult:
+    try:
+        model = joblib.load(trained_fraud_model["model_path"])
+    except Exception as e:
+        return dg.AssetCheckResult(
+            passed=False,
+            description=f"Failed to load model from path: {e}"
+        )
+
     # Check that model is a RandomForest
-    is_random_forest = hasattr(trained_fraud_model, 'estimators_')
+    is_random_forest = hasattr(model, 'estimators_')
 
     # Check that model has been fitted (has feature_importances_)
-    is_fitted = hasattr(trained_fraud_model, 'feature_importances_')
+    is_fitted = hasattr(model, 'feature_importances_')
 
     # Check that we have reasonable number of trees
     if is_fitted:
-        n_estimators = trained_fraud_model.n_estimators
+        n_estimators = model.n_estimators
         reasonable_trees = 50 <= n_estimators <= 500
     else:
         n_estimators = 0
@@ -573,11 +594,12 @@ def check_trained_fraud_model(
 )
 def model_evaluation(
     context: dg.AssetExecutionContext,
-    trained_fraud_model: RandomForestClassifier,
+    trained_fraud_model: Dict[str, str],
     train_test_split_data: Dict[str, Any]
 ) -> dg.MaterializeResult:
     """Evaluate the trained model on test set and log results to MLflow"""
 
+    model = joblib.load(trained_fraud_model["model_path"])
     mlflow_client = context.resources.mlflow_fraud
 
     # Ensure any existing run is ended before starting a new one
@@ -597,8 +619,8 @@ def model_evaluation(
         context.log.info(f"Evaluating model on {X_test.shape[0]} test samples")
 
         # Make predictions
-        y_pred = trained_fraud_model.predict(X_test)
-        y_pred_proba = trained_fraud_model.predict_proba(X_test)[:, 1]
+        y_pred = model.predict(X_test)
+        y_pred_proba = model.predict_proba(X_test)[:, 1]
 
         # Calculate metrics
         recall = float(recall_score(y_test, y_pred))
@@ -720,44 +742,6 @@ def check_model_evaluation(
     )
 
 
-def start_model_server(model, port: int = 5001):
-    """Start a Flask server to serve the model"""
-    from flask import Flask, jsonify, request
-
-    app = Flask(__name__)
-
-    @app.route('/predict', methods=['POST'])
-    def predict():
-        try:
-            data = request.get_json()
-            if 'features' not in data:
-                return jsonify({'error': 'features field required'}), 400
-
-            features = np.array(data['features']).reshape(1, -1)
-            prediction = model.predict(features)[0]
-            probability = model.predict_proba(features)[0]
-
-            return jsonify({
-                'prediction': int(prediction),
-                'probability_fraud': float(probability[1]),
-                'probability_not_fraud': float(probability[0])
-            })
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
-    @app.route('/health', methods=['GET'])
-    def health():
-        return jsonify({'status': 'healthy', 'model_type': 'RandomForest'})
-
-    # Run in a separate thread
-    def run_server():
-        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
-
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
-    return server_thread
-
-
 @dg.asset(
     description="Post recall metric to Slack",
     compute_kind="python",
@@ -770,10 +754,11 @@ def start_model_server(model, port: int = 5001):
 def notify_slack(
     context: dg.AssetExecutionContext,
     model_evaluation: Dict[str, Any],
-    trained_fraud_model: RandomForestClassifier
+    trained_fraud_model: Dict[str, str]
 ) -> dg.MaterializeResult:
     """Send notification to Slack"""
 
+    model = joblib.load(trained_fraud_model["model_path"])
     recall = model_evaluation['recall']
     precision = model_evaluation['precision']
     f1 = model_evaluation['f1']
@@ -832,7 +817,7 @@ def notify_slack(
 
             # Log model artifact under run
             with mlflow_client.start_run(nested=True, run_name="serving_model_artifact"):
-                ms.log_model(trained_fraud_model, "serving_model")
+                ms.log_model(model, "serving_model")
             context.log.info("Model logged to MLflow under current run")
 
     except Exception as e:
@@ -853,45 +838,6 @@ def notify_slack(
             "final_roc_auc": dg.MetadataValue.float(roc_auc),
             "slack_notification": dg.MetadataValue.bool(True),
             "model_saved": dg.MetadataValue.bool(True)
-        }
-    )
-
-
-@dg.asset(
-    description="Start model server on port 5001",
-    compute_kind="python",
-    group_name="ml_fraud_deploy"
-)
-def serve_model(
-    context: dg.AssetExecutionContext,
-    trained_fraud_model: RandomForestClassifier
-) -> dg.MaterializeResult:
-    """Start model serving server"""
-
-    # Start model server
-    port = 5001
-    try:
-        server_thread = start_model_server(trained_fraud_model, port)
-
-        # Give server a moment to start
-        time.sleep(2)
-
-        context.log.info(f"Model server started on port {port}")
-        context.log.info(f"Health check: http://localhost:{port}/health")
-        context.log.info(f"Predict endpoint: http://localhost:{port}/predict")
-
-    except Exception as e:
-        context.log.error(f"Failed to start model server: {e}")
-        server_thread = None
-
-    return dg.MaterializeResult(
-        value={
-            'server_port': port,
-            'server_running': server_thread is not None
-        },
-        metadata={
-            "server_port": dg.MetadataValue.int(port),
-            "server_status": dg.MetadataValue.text("running" if server_thread else "failed")
         }
     )
 
@@ -933,38 +879,90 @@ def check_notify_slack(
     )
 
 
-@dg.asset_check(
-    asset="serve_model",
-    description="Verifies that model server is running"
+@dg.asset(
+    description="Promotes the trained model to the 'Production' stage in the MLflow Model Registry.",
+    compute_kind="python",
+    group_name="ml_fraud_deploy",
+    resource_defs={"mlflow_fraud": mlflow_resource}
 )
-def check_serve_model(
+def promote_fraud_model_to_production(
+    context: dg.AssetExecutionContext,
+    trained_fraud_model: Dict[str, str],
+    model_evaluation: Dict[str, Any]
+) -> dg.MaterializeResult:
+    """
+    Registers the model in MLflow and transitions it to the Production stage.
+    """
+    recall_threshold = 0.7
+    recall = model_evaluation['recall']
+    model_name = "fraud_detection_serving_model"
+
+    if recall < recall_threshold:
+        context.log.warning(
+            f"Model recall {recall:.4f} is below the threshold of {recall_threshold}. "
+            f"Skipping promotion to Production."
+        )
+        return dg.MaterializeResult(
+            metadata={
+                "status": "Skipped",
+                "model_name": model_name,
+                "recall": dg.MetadataValue.float(recall),
+                "recall_threshold": dg.MetadataValue.float(recall_threshold),
+            }
+        )
+
+    context.log.info(f"Recall of {recall:.4f} meets threshold. Proceeding with model promotion.")
+
+    registry_client = mlflow.tracking.MlflowClient()
+
+    run_id = trained_fraud_model["run_id"]
+    model_uri = f"runs:/{run_id}/model"
+
+    context.log.info(f"Registering model '{model_name}' from run ID '{run_id}'.")
+    registered_model = mlflow.register_model(
+        model_uri=model_uri,
+        name=model_name
+    )
+    model_version = registered_model.version
+    context.log.info(f"Model registered as Version {model_version}.")
+
+    context.log.info(f"Setting alias 'production' for Version {model_version} of '{model_name}'.")
+    registry_client.set_registered_model_alias(
+        name=model_name,
+        alias="production",
+        version=model_version
+    )
+    context.log.info("Model alias successfully set to 'production'.")
+
+    return dg.MaterializeResult(
+        metadata={
+            "status": "Promoted",
+            "model_name": model_name,
+            "model_version": dg.MetadataValue.int(int(model_version)),
+            "recall": dg.MetadataValue.float(recall),
+            "stage": "Production",
+        }
+    )
+
+
+@dg.asset_check(
+    asset="promote_fraud_model_to_production",
+    description="Verifies that the model was successfully promoted to Production in the registry."
+)
+def check_promote_model_to_production(
     context: dg.AssetCheckExecutionContext,
-    serve_model: Dict[str, Any]
+    promote_fraud_model_to_production: dg.MaterializeResult
 ) -> dg.AssetCheckResult:
-    server_running = serve_model['server_running']
-    server_port = serve_model['server_port']
 
-    # Check that server is running
-    server_ok = server_running
+    status = promote_fraud_model_to_production.metadata["status"]
+    passed = status == "Promoted"
 
-    # Check that port is reasonable
-    port_ok = 1000 <= server_port <= 65535
-
-    passed = bool(server_ok and port_ok)
-
-    metadata = {
-        "server_running": dg.MetadataValue.bool(bool(server_running)),
-        "server_port": dg.MetadataValue.int(int(server_port)),
-        "port_ok": dg.MetadataValue.bool(bool(port_ok))
-    }
+    description = f"Model promotion status: {status}."
+    if not passed:
+        description += " Model did not meet the recall threshold for promotion."
 
     return dg.AssetCheckResult(
         passed=passed,
-        metadata=metadata,
-        description=(
-            "Passed" if passed else
-            f"{'Server not running. ' if not server_ok else ''}"
-            f"{'Invalid port number. ' if not port_ok else ''}"
-        ),
-        asset_key="serve_model",
+        metadata=promote_fraud_model_to_production.metadata,
+        description=description
     )
