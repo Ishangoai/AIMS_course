@@ -474,11 +474,11 @@ def test_model(
             "test_mse": dg.MetadataValue.float(float(mse)),
             "test_mae": dg.MetadataValue.float(float(mae)),
             "test_r2": dg.MetadataValue.float(float(r2)),
-            "model_name": dg.MetadataValue.text(model_version_info["name"]),
-            "model_version": dg.MetadataValue.text(str(model_version_info["version"])),
+            "model_name": dg.MetadataValue.text(model_version_info["name"]),  # type: ignore[reportOptionalMemberAccess]
+            "model_version": dg.MetadataValue.text(str(model_version_info["version"])),  # type: ignore[reportOptionalMemberAccess]
             "mlflow_run_id": dg.MetadataValue.text(current_run.info.run_id),
-            "mlflow_model_uri": dg.MetadataValue.text(model_version_info["model_uri"]),
-            "mlflow_stage": dg.MetadataValue.text(model_version_info["stage"])
+            "mlflow_model_uri": dg.MetadataValue.text(model_version_info["model_uri"]),  # type: ignore[reportOptionalMemberAccess]
+            "mlflow_stage": dg.MetadataValue.text(model_version_info["stage"]),  # type: ignore[reportOptionalMemberAccess]
         }
     )
 
