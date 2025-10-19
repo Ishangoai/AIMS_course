@@ -1,66 +1,62 @@
+# We have removed the other ml projects from here and using a separete database
+
 import dagster as dg
+import mlflow
 
-from .de import assets as de_assets
-from .ml import assets as ml_assets
-from .ml.resources import (
-    Era5RequestConfig,
-    PromotionConfig,
-    TuningConfig,
-)
+# ml_fraud assets & resources
+from .ml_fraud import assets as ml_fraud_assets
+from .ml_fraud.resources import FraudDataConfig, mlflow_fraud_resource
 
-all_de_assets = dg.load_assets_from_modules([de_assets])
-all_de_checks = dg.load_asset_checks_from_modules([de_assets])
-all_ml_assets = dg.load_assets_from_modules([ml_assets])
-all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
+all_ml_fraud_assets = dg.load_assets_from_modules([ml_fraud_assets])
+all_ml_fraud_checks = dg.load_asset_checks_from_modules([ml_fraud_assets])
 
 
-@dg.failure_hook(required_resource_keys={"mlflow_tracking"})
+@dg.failure_hook(required_resource_keys={"mlflow_track"})
 def mlflow_failure_hook(context):
-    mlflow_client = context.resources.mlflow_tracking
-    error_message = f"Dagster job failed: {context.failure_event.message}"
-    mlflow_client.set_tag("dagster_job_status", "failed")
-    mlflow_client.set_tag("dagster_error_message", error_message)
-    mlflow_client.log_param("dagster_failed_step", context.step_key)
-    mlflow_client.log_param("dagster_run_id", context.run_id)
+    # Compatible failure hook: avoid using context.failure_event which may not exist
+    step = getattr(context, "step_key", "unknown_step")
+    run_id = getattr(context, "run_id", "unknown_run")
+    error_message = f"Dagster job failed in step {step}; run_id={run_id}"
+    try:
+        # Start a nested mlflow run (or top-level if none active)
+        if mlflow.active_run() is None:
+            mlflow.start_run(run_name="failure_log")
+        else:
+            mlflow.start_run(run_name="failure_log", nested=True)
+        mlflow.set_tag("dagster_job_status", "failed")
+        mlflow.set_tag("dagster_error_message", error_message)
+        mlflow.log_param("dagster_failed_step", step)
+        mlflow.log_param("dagster_run_id", run_id)
+    finally:
+        if mlflow.active_run() is not None:
+            mlflow.end_run()
 
 
-de_job = dg.define_asset_job(
-    name="simple_data_engineering_example",
-    selection=dg.AssetSelection.groups("de_ingest", "de_transform"),
-)
-
-ml_job = dg.define_asset_job(
-    name="era5_machine_learning_with_mlflow",
-    selection=dg.AssetSelection.groups("ml_ingest", "ml_transform", "ml_model", "ml_evaluate", "ml_promote"),
+# Define Fraud Detection ML Job
+fraud_ml_job = dg.define_asset_job(
+    name="fraud_detection_ml_pipeline",
+    selection=dg.AssetSelection.groups(
+        "ml_fraud_ingest",
+        "ml_fraud_transform",
+        "ml_fraud_model",
+        "ml_fraud_training",
+        "ml_fraud_notification",
+    ),
     hooks={mlflow_failure_hook},
-    config={
-        "ops": {
-            "raw_xarray_dataset": {
-                "config": Era5RequestConfig().model_dump()
-            },
-            "promote_model_to_production": {
-                "config": PromotionConfig().model_dump()
-            },
-            "tune_ridge_hyperparameters": {
-                "config": TuningConfig().model_dump()
-            }
-        }
-    }
 )
 
-era5_daily_schedule = dg.ScheduleDefinition(
-    job=ml_job,
-    cron_schedule="0 7 * * *",  # Every day at 7:00 AM
-    name="era5_daily_schedule"
-)
+# Compose Definitions (only include the ml_fraud assets to focus on fraud pipeline)
+assets = [*all_ml_fraud_assets]
+asset_checks = [*all_ml_fraud_checks]
+jobs = [fraud_ml_job]
 
-# Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
-    assets=[*all_ml_assets, *all_de_assets],
+    assets=assets,
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
+        "config": FraudDataConfig(),
+        "mlflow_track": mlflow_fraud_resource,
     },
-    jobs=[de_job, ml_job],
-    schedules=[era5_daily_schedule],
-    asset_checks=[*all_de_checks, *all_ml_checks]
+    jobs=jobs,
+    asset_checks=asset_checks,
 )
