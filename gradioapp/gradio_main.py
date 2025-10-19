@@ -19,7 +19,7 @@ from gradioapp.gradio_utils import (
 
 MODEL_NAME = "fraud_detection_rf"
 MODEL_STAGE = "latest"
-DB_PATH = "/home/mirandraf/Desktop/AIMS_course/src/students/efandresena/dagster/ml_fraud/mlflow_artifacts/mlflow_fraud_tracking.db"  # noqa: E501
+DB_PATH = "dagster/ml_fraud/mlflow_artifacts/mlflow_fraud_tracking.db"  # noqa: E501
 DATA_URL = "https://raw.githubusercontent.com/aduuna/Kaggle-Data-Credit-Card-Fraud-Detection/master/samplecreditcard.csv"
 
 # Feature names (excluding 'Class' label), reduced to 10 features
@@ -280,13 +280,4 @@ with gr.Blocks(theme=gradio.themes.Soft(), title="Fraud Detection - Mirindra & T
 # =========================
 
 if __name__ == "__main__":
-    print("\n" + "=" * 60)
-    print("🚀 Launching Fraud Detection Gradio App...")
-    print("=" * 60 + "\n")
-
-    demo.launch(
-        debug=True,
-        share=True,
-        server_name="127.0.0.1",
-        server_port=7870
-    )
+    demo.launch(share=True)
