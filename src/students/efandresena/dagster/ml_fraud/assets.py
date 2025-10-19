@@ -1,10 +1,10 @@
 import json
 import os
 from typing import cast
+
 import dagster as dg
 import dagster_slack
 import matplotlib.pyplot as plt
-
 import mlflow
 import mlflow.sklearn
 import numpy as np
@@ -71,7 +71,6 @@ def split_data(context: dg.AssetExecutionContext, fraud_df: pd.DataFrame):
     X = fraud_df.drop(columns=["Class"])
     y = fraud_df["Class"]
 
-    
     X_train_raw, X_test_raw, y_train_raw, y_test_raw = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
@@ -81,7 +80,6 @@ def split_data(context: dg.AssetExecutionContext, fraud_df: pd.DataFrame):
     X_test = cast(pd.DataFrame, X_test_raw)
     y_train = cast(pd.Series, y_train_raw)
     y_test = cast(pd.Series, y_test_raw)
-
 
     n_train = int(X_train.shape[0])
     n_test = int(X_test.shape[0])
