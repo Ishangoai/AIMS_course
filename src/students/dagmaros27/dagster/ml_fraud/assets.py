@@ -540,8 +540,7 @@ def register_model_to_registry(
     description="Sends model performance summary to Slack after evaluation.",
     required_resource_keys={"fraud_mlflow"},
 )
-def send_slack_notification(context: dg.AssetExecutionContext,
-generate_evaluation_plots: dg.MaterializeResult) -> dg.MaterializeResult:
+def send_slack_notification(context: dg.AssetExecutionContext, generate_evaluation_plots: dg.MaterializeResult) -> dg.MaterializeResult:
     """Send model performance metrics to Slack with emojis."""
     eval_data = generate_evaluation_plots
     metrics = eval_data["metrics"]
