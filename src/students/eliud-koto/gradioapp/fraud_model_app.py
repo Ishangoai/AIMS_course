@@ -1,4 +1,5 @@
-
+import gradio as gr 
+from gradio.themes.base import Base
 import gradio as gr
 import matplotlib.pyplot as plt
 import numpy as np
