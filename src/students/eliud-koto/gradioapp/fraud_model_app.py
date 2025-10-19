@@ -1,6 +1,7 @@
 import gradio as gr 
 from gradio.themes.base import Base
 import gradio as gr
+from gradio import themes
 import matplotlib.pyplot as plt
 import numpy as np
 from gradioapp.utils.fraud_model_utils import predict_fraud_activity
