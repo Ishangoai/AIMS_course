@@ -1,13 +1,16 @@
 import os
+import pickle
 import textwrap
 
 import gradio as gr
+import numpy as np
 from agents.chatbot.llm_gradio import llm_chat
-from api.models import UpdateUserRequest, UserRequest
+from api.models import FraudPredictionRequest, FraudPredictionResponse, UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
+from gradioapp.fraud_detection_app import fraud_app
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.text_app import text_app
 
@@ -20,12 +23,19 @@ app = FastAPI(
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
     3. [**Text app**](/text-app/)
+    3. [**Fraud Detection app**](/fraud-app/)
     -----
     """),
     version="1.0.0",
     contact={"name": "Support Team", "email": "vincent@ishango.ai"},
     redirect_slashes=False,
 )
+
+
+# Load the model once at startup
+MODEL_PATH = "/var/autofs/misc/home/dolan/Desktop/AIMS_course/mlruns/1/bcbb229309784925b9495f675b382b6c/artifacts/random_forest_model/model.pkl"  # noqa: E501
+with open(MODEL_PATH, "rb") as f:
+    model = pickle.load(f)
 
 # Global variable to store the usernames
 current_user = os.environ.get("GITHUB_USER", "default")
@@ -125,7 +135,19 @@ def update_user_details(username: str, request: UpdateUserRequest):
     return {"message": f"User {username} updated successfully"}
 
 
+@app.post("/predict", response_model=FraudPredictionResponse, summary="Predict fraud", description="Predict whether a transaction is fraudulent.")  # noqa: E501
+def predict(request: FraudPredictionRequest = Body(...)):
+    features = np.array(request.features).reshape(1, -1)
+    try:
+        prediction = model.predict(features)[0]
+        probability = model.predict_proba(features)[0][1]  # probability of class 1 (fraud)
+        return FraudPredictionResponse(prediction=int(prediction), probability=float(probability))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, text_app, path="/text-app")
+gr.mount_gradio_app(app, fraud_app, path="/fraud-app")
