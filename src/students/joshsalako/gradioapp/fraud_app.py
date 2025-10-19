@@ -118,7 +118,8 @@ def predict_fraud(
 ):
     """Predicts credit card fraud using in-app ML model."""
     if _fraud_model is None:
-        return "The prediction service is currently unavailable. Please try again later or contact the administrator if the issue persists."
+        return ("The prediction service is currently unavailable. "
+        "Please try again later or contact the administrator if the issue persists.")
 
     try:
         # Convert Gradio Time input (datetime.time) to seconds since midnight
