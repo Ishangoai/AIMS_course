@@ -1,9 +1,10 @@
-import gradio as gr
-import pandas as pd
-import numpy as np
-import mlflow.pyfunc
 import tempfile
+
+import gradio as gr
 import matplotlib
+import mlflow.pyfunc
+import numpy as np
+import pandas as pd
 
 # Utiliser le backend 'Agg' qui est non-interactif et adapté pour les serveurs
 matplotlib.use('Agg')
@@ -104,6 +105,7 @@ def predict_batch(file, use_default):
         df.to_csv(tmp_file.name, index=False)
         return fig_amount_hist, fig_fraud_pie, fig_feature1, fig_feature2, fig_feature3, tmp_file.name
 
+
 # 2. Single Prediction Function
 def predict_single(*slider_values):
     """
@@ -120,7 +122,7 @@ def predict_single(*slider_values):
     try:
         if hasattr(fraud_model, "predict_proba"):
             probabilities = fraud_model.predict_proba(input_df)
-            probability = probabilities[0][1] # Probabilité de la classe positive 'Fraude'
+            probability = probabilities[0][1]  # Probabilité de la classe positive 'Fraude'
         elif hasattr(fraud_model.python_model, "predict_proba"):
             probabilities = fraud_model.python_model.predict_proba(input_df)
             probability = probabilities[0][1]
@@ -137,15 +139,15 @@ def predict_single(*slider_values):
     # Créer un graphique "jauge" avec Matplotlib (en utilisant un diagramme à barres horizontal)
     fig, ax = plt.subplots(figsize=(6, 1), facecolor='#F9F9F9')
     fig.patch.set_facecolor('#F9F9F9')
-    
+
     ax.set_xlim(0, 100)
     ax.set_ylim(0, 1)
-    
+
     # Barre de fond
     ax.barh([0.5], [100], color='lightgray', height=0.5, edgecolor='gray')
     # Barre de premier plan
     ax.barh([0.5], [probability_percent], color=color, height=0.5)
-    
+
     # Texte de la probabilité
     ax.text(probability_percent + 2, 0.5, f'{probability_percent:.1f}%', va='center', ha='left' if probability_percent < 90 else 'right', fontsize=12, weight='bold')
     ax.set_title("Fraud Probability (%)", fontsize=14, pad=10)
@@ -153,7 +155,7 @@ def predict_single(*slider_values):
     # Nettoyer l'esthétique
     ax.set_axis_off()
     plt.tight_layout()
-    
+
     result_label = gr.Label(value=prediction_text, label="Prediction Result")
     return fig, result_label
 
@@ -175,7 +177,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Fraud Detection") as appli_fraud:
                 for i in range(0, len(feature_names), num_features_per_col):
                     with gr.Column(scale=2):
                         col_features = feature_names[i:i + num_features_per_col]
-                        gr.Markdown(f"#### Features {i+1} to {i+len(col_features)}")
+                        gr.Markdown(f"#### Features {i + 1} to {i + len(col_features)}")
                         for feature in col_features:
                             min_val, max_val = feature_ranges[feature]
                             slider = gr.Slider(

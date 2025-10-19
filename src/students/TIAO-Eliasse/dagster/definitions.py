@@ -1,6 +1,5 @@
 import dagster as dg
 
-
 from .de import assets as de_assets
 from .ml import assets as ml_assets
 from .ml.resources import (
@@ -10,14 +9,11 @@ from .ml.resources import (
 )
 from .ml_fraud import assets as ml_fraud_assets
 
-
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
 all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
 all_ml_fraud_assets = dg.load_assets_from_modules([ml_fraud_assets])
-
-
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
@@ -30,14 +26,10 @@ def mlflow_failure_hook(context):
    mlflow_client.log_param("dagster_run_id", context.run_id)
 
 
-
-
 de_job = dg.define_asset_job(
    name="simple_data_engineering_example",
    selection=dg.AssetSelection.groups("de_ingest", "de_transform"),
 )
-
-
 
 
 ml_job = dg.define_asset_job(
@@ -62,7 +54,7 @@ ml_job = dg.define_asset_job(
 
 fraud_job = dg.define_asset_job(
    name="fraud_job",
-   selection=dg.AssetSelection.groups("ml_fraud","data_fraud_split","ml_fraud_training","ml_fraud_evaluation"),
+   selection=dg.AssetSelection.groups("ml_fraud", "data_fraud_split", "ml_fraud_training", "ml_fraud_evaluation"),
 )
 
 

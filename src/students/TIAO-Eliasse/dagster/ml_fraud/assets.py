@@ -1,23 +1,13 @@
+
 import dagster as dg
-import pandas as pd
-
-
-from sklearn.model_selection import GridSearchCV
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 import mlflow
-import tempfile
-from sklearn.model_selection import train_test_split
-from .resources import fraud_data_source
-
-
-import dagster as dg
-import mlflow
 import pandas as pd
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix
+from sklearn.model_selection import StratifiedKFold, train_test_split
+
+from .resources import fraud_data_source
 
 
 @dg.asset(
@@ -31,7 +21,6 @@ def fraud_data(
    df = pd.read_csv(fraud_data_source.data_source)
    columns = [dg.TableColumn(k, str(v)) for k, v in df.dtypes.to_dict().items()]
 
-
    return dg.MaterializeResult(
        value=df,
        metadata={
@@ -40,7 +29,6 @@ def fraud_data(
            "dagster/column_schema": dg.TableSchema(columns=columns)
        }
    )
-
 
 
 @dg.multi_asset(
@@ -53,7 +41,7 @@ def fraud_data(
     group_name="data_fraud_split"
 )
 def train_test_split_data(
-    context: dg.AssetExecutionContext, 
+    context: dg.AssetExecutionContext,
     fraud_data: pd.DataFrame
 ):
     """
@@ -64,10 +52,10 @@ def train_test_split_data(
         msg = "Not enough data points for splitting. Need at least 100 samples."
         context.log.error(msg)
         raise ValueError(msg)
-    
+
     X = fraud_data.drop(columns=["Class"])
     y = fraud_data["Class"]
-    
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y,
         test_size=0.2,
@@ -81,20 +69,18 @@ def train_test_split_data(
     test_df = X_test.copy()
     test_df["Class"] = y_test
 
-    context.log.info(f"Training set size: {len(train_df)} ({len(train_df)/len(fraud_data)*100:.1f}%)")
-    context.log.info(f"Test set size: {len(test_df)} ({len(test_df)/len(fraud_data)*100:.1f}%)")
+    context.log.info(f"Training set size: {len(train_df)} ({len(train_df) / len(fraud_data) * 100:.1f}%)")
+    context.log.info(f"Test set size: {len(test_df)} ({len(test_df) / len(fraud_data) * 100:.1f}%)")
     context.log.info(f"Train fraud ratio: {y_train.mean():.4f}")
     context.log.info(f"Test fraud ratio: {y_test.mean():.4f}")
 
     # ✅ Dagster expects yields, not return dict
     yield dg.Output(train_df, output_name="train_data")
     yield dg.Output(test_df, output_name="test_data")
+
+
 import dagster as dg
-import mlflow
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
 
 
 @dg.asset(
@@ -164,7 +150,6 @@ def train_random_forest_model(
     return best_model
 
 
-
 @dg.asset(
     description="Evaluate the trained RandomForest model on test data and log confusion matrix to MLflow.",
     compute_kind="python",
@@ -172,7 +157,7 @@ def train_random_forest_model(
 )
 def evaluate_model_on_test_data(
     context: dg.AssetExecutionContext,
-    train_random_forest_model,  
+    train_random_forest_model,
     test_data: pd.DataFrame,
 ):
     """
@@ -180,9 +165,8 @@ def evaluate_model_on_test_data(
     generate a confusion matrix plot, and log it as an image artifact in MLflow.
     """
 
-    import matplotlib.pyplot as plt
-    from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
     import mlflow
+    from sklearn.metrics import classification_report
 
     # 🧩 Setup MLflow
     mlflow.set_tracking_uri("file:./mlruns")
