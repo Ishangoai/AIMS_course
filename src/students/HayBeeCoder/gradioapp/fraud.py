@@ -362,13 +362,12 @@ def create_fraud_detection_app(model_path: str) -> gr.Blocks:
 # MAIN EXECUTION
 # ============================================================================
 
-# Model path
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "utils", "model.pkl")
+# # Model path
+# MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "utils", "model.pkl")
 
-# Alternative path
-if not os.path.exists(MODEL_PATH):
-    MODEL_PATH = "/workspaces/AIMS_course/src/students/HayBeeCoder/gradioapp/utils/model.pkl"
-
+# # Alternative path
+# if not os.path.exists(MODEL_PATH):
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pkl")
 # Create app at module level for import
 app = create_fraud_detection_app(MODEL_PATH)
 
