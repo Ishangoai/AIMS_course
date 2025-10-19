@@ -8,12 +8,12 @@ import dagster as dg
 import dagster_slack
 import matplotlib.pyplot as plt
 import mlflow
-from mlflow.entities.model_registry import ModelVersion
-from mlflow.models import infer_signature
 import mlflow.sklearn as ms
 import numpy as np
 import pandas as pd
 from matplotlib.figure import Figure
+from mlflow.entities.model_registry import ModelVersion
+from mlflow.models import infer_signature
 from PIL import Image
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
