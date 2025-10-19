@@ -45,6 +45,58 @@ def categorize_time(time_in_seconds: int) -> int:
         return 0
 
 
+def _perform_hyperparameter_tuning(
+    mlflow_client: Any,
+    context: dg.AssetExecutionContext,
+    X_train_resampled: np.ndarray,
+    y_train_resampled: np.ndarray,
+    feature_names: List[str]
+) -> tuple[float, Dict[str, Any], RandomForestClassifier | None]:
+    n_estimators_values = [50, 100, 200, 300, 500]
+    best_score = 0.0
+    best_params: Dict[str, Any] = {}
+    best_model = None
+
+    for n_estimators in n_estimators_values:
+        context.log.info(f"Testing n_estimators={n_estimators}")
+
+        with mlflow_client.start_run(nested=True, run_name=f"n_estimators_{n_estimators}"):
+            mlflow_client.log_param("n_estimators", n_estimators)
+            mlflow_client.log_param("random_state", 42)
+            mlflow_client.log_param("cv_folds", 3)
+
+            rf = RandomForestClassifier(n_estimators=n_estimators, random_state=42)
+
+            kfold = KFold(n_splits=3, shuffle=True, random_state=42)
+            cv_scores = []
+
+            for fold, (train_idx, val_idx) in enumerate(kfold.split(X_train_resampled)):
+                X_fold_train, X_fold_val = X_train_resampled[train_idx], X_train_resampled[val_idx]
+                y_fold_train, y_fold_val = y_train_resampled[train_idx], y_train_resampled[val_idx]
+
+                rf.fit(X_fold_train, y_fold_train)
+                y_fold_pred = rf.predict(X_fold_val)
+                fold_recall = float(recall_score(y_fold_val, y_fold_pred))
+                cv_scores.append(fold_recall)
+                mlflow_client.log_metric(f"fold_{fold + 1}_recall", fold_recall)
+
+            mean_cv_score = float(np.mean(cv_scores))
+            std_cv_score = float(np.std(cv_scores))
+
+            mlflow_client.log_metric("mean_cv_recall", mean_cv_score)
+            mlflow_client.log_metric("std_cv_recall", std_cv_score)
+
+            context.log.info(f"n_estimators={n_estimators}: CV Recall = {mean_cv_score:.4f} ± {std_cv_score:.4f}")
+
+            if mean_cv_score > best_score:
+                best_score = mean_cv_score
+                best_params = {"n_estimators": n_estimators}
+                best_model = RandomForestClassifier(n_estimators=n_estimators, random_state=42)
+                best_model.fit(X_train_resampled, y_train_resampled)
+
+    return best_score, best_params, best_model
+
+
 @dg.asset(
     description="Import data for fraud detection",
     compute_kind="python",
@@ -397,7 +449,6 @@ def trained_fraud_model(
     except Exception:
         experiment_id = None
 
-    # Ensure any existing run is ended before starting a new one
     try:
         mlflow_client.end_run()
     except Exception:
@@ -407,7 +458,6 @@ def trained_fraud_model(
         experiment_id=experiment_id,
         run_name=f"fraud_detection_training_{context.run_id[:8]}"
     ):
-        # Capture the run_id right after the run starts
         run_id = mlflow.active_run().info.run_id
         mlflow_client.set_tag("model_type", "RandomForest")
         mlflow_client.set_tag("task", "fraud_detection")
@@ -420,84 +470,22 @@ def trained_fraud_model(
             f"Training model with {int(xtr.shape[0])} samples, {int(xtr.shape[1])} features"
         )
 
-        # Apply RandomOverSampler to training data
-        # oversampler = RandomOverSampler(sampling_strategy={1: 800, 0: 22390}, random_state=42)
-        # X_train_resampled, y_train_resampled = oversampler.fit_resample(X_train, y_train)
-
         X_train_resampled = X_train
         y_train_resampled = y_train
 
-        # context.log.info(f"After oversampling: {X_train_resampled.shape[0]} samples")
-        # context.log.info(f"Class distribution after oversampling: {np.unique(y_train_resampled, return_counts=True)}")
+        best_score, best_params, best_model = _perform_hyperparameter_tuning(
+            mlflow_client, context, X_train_resampled, y_train_resampled, feature_names
+        )
 
-        # Hyperparameter tuning with cross-validation
-        n_estimators_values = [50, 100, 200, 300, 500]
-        best_score = 0
-        best_params = None
-        best_model = None
-
-        for n_estimators in n_estimators_values:
-            context.log.info(f"Testing n_estimators={n_estimators}")
-
-            # Start nested run for each hyperparameter
-            with mlflow_client.start_run(nested=True, run_name=f"n_estimators_{n_estimators}"):
-                mlflow_client.log_param("n_estimators", n_estimators)
-                mlflow_client.log_param("random_state", 42)
-                mlflow_client.log_param("cv_folds", 3)
-
-                # Perform 3-fold cross-validation
-                rf = RandomForestClassifier(
-                    n_estimators=n_estimators,
-                    random_state=42
-                )
-
-                # Manual CV to log each fold
-                kfold = KFold(n_splits=3, shuffle=True, random_state=42)
-                cv_scores = []
-
-                for fold, (train_idx, val_idx) in enumerate(kfold.split(X_train_resampled)):
-                    X_fold_train, X_fold_val = X_train_resampled[train_idx], X_train_resampled[val_idx]
-                    y_fold_train, y_fold_val = y_train_resampled[train_idx], y_train_resampled[val_idx]
-
-                    rf.fit(X_fold_train, y_fold_train)
-                    y_fold_pred = rf.predict(X_fold_val)
-                    fold_recall = float(recall_score(y_fold_val, y_fold_pred))
-                    cv_scores.append(fold_recall)
-
-                    # Log fold results
-                    mlflow_client.log_metric(f"fold_{fold + 1}_recall", fold_recall)
-
-                mean_cv_score = float(np.mean(cv_scores))
-                std_cv_score = float(np.std(cv_scores))
-
-                mlflow_client.log_metric("mean_cv_recall", mean_cv_score)
-                mlflow_client.log_metric("std_cv_recall", std_cv_score)
-
-                context.log.info(f"n_estimators={n_estimators}: CV Recall = {mean_cv_score:.4f} ± {std_cv_score:.4f}")
-
-                # Track best model
-                if mean_cv_score > best_score:
-                    best_score = mean_cv_score
-                    best_params = {"n_estimators": n_estimators}
-                    # Train final model on full resampled data
-                    best_model = RandomForestClassifier(
-                        n_estimators=n_estimators,
-                        random_state=42
-                    )
-                    best_model.fit(X_train_resampled, y_train_resampled)
-
-        # Log best parameters and model
-        if best_params is not None:
+        if best_params:
             mlflow_client.log_params(best_params)
         mlflow_client.log_metric("best_cv_recall", float(best_score))
 
-        # Log feature importance
-        if best_model is not None:
+        if best_model:
             feature_importance = best_model.feature_importances_
             for i, (feature, importance) in enumerate(zip(feature_names, feature_importance)):
                 mlflow_client.log_metric(f"feature_importance_{feature}", float(importance))
 
-            # Log model
             ms.log_model(
                 best_model,
                 "model",
@@ -507,13 +495,12 @@ def trained_fraud_model(
                 )
             )
 
-        if best_params is not None:
+        if best_params:
             context.log.info(f"Best model: n_estimators={best_params['n_estimators']}, CV Recall={best_score:.4f}")
 
         if best_model is None:
             raise ValueError("No model was trained successfully")
 
-        # Save the model to a file and pass the path
         model_path = tempfile.NamedTemporaryFile(suffix=".joblib", delete=False).name
         joblib.dump(best_model, model_path)
         context.log.info(f"Model saved to {model_path}")
