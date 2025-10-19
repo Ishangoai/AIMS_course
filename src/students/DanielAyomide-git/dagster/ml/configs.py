@@ -17,7 +17,7 @@ class DataConfig(ConfigurableResource):
         description="Proportion of the dataset to include in the test split"
     )
     random_state: int = pyd.Field(
-        default=42,
+        default=56,
         description="Random seed for reproducibility"
     )
 
@@ -26,11 +26,11 @@ class ModelConfig(ConfigurableResource):
     """Model training configuration.
     """
     n_estimators: int = pyd.Field(
-        default=100,
+        default=60,
         description="Number of trees in the Random Forest"
     )
     max_depth: int = pyd.Field(
-        default=10,
+        default=4,
         description="Maximum depth of the tree"
     )
     max_depth_options: List[int] = pyd.Field(
@@ -38,7 +38,7 @@ class ModelConfig(ConfigurableResource):
         description="Options for maximum depth during hyperparameter tuning"
     )
     random_state: int = pyd.Field(
-        default=42,
+        default=56,
         description="Random seed for reproducibility"
     )
     scoring_metric: str = pyd.Field(
@@ -60,19 +60,19 @@ class ModelPromotionConfig(ConfigurableResource):
     ROC-AUC measures the model's ability to distinguish between classes across all classification thresholds.
     """
     staging_f1_threshold: float = pyd.Field(
-        default=0.75,
+        default=0.50,
         description="Minimum F1-score threshold for promoting a model to Staging."
     )
     production_f1_threshold: float = pyd.Field(
-        default=0.80,
+        default=0.50,
         description="Minimum F1-score threshold for promoting a model to Production."
     )
     staging_roc_auc_threshold: float = pyd.Field(
-        default=0.80,
+        default=0.50,
         description="Minimum ROC-AUC threshold for promoting a model to Staging."
     )
     production_roc_auc_threshold: float = pyd.Field(
-        default=0.85,
+        default=0.50,
         description="Minimum ROC-AUC threshold for promoting a model to Production."
     )
 

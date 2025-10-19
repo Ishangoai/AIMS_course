@@ -36,26 +36,8 @@ from .utils import _sanitize_report_dict
 )
 def raw_fraud_data(context: dg.OpExecutionContext) -> dg.MaterializeResult:
     """
-    Loads the raw credit card fraud detection dataset from a URL.
-
-    Downloads the credit card fraud dataset from the URL specified in DataConfig,
-    calculates download metrics, and logs comprehensive metadata to MLFlow including
-    dataset dimensions, memory usage, and class distribution.
-
-    Args:
-        context: Dagster execution context providing access to resources and logging.
-
-    Returns:
-        MaterializeResult containing the raw DataFrame with metadata including:
-            - dataset_url: Source URL of the dataset
-            - num_rows: Total number of rows
-            - num_columns: Total number of columns
-            - download_time_seconds: Time taken to download
-            - memory_usage_mb: Memory footprint in megabytes
-            - fraud_count: Number of fraudulent transactions
-            - non_fraud_count: Number of legitimate transactions
-            - fraud_ratio: Proportion of fraudulent transactions
-            - preview_data: Markdown preview of first few rows
+    Loads the raw credit card fraud detection dataset from the URL specified in DataConfig,
+    logs metadata, and logs parameters to MLFlow.
     """
     data_config: DataConfig = context.resources.data_config
     mlflow_client = context.resources.mlflow
@@ -119,21 +101,8 @@ def raw_fraud_data(context: dg.OpExecutionContext) -> dg.MaterializeResult:
 )
 def cleaned_fraud_data(context: dg.OpExecutionContext, raw_fraud_data: pd.DataFrame) -> dg.MaterializeResult:
     """
-    Cleans the raw fraud data by removing duplicates and handling missing values.
-
-    Performs data cleaning operations including duplicate removal, null value handling,
-    and dropping the 'Time' column which is not needed for modeling. The 'Amount' column
-    is preserved for subsequent scaling operations.
-
-    Args:
-        context: Dagster execution context providing access to resources and logging.
-        raw_fraud_data: Raw DataFrame loaded from the data source.
-
-    Returns:
-        MaterializeResult containing the cleaned DataFrame with metadata including:
-            - cleaned_row_count: Number of rows after cleaning
-            - duplicates_removed_count: Number of duplicate rows removed
-            - preview_data: Markdown preview of cleaned data
+    Cleans data by removing duplicates, handling nulls, and dropping the 'Time' column.
+    The 'Amount' column is passed through for later transformation.
     """
     context.log.info("Starting data cleaning process.")
 
@@ -185,22 +154,7 @@ def cleaned_fraud_data(context: dg.OpExecutionContext, raw_fraud_data: pd.DataFr
 )
 def transformed_fraud_data(context: dg.OpExecutionContext, cleaned_fraud_data: pd.DataFrame) -> dg.MaterializeResult:
     """
-    Applies feature scaling to the cleaned fraud data.
-
-    Transforms the 'Amount' feature using StandardScaler to normalize its distribution,
-    creating a new 'Amount_scaled' column. The original 'Amount' column is dropped after
-    scaling. Scaler statistics (mean and standard deviation) are logged to MLFlow.
-
-    Args:
-        context: Dagster execution context providing access to resources and logging.
-        cleaned_fraud_data: Cleaned DataFrame with duplicates and nulls removed.
-
-    Returns:
-        MaterializeResult containing the transformed DataFrame with metadata including:
-            - row_count: Number of rows in transformed data
-            - scaler_mean: Mean value used by StandardScaler
-            - scaler_std: Standard deviation used by StandardScaler
-            - preview_data: Markdown preview of transformed data
+    Transforms the data by scaling the 'Amount' feature using StandardScaler.
     """
     context.log.info("Starting data transformation process.")
 
@@ -267,24 +221,8 @@ def data_splits(
     transformed_fraud_data: pd.DataFrame,
 ) -> dg.MaterializeResult:
     """
-    Splits the transformed data into training and testing sets.
-
-    Separates features (X) from the target variable (y) and performs a stratified
-    train-test split to maintain class distribution. Split parameters are configured
-    via DataConfig and logged to MLFlow along with split statistics.
-
-    Args:
-        context: Dagster execution context providing access to resources and logging.
-        transformed_fraud_data: Transformed DataFrame with scaled features.
-
-    Returns:
-        MaterializeResult containing a dictionary with keys:
-            - X_train: Training features DataFrame
-            - X_test: Testing features DataFrame
-            - y_train: Training target Series
-            - y_test: Testing target Series
-
-        Metadata includes train/test sizes and fraud rates for both sets.
+    Splits data into features (X) and target (y) for both training and
+    testing sets, using stratification.
     """
     data_config: DataConfig = context.resources.data_config
     mlflow_client = context.resources.mlflow
@@ -341,22 +279,7 @@ def data_splits(
 )
 def tune_hyperparameters(context: dg.OpExecutionContext, data_splits: Dict) -> dg.MaterializeResult:
     """
-    Tunes RandomForest hyperparameters using cross-validation.
-
-    Performs hyperparameter tuning by evaluating different max_depth values using
-    stratified k-fold cross-validation. Each trial is logged as a nested MLFlow run
-    with its parameters and scores. The best performing parameters are selected based
-    on the configured scoring metric.
-
-    Args:
-        context: Dagster execution context providing access to resources and logging.
-        data_splits: Dictionary containing X_train, X_test, y_train, y_test.
-
-    Returns:
-        MaterializeResult containing a dictionary with:
-            - best_params: Dictionary of best hyperparameters found
-
-        Metadata includes best cross-validation score and best max_depth value.
+    Performs hyperparameter tuning for a RandomForestClassifier using nested MLFlow runs.
     """
     model_config: ModelConfig = context.resources.model_config
     mlflow_client = context.resources.mlflow
@@ -368,12 +291,12 @@ def tune_hyperparameters(context: dg.OpExecutionContext, data_splits: Dict) -> d
     assert isinstance(y_train, pd.Series)
 
     if X_train.empty:
-        context.log.warning("Training data is empty. Skipping hyperparameter tuning.")
+        context.log.warning("Training data is empty.")
         return dg.MaterializeResult(
             value={"best_params": {}}, metadata={"status": dg.MetadataValue.text("Skipped, input was empty.")}
         )
 
-    context.log.info(f"Starting hyperparameter tuning with {model_config.cv_folds}-fold CV.")
+    context.log.info(f"Starting hyperparameter {model_config.cv_folds}-fold CV.")
 
     best_score = -1.0
     best_params = {}
@@ -429,21 +352,7 @@ def tune_hyperparameters(context: dg.OpExecutionContext, data_splits: Dict) -> d
 )
 def train_model(context: dg.OpExecutionContext, tune_hyperparameters: Dict, data_splits: Dict) -> dg.MaterializeResult:
     """
-    Trains the final RandomForest model with optimized hyperparameters.
-
-    Trains a RandomForestClassifier on the complete training dataset using the best
-    hyperparameters identified during the tuning phase. The trained model is logged
-    to MLFlow for tracking and future deployment.
-
-    Args:
-        context: Dagster execution context providing access to resources and logging.
-        tune_hyperparameters: Dictionary containing best_params from tuning phase.
-        data_splits: Dictionary containing X_train, X_test, y_train, y_test.
-
-    Returns:
-        MaterializeResult containing the trained RandomForestClassifier model.
-
-        Metadata includes model class name and training parameters used.
+    Trains a RandomForestClassifier on the full training data using the best hyperparameters.
     """
     mlflow_client = context.resources.mlflow
     best_params = tune_hyperparameters["best_params"]
@@ -489,26 +398,7 @@ def evaluate_model(
     context: dg.OpExecutionContext, train_model: RandomForestClassifier, data_splits: Dict
 ) -> dg.MaterializeResult:
     """
-    Evaluates the trained model on the test set and registers it with MLFlow.
-
-    Performs comprehensive model evaluation including accuracy, F1 score, ROC-AUC,
-    precision, and recall metrics. Generates and logs a confusion matrix visualization
-    to MLFlow artifacts. Registers the model in the MLFlow Model Registry for tracking
-    and potential promotion to staging/production.
-
-    Args:
-        context: Dagster execution context providing access to resources and logging.
-        train_model: Trained RandomForestClassifier model.
-        data_splits: Dictionary containing X_train, X_test, y_train, y_test.
-
-    Returns:
-        MaterializeResult containing a dictionary with:
-            - metrics: Dictionary of evaluation metrics
-            - classification_report: Detailed per-class performance metrics
-            - confusion_matrix: 2D array of prediction results
-            - model_info: Model registration details (name, version, run_id)
-
-        Metadata includes all evaluation metrics and confusion matrix visualization.
+    Evaluates the model on the test set, logs metrics, and logs a confusion matrix plot.
     """
     mlflow_client = context.resources.mlflow
 
@@ -613,132 +503,122 @@ def evaluate_model(
 )
 def promote_fraud_model_to_staging(context: dg.OpExecutionContext, evaluate_model: Dict) -> dg.MaterializeResult:
     """
-    Promotes the model to Staging stage based on performance thresholds.
-
-    Evaluates model performance against configured F1 score and ROC-AUC thresholds.
-    If both criteria are met, transitions the model to the Staging stage in MLFlow
-    Model Registry. Sends a Slack notification with detailed performance metrics
-    regardless of promotion outcome.
-
-    Args:
-        context: Dagster execution context providing access to resources and logging.
-        evaluate_model: Dictionary containing evaluation metrics and model info.
-
-    Returns:
-        MaterializeResult with metadata indicating promotion status, model version,
-        and performance metrics. Status can be:
-            - STATUS_MODEL_PROMOTED_TO_STAGING: Model met criteria and was promoted
-            - STATUS_MODEL_NOT_PROMOTED_TO_STAGING: Model did not meet criteria
-            - STATUS_MODEL_SKIPPED: Upstream data was missing
+    Checks model performance against F1 and ROC AUC thresholds and promotes to Staging if criteria are met.
+    Sends a Slack message with test accuracy, F1, ROC-AUC, and precision metrics 🚀
     """
     model_promotion_config: ModelPromotionConfig = context.resources.model_promotion_config
-    mlflow_client = context.resources.mlflow_api_client  # high-level client
+    mlflow_client = context.resources.mlflow_api_client
     slack = context.resources.slack
 
     metrics = evaluate_model.get("metrics", {})
     model_info = evaluate_model.get("model_info", {})
 
     if not metrics or not model_info:
-        context.log.warning("Upstream evaluation data is missing. Skipping promotion.")
+        context.log.warning("Upstream evaluatione data is missing. Skipping promotion.")
         return dg.MaterializeResult(metadata={"status": dg.MetadataValue.text("Skipped, upstream data missing.")})
 
-    # Define performance thresholds from your config for both metrics
+    # Thresholds
     STAGING_F1_THRESHOLD = model_promotion_config.staging_f1_threshold
     STAGING_ROC_AUC_THRESHOLD = model_promotion_config.staging_roc_auc_threshold
 
-    # Unpack metrics and model info
+    # Unpack metrics
+    test_accuracy = metrics.get("test_accuracy", 0.0)
     test_f1_score = metrics.get("test_f1_score", 0.0)
     test_roc_auc = metrics.get("test_roc_auc", 0.0)
-    test_precision_fraud = metrics.get("test_precision_class_1", 0.0)  # noqa: F841
-    test_recall_fraud = metrics.get("test_recall_class_1", 0.0)  # noqa: F841
-    test_precision_normal = metrics.get("test_precision_class_0", 0.0)  # noqa: F841
-    test_recall_normal = metrics.get("test_recall_class_0", 0.0)  # noqa: F841
+    test_precision_fraud = metrics.get("test_precision_class_1", 0.0)
+    test_recall_fraud = metrics.get("test_recall_class_1", 0.0)
+    test_precision_legitimate = metrics.get("test_precision_class_0", 0.0)
+    test_recall_legitimate = metrics.get("test_recall_class_0", 0.0)
 
     model_name = model_info.get("name")
     model_version = model_info.get("version")
 
-    # Check if the model meets BOTH promotion criteria
-    meets_criteria = (test_f1_score >= STAGING_F1_THRESHOLD) and (test_roc_auc >= STAGING_ROC_AUC_THRESHOLD)
+    meets_criteria = test_f1_score >= STAGING_F1_THRESHOLD and test_roc_auc >= STAGING_ROC_AUC_THRESHOLD
 
     if meets_criteria:
         context.log.info(
-            f"Model '{model_name}' (v{model_version}) meets performance criteria. "
-            f"F1: {test_f1_score:.4f} >= {STAGING_F1_THRESHOLD}, "
-            f"ROC AUC: {test_roc_auc:.4f} >= {STAGING_ROC_AUC_THRESHOLD}. Promoting to Staging."
+            f"✅ Model '{model_name}' (v{model_version}) meets staging promotion criteria. "
+            f"F1: {test_f1_score:.4f}, ROC AUC: {test_roc_auc:.4f}"
         )
 
         try:
             mlflow_client.transition_model_version_stage(
-                name=str(model_name), version=str(model_version), stage=STAGING_STAGE_NAME
+                name=str(model_name),
+                version=str(model_version),
+                stage=STAGING_STAGE_NAME,
             )
         except Exception as e:
             context.log.error(f"Error during model promotion: {e}")
             return dg.MaterializeResult(
                 metadata={
-                    "status": dg.MetadataValue.text(STATUS_MODEL_NOT_PROMOTED_TO_STAGING),
+                    "status": dg.MetadataValue.teext(STATUS_MODEL_NOT_PROMOTED_TO_STAGING),
                     "reason": dg.MetadataValue.text(f"Promotion failed: {e}"),
                 }
             )
 
+        # 🎯 Send Slack message with metrics
+        slack_message = (
+    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+    f"*🚀 FINAL MODEL REPORT BY DANIEL AND ABDULRASHEED — To Catch Yahoos (especially xxxsan 🤠 ) 💼*\n"
+    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+    f"📊 *Overall Performance*\n"
+    f"> ✅ *Accuracy:* `{test_accuracy:.4f}`\n"
+    f"> 🎯 *F1-score:* `{test_f1_score:.4f}`\n"
+    f"> 📈 *ROC-AUC:* `{test_roc_auc:.4f}`\n"
+    f"\n"
+    f"💰 *Fraud Detection Metrics*\n"
+    f"> 💸 *Precision:* `{test_precision_fraud:.4f}`\n"
+    f"> 🔍 *Recall:* `{test_recall_fraud:.4f}`\n"
+    f"\n"
+    f"🏦 *Legitimate Transaction Metrics*\n"
+    f"> 🧾 *Precision:* `{test_precision_legitimate:.4f}`\n"
+    f"> 🕵️ *Recall:* `{test_recall_legitimate:.4f}`\n"
+    f"\n"
+    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+    f"🔥 *Great job, model!* Ready to catch fraudsters like a champ 💪🤖\n"
+    f"━━━━━━━━━━━━━━━━━━━━━━━"
+        )
+
         try:
-            # Construct and send the success notification
-            slack_message = """Testing slack* ✅
-
-            """
             slack.get_client().chat_postMessage(channel="aims_course_october2025", text=slack_message)
-            context.log.info("Successfully promoted model and sent Slack notification.")
-
-            return dg.MaterializeResult(
-                value={
-                    "status": STATUS_MODEL_PROMOTED_TO_STAGING,
-                    "model_name": model_name,
-                    "model_version": model_version,
-                },
-                metadata={
-                    "status": dg.MetadataValue.text(STATUS_MODEL_PROMOTED_TO_STAGING),
-                    "model_version": dg.MetadataValue.text(f"{model_name} v{model_version}"),
-                    "test_f1_score": dg.MetadataValue.float(test_f1_score),
-                    "test_roc_auc": dg.MetadataValue.float(test_roc_auc),
-                },
-            )
+            context.log.info("Sent Slack staging promotion notification.")
         except Exception as e:
-            context.log.error(f"Failed to send 'Promoted' Slack notification: {e}")
-            return dg.MaterializeResult(
-                metadata={
-                    "status": dg.MetadataValue.text(STATUS_MODEL_NOT_PROMOTED_TO_STAGING),
-                    "model_version": dg.MetadataValue.text(f"{model_name} v{model_version}"),
-                    "test_f1_score": dg.MetadataValue.float(test_f1_score),
-                    "test_roc_auc": dg.MetadataValue.float(test_roc_auc),
-                    "notification_status": dg.MetadataValue.text(f"Failed to send notification: {e}"),
-                }
-            )
+            context.log.error(f"Failed to send Slack notification: {e}")
+
+        return dg.MaterializeResult(
+            value={
+                "status": STATUS_MODEL_PROMOTED_TO_STAGING,
+                "model_name": model_name,
+                "model_version": model_version,
+            },
+            metadata={
+                "status": dg.MetadataValue.text(STATUS_MODEL_PROMOTED_TO_STAGING),
+                "model_version": dg.MetadataValue.text(f"{model_name} v{model_version}"),
+                "test_f1_score": dg.MetadataValue.float(test_f1_score),
+                "test_roc_auc": dg.MetadataValue.float(test_roc_auc),
+                "test_accuracy": dg.MetadataValue.float(test_accuracy),
+            },
+        )
 
     else:
-        # This block executes if one or both performance thresholds are NOT met
         context.log.warning("Model does not meet performance criteria for Staging promotion.")
 
-        # Determine which check failed for a clearer message
-        f1_status = "Passed" if test_f1_score >= STAGING_F1_THRESHOLD else "Failed"  # noqa: F841
-        roc_auc_status = "Passed" if test_roc_auc >= STAGING_ROC_AUC_THRESHOLD else "Failed"  # noqa: F841
+        slack_message = "*⚠️ Model Is not working*\n> *Omooooooo!*\n"
 
-        # Construct and send the failure notification
-        slack_message = """ Testing slack
-        """
         try:
             slack.get_client().chat_postMessage(channel="aims_course_october2025", text=slack_message)
-            context.log.info("Sent Slack notification for model not meeting promotion criteria.")
+            context.log.info("Sent Slack notification for non-promotion.")
         except Exception as e:
-            context.log.error(f"Failed to send 'Not Promoted' Slack notification: {e}")
+            context.log.error(f"Failed to send Slack notification: {e}")
 
         return dg.MaterializeResult(
             metadata={
                 "status": dg.MetadataValue.text(STATUS_MODEL_NOT_PROMOTED_TO_STAGING),
-                "reason": dg.MetadataValue.text("Performance threshold(s) not met."),
+                "reason": dg.MetadataValue.text("Performance thresholds not met."),
                 "test_f1_score": dg.MetadataValue.float(test_f1_score),
-                "f1_threshold": dg.MetadataValue.float(STAGING_F1_THRESHOLD),
                 "test_roc_auc": dg.MetadataValue.float(test_roc_auc),
-                "roc_auc_threshold": dg.MetadataValue.float(STAGING_ROC_AUC_THRESHOLD),
-            }
+                "test_accuracy": dg.MetadataValue.float(test_accuracy),
+            },
         )
 
 
@@ -749,47 +629,29 @@ def promote_fraud_model_to_staging(context: dg.OpExecutionContext, evaluate_mode
     required_resource_keys={"mlflow_api_client", "slack"},
 )
 def promote_fraud_model_to_production(
-    context: dg.OpExecutionContext, promote_fraud_model_to_staging: Dict
+    context: dg.OpExecutionContext,
+    promote_fraud_model_to_staging: Dict,
 ) -> dg.MaterializeResult:
     """
-    Promotes the best Staging model to Production stage.
-
-    Identifies the latest model version in the Staging stage, archives any existing
-    Production models, and promotes the Staging model to Production. This ensures
-    only one model is in Production at a time while preserving model history. Sends
-    a Slack notification upon successful promotion.
-
-    Args:
-        context: Dagster execution context providing access to resources and logging.
-        promote_fraud_model_to_staging: Dictionary with staging promotion status and model info.
-
-    Returns:
-        MaterializeResult with metadata indicating:
-            - status: Promotion outcome (promoted, not promoted, or skipped)
-            - model_name: Name of the model in MLFlow registry
-            - promoted_version: Version number promoted to Production
-
-        Skips promotion if no model was promoted to Staging in the previous step.
+    Promotes latest staging model to Production (no Slack messages here).
     """
     mlflow_client = context.resources.mlflow_api_client
-    slack = context.resources.slack
     context.log.info("Starting model promotion to Production.")
 
     if promote_fraud_model_to_staging.get("status") != STATUS_MODEL_PROMOTED_TO_STAGING:
-        context.log.info("No model was promoted to Staging in the previous step. Skipping production promotion.")
+        context.log.info("No model was promoted to Staging in the previous step. Skipping.")
         return dg.MaterializeResult(metadata={"status": dg.MetadataValue.text("Skipped, no new model in Staging.")})
 
     model_name = promote_fraud_model_to_staging.get("model_name") or ""
 
     try:
-        # Find the latest model version in the 'Staging' stage
         staging_versions = [
             mv
             for mv in mlflow_client.search_model_versions(f"name='{model_name}'")
             if mv.current_stage == STAGING_STAGE_NAME
         ]
         if not staging_versions:
-            context.log.warning(f"No model versions found in Staging for '{model_name}'. Skipping promotion.")
+            context.log.warning(f"No model versions in Staging for '{model_name}'.")
             return dg.MaterializeResult(
                 metadata={
                     "status": dg.MetadataValue.text(STATUS_MODEL_SKIPPED),
@@ -797,29 +659,20 @@ def promote_fraud_model_to_production(
                 }
             )
 
-        # Get the version with the highest version number
         latest_staging_version = max(staging_versions, key=lambda mv: int(mv.version))
         prod_model_version = latest_staging_version.version
 
-        # Archive any existing models currently in 'Production'
         for mv in mlflow_client.search_model_versions(f"name='{model_name}'"):
             if mv.current_stage == PRODUCTION_STAGE_NAME:
-                context.log.info(f"Archiving previous Production model version {mv.version}.")
+                context.log.info(f"Archiving previous Production version {mv.version}.")
                 mlflow_client.transition_model_version_stage(
                     name=model_name, version=mv.version, stage=ARCHIVED_STAGE_NAME
                 )
 
-        # Promote the new version to 'Production'
         context.log.info(f"Promoting model '{model_name}' version {prod_model_version} to Production.")
         mlflow_client.transition_model_version_stage(
             name=model_name, version=prod_model_version, stage=PRODUCTION_STAGE_NAME
         )
-
-        # Send Slack notification
-        slack_message = """Testing Production for
-        """
-        slack.get_client().chat_postMessage(channel="aims_course_october2025", text=slack_message)
-        context.log.info("Successfully promoted model to Production and sent Slack notification.")
 
         return dg.MaterializeResult(
             metadata={
@@ -828,6 +681,7 @@ def promote_fraud_model_to_production(
                 "promoted_version": dg.MetadataValue.text(str(prod_model_version)),
             }
         )
+
     except Exception as e:
         context.log.error(f"Error promoting model to Production: {e}")
         return dg.MaterializeResult(
@@ -847,19 +701,9 @@ def promote_fraud_model_to_production(
 )
 def raw_data_quality_checks(raw_fraud_data: pd.DataFrame) -> Iterable[dg.AssetCheckResult]:
     """
-    Performs data quality validation checks on the raw fraud dataset.
-
-    Executes multiple quality checks to ensure data integrity before processing:
-    1. Verifies no null values exist in the dataset
-    2. Validates that the 'Class' column contains only binary labels (0 and 1)
-
-    Args:
-        raw_fraud_data: Raw DataFrame to validate.
-
-    Yields:
-        AssetCheckResult for each quality check performed:
-            - no_nulls_in_raw_data: Check for null values
-            - valid_class_labels: Check for valid binary class labels
+    Performs data quality checks on the raw DataFrame.
+    1. Checks for any null values.
+    2. Checks that the 'Class' column contains only 0s and 1s.
     """
     # Check 1: No null values
     num_nulls = raw_fraud_data.isnull().sum().sum()
