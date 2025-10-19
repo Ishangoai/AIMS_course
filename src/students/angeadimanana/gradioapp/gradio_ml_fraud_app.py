@@ -16,21 +16,6 @@ MODEL_STAGE = "Production"
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model_v5.pkl")
 model = joblib.load(MODEL_PATH)
 
-# Set the tracking URI to find the local MLflow database
-
-# Construct the model URI for the registry
-model_uri = f"models:/{MODEL_NAME}/{MODEL_STAGE}"
-
-print("=" * 70)
-print("🚀 FRAUD DETECTION GRADIO APP")
-print("=" * 70)
-print(f"Model Name: {MODEL_NAME}")
-print(f"Model Stage: {MODEL_STAGE}")
-print(f"Model URI: {model_uri}")
-print("=" * 70)
-
-# Load the model into memory
-
 
 def predict_fraud(time, amount, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
                    v11, v12, v13, v14, v15, v16, v17, v18, v19, v20,

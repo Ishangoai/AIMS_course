@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from gradio.themes import Soft
-from gradioapp.utils.fraud_detection import model
+from gradioapp.utils.fraud_assignment_utils import model
 
 # Store transaction history for graphing
 transaction_history = []
@@ -20,20 +20,7 @@ transaction_history = []
 def create_evolution_graph():
     """Create a beautiful time evolution graph of fraud predictions"""
     if len(transaction_history) == 0:
-        # Return a placeholder message when no data
-        return """
-        <div style="display: flex; align-items: center; justify-content: center; height: 400px;
-                    background: linear-gradient(135deg, #252938 0%, #1a1d2e 100%);
-                    border-radius: 10px; color: white; font-size: 18px; text-align: center; padding: 20px;">
-            <div>
-                <div style="font-size: 64px; margin-bottom: 20px;">📊</div>
-                <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">No Data Yet</div>
-                <div style="color: #94a3b8; font-size: 14px;">
-                    Upload a file or analyze transactions to see the evolution graph
-                </div>
-            </div>
-        </div>
-        """
+        return None
 
     # Create figure with dark theme - DOUBLED HEIGHT
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 12), facecolor='#1a1d2e')
@@ -121,40 +108,25 @@ def create_evolution_graph():
     'box-shadow: 0 4px 6px rgba(0,0,0,0.3);">')
 
 
-def process_batch_file(file_path, progress=gr.Progress()):
+def process_batch_file(file_path):
     """Process Excel or CSV file with batch predictions"""
-    if file_path is None:
-        # Prompt user to upload a file
-        prompt_html = """
-        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-                    border: 3px solid #f59e0b; padding: 25px;
-                    border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
-            <div style="font-size: 48px; margin-bottom: 15px;">📁</div>
-            <h3 style="color: #92400e; margin-top: 0; margin-bottom: 10px;">No File Uploaded</h3>
-            <p style="color: #78350f; font-size: 15px; line-height: 1.6;">
-                Please upload a CSV or Excel file to begin batch analysis.<br>
-                Use the file upload area on the left to select your file.
+    if not file_path:
+        error_html = """
+        <div style="background: #fef2f2; border: 3px solid #dc2626; padding: 25px;
+                    border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h3 style="color: #dc2626; margin-top: 0;">⚠️ No File Uploaded</h3>
+            <p style="color: #64748b; font-size: 15px;">
+                Please upload a CSV or Excel file before clicking <strong>"Analyze Batch File"</strong>.
             </p>
-            <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px;">
-                <p style="color: #92400e; font-size: 13px; margin: 0; font-weight: 600;">
-                    💡 Tip: Your file should contain columns for V14, V10, V17, V16, V3, V12, V4, V18, V11,
-                    Time, and Amount
-                </p>
-            </div>
         </div>
         """
-        return prompt_html, create_evolution_graph()
-
+        return error_html, None
     try:
-        progress(0, desc="📂 Reading file...")
-
         # Read file based on extension
         if file_path.endswith('.csv'):
             df = pd.read_csv(file_path)
         else:
             df = pd.read_excel(file_path)
-
-        progress(0.1, desc="✅ File loaded successfully")
 
         # Expected columns for the simplified model
         required_cols = ['V14', 'V10', 'V17', 'V16', 'V3', 'V12', 'V4', 'V18', 'V11', 'Time', 'Amount']
@@ -162,37 +134,14 @@ def process_batch_file(file_path, progress=gr.Progress()):
         # Check if columns exist
         missing_cols = [col for col in required_cols if col not in df.columns]
         if missing_cols:
-            error_html = f"""
-            <div style="background: #fef2f2; border: 3px solid #dc2626; padding: 25px;
-                        border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                <h3 style="color: #dc2626; margin-top: 0;">❌ Missing Required Columns</h3>
-                <p style="color: #64748b; font-size: 15px;">The following required
-                columns are missing from your file:</p>
-                <div style="background: #fee; padding: 12px; border-radius: 8px; margin: 10px 0;">
-                    <p style="color: #dc2626; font-weight: bold; margin: 0;">{', '.join(missing_cols)}</p>
-                </div>
-                <p style="color: #64748b; font-size: 13px; margin-top: 15px;">
-                    Please ensure your file includes all required columns: V14,
-                    V10, V17, V16, V3, V12, V4, V18, V11, Time, Amount
-                </p>
-            </div>
-            """
-            return error_html, create_evolution_graph()
-
-        progress(0.2, desc="🔍 Validating data structure...")
+            return f"❌ Missing columns: {', '.join(missing_cols)}", None
 
         # Clear previous history
         transaction_history.clear()
 
-        total_rows = len(df)
-        predictions = []
-
         # Make predictions for all rows
+        predictions = []
         for idx, row in df.iterrows():
-            # Update progress
-            progress_value = 0.2 + (0.7 * (idx + 1) / total_rows)  # type: ignore
-            progress(progress_value, desc=f"🔄 Processing transaction {idx + 1}/{total_rows}...")  # type: ignore
-
             # Prepare features in the correct order
             features = np.array([[
                 row['V14'], row['V10'], row['V17'], row['V16'], row['V3'],
@@ -231,8 +180,6 @@ def process_batch_file(file_path, progress=gr.Progress()):
                 'time': row['Time']
             })
 
-        progress(0.9, desc="📊 Generating statistics...")
-
         # Calculate statistics
         fraud_count = sum(1 for p in predictions if p['fraud_prob'] > 50)
         legitimate_count = len(predictions) - fraud_count
@@ -247,8 +194,6 @@ def process_batch_file(file_path, progress=gr.Progress()):
         max_amount = df['Amount'].max()
         min_amount = df['Amount'].min()
         avg_amount = df['Amount'].mean()
-
-        progress(1.0, desc="✅ Analysis complete!")
 
         # Create statistics HTML with updated colors
         stats_html = f"""
@@ -352,11 +297,11 @@ def process_batch_file(file_path, progress=gr.Progress()):
                     border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <h3 style="color: #dc2626; margin-top: 0;">❌ File Processing Error</h3>
             <p style="color: #64748b; font-size: 15px;">An error occurred while processing the file:</p>
-            <pre style="background: #f8fafc; padding: 15px; border-radius: 8px; overflow-x: auto; color: #1e293b;">
+            <pre style="background: #f8fafc; padding: 15px; border-radius: 8px; overflow-x: auto;">
 {str(e)}</pre>
         </div>
         """
-        return error_html, create_evolution_graph()
+        return error_html, None
 
 
 def predict_fraud(V14, V10, V17, V16, V3, V12, V4, V18, V11, time, amount):
@@ -511,20 +456,20 @@ def predict_fraud(V14, V10, V17, V16, V3, V12, V4, V18, V11, time, amount):
                     border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <h3 style="color: #dc2626; margin-top: 0;">❌ Prediction Error</h3>
             <p style="color: #64748b; font-size: 15px;">An error occurred during prediction:</p>
-            <pre style="background: #f8fafc; padding: 15px; border-radius: 8px; overflow-x: auto; color: #1e293b;">
+            <pre style="background: #f8fafc; padding: 15px; border-radius: 8px; overflow-x: auto;">
 {str(e)}</pre>
         </div>
         """
-        return error_html, create_evolution_graph()
+        return error_html, None
 
 
 def clear_history():
     """Clear transaction history"""
     transaction_history.clear()
-    return "✅ Transaction history cleared!", create_evolution_graph()
+    return "✅ Transaction history cleared!", None
 
 
-# Custom CSS with updated colors and tab text visibility
+# Custom CSS with updated colors
 custom_css = """
 #excel_upload {
     height: 150px;
@@ -553,32 +498,10 @@ custom_css = """
     font-weight: bold !important;
     color: white !important;
 }
-
-/* Fix tab text visibility - ensure black text on light background */
-.tab-nav button {
-    color: #1e293b !important;
-    font-weight: 600 !important;
-    background: #f8fafc !important;
-    border: 2px solid #e2e8f0 !important;
-}
-.tab-nav button[aria-selected="true"] {
-    color: #1e293b !important;
-    background: white !important;
-    border-bottom: 3px solid #6366f1 !important;
-}
-.tab-nav button:hover {
-    color: #0f172a !important;
-    background: #e2e8f0 !important;
-}
-
-/* Ensure all text in tabs is visible */
-.tabs {
-    color: #1e293b !important;
-}
 """
 
 # Create Gradio Interface with Tabs
-with gr.Blocks(css=custom_css, theme=Soft(), title="Fraud Detection System") as fraud_app:
+with gr.Blocks(css=custom_css, theme=Soft(), title="Fraud Detection System") as app:
     gr.Markdown(
         """
         <div style="text-align: center;">
@@ -653,24 +576,8 @@ with gr.Blocks(css=custom_css, theme=Soft(), title="Fraud Detection System") as 
                         <h3>📊 Evolution Over Time</h3>
                     </div>
                     """)
-                    graph_output_manual = gr.HTML(
-                        label="Transaction Evolution Graph",
-                        value=create_evolution_graph()  # Initialize with placeholder
-                    )
-
-            clear_status_manual = gr.Textbox(label="Status", visible=False)
-
-            with gr.Row():
-                gr.Markdown(
-                    """
-                    ---
-                    ### 💡 Tips:
-                    - **PCA Features (V14-V18)**: These are transformed features from Principal Component Analysis
-                    - **Time**: Represents seconds elapsed since first transaction in dataset
-                    - **Amount**: Transaction amount in dollars
-                    - **Risk Levels**: Critical (>80%), High (60-80%), Medium (40-60%), Low (20-40%), Minimal (<20%)
-                    """
-                )
+                    graph_output_manual = gr.HTML(label="Transaction Evolution Graph", value="")
+                    clear_status_manual = gr.Textbox(label="Status", visible=False)
 
         # TAB 2: File Upload
         with gr.Tab("📂 Batch File Analysis"):
@@ -721,35 +628,8 @@ with gr.Blocks(css=custom_css, theme=Soft(), title="Fraud Detection System") as 
                         <h3>📊 Evolution Over Time</h3>
                     </div>
                     """)
-                    graph_output_batch = gr.HTML(
-                        label="Transaction Evolution Graph",
-                        value=create_evolution_graph()  # Initialize with placeholder
-                    )
-
-            clear_status_batch = gr.Textbox(label="Status", visible=False)
-
-            with gr.Row():
-                gr.Markdown(
-                    """
-                    ---
-                    ### 📄 File Format Example:
-                    ```csv
-V14,V10,V17,V16,V3,V12,V4,V18,V11,Time,Amount
-0.35,-0.16,-80.01,0.91,0.22,0.54,-0.15,740.58,0.85,62800,8.99
--1.23,0.45,-65.32,1.20,0.88,0.33,-0.22,450.21,0.92,63000,150.50
-0.78,-0.89,-45.67,0.65,1.10,0.75,-0.33,320.45,0.70,63200,75.25
-```
-
-                    ### 📋 Required Columns:
-                    - **V14, V10, V17, V16, V3, V12, V4, V18, V11**: PCA-transformed features
-                    - **Time**: Transaction time in seconds
-                    - **Amount**: Transaction amount in dollars
-
-                    ### 💾 Supported Formats:
-                    - **CSV** (.csv) - Comma-separated values
-                    - **Excel** (.xlsx) - Microsoft Excel format
-                    """
-                )
+                    graph_output_batch = gr.HTML(label="Transaction Evolution Graph", value="")
+                    clear_status_batch = gr.Textbox(label="Status", visible=False)
 
     # Footer
     gr.Markdown(
