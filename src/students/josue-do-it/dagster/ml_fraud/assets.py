@@ -342,7 +342,7 @@ def evaluate_fraud_model(
             "f1_score": dg.MetadataValue.float(f1),
             "roc_auc": dg.MetadataValue.float(roc_auc) if roc_auc else dg.MetadataValue.text("N/A"),
             "confusion_matrix": dg.MetadataValue.path(plot_path),
-            "preview": dg.MetadataValue.md(report_df.head().to_markdown()),  # pyright: ignore[reportAttributeAccessIssue]
+            # "preview": dg.MetadataValue.md(report_df.head().to_markdown())
             # "registered_model": dg.MetadataValue.json(model_version_info),
             # "model_name": dg.MetadataValue.text(model_version_info["name"]),
             # "model_version": dg.MetadataValue.text(str(model_version_info["version"])),
