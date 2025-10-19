@@ -266,7 +266,8 @@ def batch_predict(
 
         pred_counts = df["prediction"].value_counts()
         total = len(df)
-        fraud_count = pred_counts.get(1, 0)
+        fraud_count = int(pred_counts.get(1, 0))  # type: ignore
+        legit_count = int(pred_counts.get(0, 0))  # type: ignore
 
         alert_msg = ""
         if fraud_count > 0:
@@ -282,7 +283,7 @@ def batch_predict(
 | Metric | Value |
 |--- |--- |
 | **Total Processed** | `{total:,}` |
-| **Legitimate (Class 0)** | `{pred_counts.get(0, 0):,}` (`{pred_counts.get(0, 0) / total:.1%}`) |
+| **Legitimate (Class 0)** | `{legit_count:,}` (`{legit_count / total:.1%}`) |
 | **Fraudulent (Class 1)** | `{fraud_count:,}` (`{fraud_count / total:.1%}`) |
 {alert_msg}
 
@@ -428,7 +429,7 @@ CSS = """
 # ==================== GRADIO INTERFACE ====================
 with gr.Blocks(
     title="Professional Fraud Detection System",
-    theme=gr.themes.Soft(primary_hue="blue", secondary_hue="gray"),
+    theme=gr.themes.Soft(primary_hue="blue", secondary_hue="gray"),  # type: ignore[attr-defined]
     css=CSS,
 ) as fraud_app:
     gr.Markdown(
