@@ -749,7 +749,7 @@ def start_model_server(model, port: int = 5001):
 
 
 @dg.asset(
-    description="Post recall metric to Slack and start model server on port 5001",
+    description="Post recall metric to Slack",
     compute_kind="python",
     group_name="ml_fraud_deploy",
     resource_defs={
@@ -757,12 +757,12 @@ def start_model_server(model, port: int = 5001):
         "mlflow_fraud": mlflow_resource
     }
 )
-def notify_and_serve(
+def notify_slack(
     context: dg.AssetExecutionContext,
     model_evaluation: Dict[str, Any],
     trained_fraud_model: RandomForestClassifier
 ) -> dg.MaterializeResult:
-    """Send notification to Slack and start model serving server"""
+    """Send notification to Slack"""
 
     recall = model_evaluation['recall']
     precision = model_evaluation['precision']
@@ -821,6 +821,36 @@ def notify_and_serve(
     except Exception as e:
         context.log.error(f"Failed to save model: {e}")
 
+    return dg.MaterializeResult(
+        value={
+            'recall': recall,
+            'precision': precision,
+            'f1': f1,
+            'roc_auc': roc_auc,
+            'slack_notification_sent': True
+        },
+        metadata={
+            "final_recall": dg.MetadataValue.float(recall),
+            "final_precision": dg.MetadataValue.float(precision),
+            "final_f1": dg.MetadataValue.float(f1),
+            "final_roc_auc": dg.MetadataValue.float(roc_auc),
+            "slack_notification": dg.MetadataValue.bool(True),
+            "model_saved": dg.MetadataValue.bool(True)
+        }
+    )
+
+
+@dg.asset(
+    description="Start model server on port 5001",
+    compute_kind="python",
+    group_name="ml_fraud_deploy"
+)
+def serve_model(
+    context: dg.AssetExecutionContext,
+    trained_fraud_model: RandomForestClassifier
+) -> dg.MaterializeResult:
+    """Start model serving server"""
+
     # Start model server
     port = 5001
     try:
@@ -839,47 +869,37 @@ def notify_and_serve(
 
     return dg.MaterializeResult(
         value={
-            'recall': recall,
-            'precision': precision,
-            'f1': f1,
-            'roc_auc': roc_auc,
             'server_port': port,
             'server_running': server_thread is not None
         },
         metadata={
-            "final_recall": dg.MetadataValue.float(recall),
-            "final_precision": dg.MetadataValue.float(precision),
-            "final_f1": dg.MetadataValue.float(f1),
-            "final_roc_auc": dg.MetadataValue.float(roc_auc),
             "server_port": dg.MetadataValue.int(port),
-            "server_status": dg.MetadataValue.text("running" if server_thread else "failed"),
-            "slack_notification": dg.MetadataValue.bool(True),
-            "model_saved": dg.MetadataValue.bool(True)
+            "server_status": dg.MetadataValue.text("running" if server_thread else "failed")
         }
     )
 
 
 @dg.asset_check(
-    asset="notify_and_serve",
-    description="Verifies that notification was sent and server is running"
+    asset="notify_slack",
+    description="Verifies that Slack notification was sent successfully"
 )
-def check_notify_and_serve(
+def check_notify_slack(
     context: dg.AssetCheckExecutionContext,
-    notify_and_serve: Dict[str, Any]
+    notify_slack: Dict[str, Any]
 ) -> dg.AssetCheckResult:
-    server_running = notify_and_serve['server_running']
-    recall = notify_and_serve['recall']
+    slack_notification_sent = notify_slack['slack_notification_sent']
+    recall = notify_slack['recall']
 
-    # Check that server is running
-    server_ok = server_running
+    # Check that Slack notification was sent
+    notification_ok = slack_notification_sent
 
     # Check that recall is reasonable
     recall_ok = 0.0 <= recall <= 1.0
 
-    passed = bool(server_ok and recall_ok)
+    passed = bool(notification_ok and recall_ok)
 
     metadata = {
-        "server_running": dg.MetadataValue.bool(bool(server_running)),
+        "slack_notification_sent": dg.MetadataValue.bool(bool(slack_notification_sent)),
         "recall": dg.MetadataValue.float(float(recall)),
         "recall_ok": dg.MetadataValue.bool(bool(recall_ok))
     }
@@ -889,8 +909,45 @@ def check_notify_and_serve(
         metadata=metadata,
         description=(
             "Passed" if passed else
-            f"{'Server not running. ' if not server_ok else ''}"
+            f"{'Slack notification not sent. ' if not notification_ok else ''}"
             f"{'Invalid recall score. ' if not recall_ok else ''}"
         ),
-        asset_key="notify_and_serve",
+        asset_key="notify_slack",
+    )
+
+
+@dg.asset_check(
+    asset="serve_model",
+    description="Verifies that model server is running"
+)
+def check_serve_model(
+    context: dg.AssetCheckExecutionContext,
+    serve_model: Dict[str, Any]
+) -> dg.AssetCheckResult:
+    server_running = serve_model['server_running']
+    server_port = serve_model['server_port']
+
+    # Check that server is running
+    server_ok = server_running
+
+    # Check that port is reasonable
+    port_ok = 1000 <= server_port <= 65535
+
+    passed = bool(server_ok and port_ok)
+
+    metadata = {
+        "server_running": dg.MetadataValue.bool(bool(server_running)),
+        "server_port": dg.MetadataValue.int(int(server_port)),
+        "port_ok": dg.MetadataValue.bool(bool(port_ok))
+    }
+
+    return dg.AssetCheckResult(
+        passed=passed,
+        metadata=metadata,
+        description=(
+            "Passed" if passed else
+            f"{'Server not running. ' if not server_ok else ''}"
+            f"{'Invalid port number. ' if not port_ok else ''}"
+        ),
+        asset_key="serve_model",
     )
