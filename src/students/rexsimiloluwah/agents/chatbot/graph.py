@@ -3,13 +3,10 @@ from __future__ import annotations
 import logging
 import os
 
-from dotenv import find_dotenv, load_dotenv
 from langchain_core.tools import tool
 from langchain_google_community import GoogleSearchAPIWrapper
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
-
-_ = load_dotenv(find_dotenv())
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID", "")

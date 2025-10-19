@@ -15,7 +15,7 @@ SQLITE_DB_FILENAME = "mlflow_local_tracking.db"  # Name of the SQLite database f
 # Construct full paths
 SQLITE_DB_PATH = os.path.join(BASE_DIR, SQLITE_DB_FILENAME)
 
-DEFAULT_EXPERIMENT_NAME = "era5_temperature_analysis"  # "era5_temperature_analysis"
+DEFAULT_EXPERIMENT_NAME = "era5_temperature_analysis"
 
 
 # Define the MLflow resource
