@@ -137,7 +137,7 @@ def update_user_details(username: str, request: UpdateUserRequest):
 @app.post("/predict", summary="Predict user input features")
 # async def make_predictions(file: UploadFile = File(...)):
 #     """
-#    Prediction API
+#     Prediction API
 #     """
 #     FOLDER = os.getcwd()
 #     file_path = os.path.join(FOLDER, file.filename)
@@ -159,7 +159,7 @@ def update_user_details(username: str, request: UpdateUserRequest):
 #         writer.writerow(["sample_index", "prediction"])
 #         idx = 1
 #         for pred in predictions:
-#             i f pred == 0:
+#             if pred == 0:
 #                 writer.writerow([idx, "legitimate"])
 #             else:
 #                 writer.writerow([idx, "fraud"])

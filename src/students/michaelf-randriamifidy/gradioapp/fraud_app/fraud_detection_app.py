@@ -167,3 +167,8 @@ def build_interface():
         download_button.click(get_file_path, inputs=download_button, outputs=download_button)
 
     return demo
+
+
+if __name__ == "__main__":
+    fraud_detector = build_interface()
+    fraud_detector.launch()
