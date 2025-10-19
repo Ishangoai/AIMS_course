@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import dagster as dg
 import matplotlib.pyplot as plt
@@ -231,12 +231,11 @@ def tune_hyperparameters(
 )
 def train_model(
     context: dg.AssetExecutionContext,
-        tune_hyperparameters: Tuple[RandomForestClassifier, Dict[str, Any]],
-        split_dataset: Dict[str, Any],
+    tune_hyperparameters: Tuple[RandomForestClassifier, Dict[str, Any]],
+    split_dataset: Dict[str, Any],
 ) -> dg.MaterializeResult:
     """Train final model with best hyperparameters and log to MLflow."""
 
-    # Configure MLflow
     fraud_mlflow = context.resources.fraud_mlflow
     mlflow.set_tracking_uri(fraud_mlflow.tracking_uri)
     mlflow.set_experiment(fraud_mlflow.experiment_name)
@@ -251,9 +250,9 @@ def train_model(
 
     # ✅ Attach to the currently active MLflow run
     active_run = mlflow.active_run()
+    run_id: Optional[str] = None
     if active_run is None:
         context.log.warning("⚠️ No active MLflow run found — training metrics will not be logged.")
-        run_id = None
     else:
         run_id = active_run.info.run_id
         context.log.info(f"Using active MLflow run: {run_id}")
@@ -276,7 +275,7 @@ def train_model(
     f1 = float(f1_score(y_test, y_pred))
     roc_auc = float(roc_auc_score(y_test, y_pred_proba))
 
-    metrics = {
+    metrics: Dict[str, float] = {
         "test_precision": precision,
         "test_recall": recall,
         "test_f1_score": f1,
@@ -340,7 +339,7 @@ def generate_evaluation_plots(
     sensitivity = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0
 
     # === Visualization ===
-    _fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
     # Confusion matrix
     ax = axes[0]
@@ -362,7 +361,7 @@ def generate_evaluation_plots(
 
     # Metrics bar chart
     metric_names = ["Precision", "Recall", "F1-Score", "ROC-AUC", "Specificity", "Sensitivity"]
-    metric_values = [
+    metric_values: list[float] = [
         metrics["test_precision"], metrics["test_recall"],
         metrics["test_f1_score"], metrics["test_roc_auc"],
         specificity, sensitivity,
@@ -385,11 +384,13 @@ def generate_evaluation_plots(
     os.makedirs(artifact_dir, exist_ok=True)
     plot_path = os.path.join(artifact_dir, "evaluation_plots.png")
     plt.savefig(plot_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    plt.close(fig)
     context.log.info(f"Evaluation plots saved to {plot_path}")
 
     # Attach to currently active MLflow run
     active_run = mlflow.active_run()
+    eval_run_id: Optional[str] = None
+
     if active_run is not None:
         mlflow.log_artifact(plot_path, artifact_path="evaluation_plots")
         mlflow.log_metrics({
@@ -405,7 +406,6 @@ def generate_evaluation_plots(
         context.log.info(f"Input example:\n{input_example}")
 
         # Log as artifact (CSV format for reference)
-        import pandas as pd
         input_df = pd.DataFrame(input_example)
         input_example_path = os.path.join(artifact_dir, "input_example.csv")
         input_df.to_csv(input_example_path, index=False)
@@ -416,40 +416,39 @@ def generate_evaluation_plots(
         context.log.info(f"Logged plots, metrics, and input example to MLflow run: {eval_run_id}")
     else:
         context.log.warning("No active MLflow run found — skipping MLflow artifact logging.")
-        eval_run_id = None
 
     return dg.MaterializeResult(
-    value={
-        "confusion_matrix": cm.tolist(),
-        "metrics": {
-            k: float(v) for k, v in metrics.items()
+        value={
+            "confusion_matrix": cm.tolist(),
+            "metrics": {
+                k: float(v) for k, v in metrics.items()
+            },
+            "additional_metrics": {
+                "specificity": float(specificity),
+                "sensitivity": float(sensitivity),
+                "true_negatives": int(tn),
+                "false_positives": int(fp),
+                "false_negatives": int(fn),
+                "true_positives": int(tp),
+            },
+            "plot_path": str(plot_path),
+            "mlflow_eval_run_id": str(eval_run_id or "none"),
         },
-        "additional_metrics": {
-            "specificity": float(specificity),
-            "sensitivity": float(sensitivity),
-            "true_negatives": int(tn),
-            "false_positives": int(fp),
-            "false_negatives": int(fn),
-            "true_positives": int(tp),
+        metadata={
+            "confusion_matrix_tn": dg.MetadataValue.int(int(tn)),
+            "confusion_matrix_fp": dg.MetadataValue.int(int(fp)),
+            "confusion_matrix_fn": dg.MetadataValue.int(int(fn)),
+            "confusion_matrix_tp": dg.MetadataValue.int(int(tp)),
+            "precision": dg.MetadataValue.float(float(metrics["test_precision"])),
+            "recall": dg.MetadataValue.float(float(metrics["test_recall"])),
+            "f1_score": dg.MetadataValue.float(float(metrics["test_f1_score"])),
+            "roc_auc": dg.MetadataValue.float(float(metrics["test_roc_auc"])),
+            "specificity": dg.MetadataValue.float(float(specificity)),
+            "sensitivity": dg.MetadataValue.float(float(sensitivity)),
+            "plot_artifact_path": dg.MetadataValue.path(str(plot_path)),
+            "mlflow_evaluation_run_id": dg.MetadataValue.text(str(eval_run_id or "none")),
         },
-        "plot_path": str(plot_path),
-        "mlflow_eval_run_id": str(eval_run_id or "none"),
-    },
-    metadata={
-        "confusion_matrix_tn": dg.MetadataValue.int(int(tn)),
-        "confusion_matrix_fp": dg.MetadataValue.int(int(fp)),
-        "confusion_matrix_fn": dg.MetadataValue.int(int(fn)),
-        "confusion_matrix_tp": dg.MetadataValue.int(int(tp)),
-        "precision": dg.MetadataValue.float(float(metrics["test_precision"])),
-        "recall": dg.MetadataValue.float(float(metrics["test_recall"])),
-        "f1_score": dg.MetadataValue.float(float(metrics["test_f1_score"])),
-        "roc_auc": dg.MetadataValue.float(float(metrics["test_roc_auc"])),
-        "specificity": dg.MetadataValue.float(float(specificity)),
-        "sensitivity": dg.MetadataValue.float(float(sensitivity)),
-        "plot_artifact_path": dg.MetadataValue.path(str(plot_path)),
-        "mlflow_evaluation_run_id": dg.MetadataValue.text(str(eval_run_id or "none")),
-    },
-)
+    )
 
 
 @dg.asset(
@@ -460,7 +459,7 @@ def generate_evaluation_plots(
 )
 def register_model_to_registry(
     context: dg.AssetExecutionContext,
-    train_model: tuple
+    train_model: Tuple[RandomForestClassifier, Dict[str, float]]
 ) -> dg.MaterializeResult:
     """Register the best model to the MLflow Model Registry."""
 
@@ -477,6 +476,14 @@ def register_model_to_registry(
     context.log.info(f"✅ Set experiment: {fraud_mlflow.experiment_name}")
 
     experiment = mlflow.get_experiment_by_name(fraud_mlflow.experiment_name)
+    if experiment is None:
+        context.log.error("❌ Experiment not found")
+        return dg.MaterializeResult(
+            value=None,
+            metadata={"registration_status": dg.MetadataValue.text("failed"),
+            "error": dg.MetadataValue.text("Experiment not found")}
+        )
+
     experiment_id = experiment.experiment_id
     context.log.info(f"✅ Got experiment ID: {experiment_id}")
 
@@ -494,7 +501,7 @@ def register_model_to_registry(
         )
 
     latest_run = runs.iloc[0]
-    run_id = latest_run["run_id"]
+    run_id: str = latest_run["run_id"]
     context.log.info(f"✅ Latest run ID: {run_id}")
 
     model_uri = f"runs:/{run_id}/final_fraud_model"
@@ -542,11 +549,12 @@ def register_model_to_registry(
 )
 def send_slack_notification(
     context: dg.AssetExecutionContext,
-    generate_evaluation_plots: dg.MaterializeResult) -> dg.MaterializeResult:
+    generate_evaluation_plots: Dict[str, Any]
+) -> dg.MaterializeResult:
     """Send model performance metrics to Slack with emojis."""
-    eval_data = generate_evaluation_plots
-    metrics = eval_data["metrics"]
-    eval_data["additional_metrics"]
+
+    metrics: Dict[str, float] = generate_evaluation_plots.get("metrics", {})
+    _ = generate_evaluation_plots.get("additional_metrics", {})
 
     context.log.info("Sending Slack notification...")
 
@@ -566,10 +574,10 @@ def send_slack_notification(
             message = (
                 f"*✅ Fraud Detection Model Training Complete!* \n\n"
                 f"*🏃 Model Performance on Test Set:*\n"
-                f"• Precision: {metrics['test_precision']:.4f}\n"
-                f"• Recall: {metrics['test_recall']:.4f}\n"
-                f"• F1-Score: {metrics['test_f1_score']:.4f}\n"
-                f"• ROC-AUC: {metrics['test_roc_auc']:.4f}\n"
+                f"• Precision: {metrics.get('test_precision', 0):.4f}\n"
+                f"• Recall: {metrics.get('test_recall', 0):.4f}\n"
+                f"• F1-Score: {metrics.get('test_f1_score', 0):.4f}\n"
+                f"• ROC-AUC: {metrics.get('test_roc_auc', 0):.4f}\n"
                 f"💻 Created by dagmaros27 & Chekwube"
             )
 
@@ -579,18 +587,20 @@ def send_slack_notification(
             slack_message = f"Message sent to {SLACK_CHANNEL}"
 
         except SlackApiError as e:
-            context.log.error(f"Slack API Error: {e.response.get('error', str(e))}")
+            error_msg = e.response.get('error', str(e)) if hasattr(e, 'response') else str(e)
+            context.log.error(f"Slack API Error: {error_msg}")
             slack_status = "failed"
-            slack_message = f"Slack API error: {e.response.get('error', str(e))}"
+            slack_message = f"Slack API error: {error_msg}"
         except Exception as e:
             context.log.error(f"Unexpected error sending Slack notification: {e}")
             slack_status = "failed"
             slack_message = f"Slack notification failed: {e}"
 
-    return dg.MaterializeResult(value=slack_message,
-    metadata={
-        "slack_status": dg.MetadataValue.text(slack_status),
-    "slack_channel": dg.MetadataValue.text(SLACK_CHANNEL),
-    "message": dg.MetadataValue.text(slack_message)
-    }
-)
+    return dg.MaterializeResult(
+        value=slack_message,
+        metadata={
+            "slack_status": dg.MetadataValue.text(slack_status),
+            "slack_channel": dg.MetadataValue.text(SLACK_CHANNEL or ""),
+            "message": dg.MetadataValue.text(slack_message)
+        }
+    )
