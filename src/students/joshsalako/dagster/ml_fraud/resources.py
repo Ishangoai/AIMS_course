@@ -30,15 +30,9 @@ def mlflow_client(_):
 
 class FraudModelConfig(dg.Config):
     """Configuration for fraud detection model hyperparameter tuning"""
+
     n_estimators: list[int] = pyd.Field(
-        default=[50, 100, 200, 300, 500],
-        description="List of n_estimators values to try during hyperparameter tuning"
+        default=[50, 100, 200, 300, 500], description="List of n_estimators values to try during hyperparameter tuning"
     )
-    cv_folds: int = pyd.Field(
-        default=3,
-        description="Number of cross-validation folds"
-    )
-    random_state: int = pyd.Field(
-        default=42,
-        description="Random state for reproducibility"
-    )
+    cv_folds: int = pyd.Field(default=3, description="Number of cross-validation folds")
+    random_state: int = pyd.Field(default=42, description="Random state for reproducibility")

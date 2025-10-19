@@ -50,7 +50,7 @@ def _perform_hyperparameter_tuning(
     context: dg.AssetExecutionContext,
     X_train_resampled: np.ndarray,
     y_train_resampled: np.ndarray,
-    feature_names: List[str]
+    feature_names: List[str],
 ) -> tuple[float, Dict[str, Any], RandomForestClassifier | None]:
     n_estimators_values = [50, 100, 200, 300, 500]
     best_score = 0.0
@@ -101,13 +101,14 @@ def _perform_hyperparameter_tuning(
     description="Import data for fraud detection",
     compute_kind="python",
     group_name="ml_fraud_ingest",
-    resource_defs={"mlflow_fraud": mlflow_resource}
+    resource_defs={"mlflow_fraud": mlflow_resource},
 )
 def fraud_data(
     context: dg.AssetExecutionContext,
 ) -> dg.MaterializeResult:
-
-    csv_path = "https://raw.githubusercontent.com/aduuna/Kaggle-Data-Credit-Card-Fraud-Detection/master/samplecreditcard.csv"
+    csv_path = (
+        "https://raw.githubusercontent.com/aduuna/Kaggle-Data-Credit-Card-Fraud-Detection/master/samplecreditcard.csv"
+    )
     try:
         df = pd.read_csv(csv_path)
     except FileNotFoundError:
@@ -133,25 +134,19 @@ def fraud_data(
         metadata={
             "preview": dg.MetadataValue.md(df.head().to_markdown() or ""),
             "dagster/row_count": row_count,
-            "dagster/column_schema": dg.TableSchema(columns=column_schema)
-        }
+            "dagster/column_schema": dg.TableSchema(columns=column_schema),
+        },
     )
 
 
-@dg.asset_check(
-    asset="fraud_data",
-    description="Checks for null values and negative amounts in fraud_data"
-)
-def check_fraud_data(
-    context: dg.AssetCheckExecutionContext,
-    fraud_data: pd.DataFrame
-    ) -> dg.AssetCheckResult:
+@dg.asset_check(asset="fraud_data", description="Checks for null values and negative amounts in fraud_data")
+def check_fraud_data(context: dg.AssetCheckExecutionContext, fraud_data: pd.DataFrame) -> dg.AssetCheckResult:
     # Check for nulls
     num_nulls = fraud_data.isnull().sum().sum()
 
     # Check for negative amounts if 'Amount' column exists
-    if 'Amount' in fraud_data.columns:
-        negative_amounts = (fraud_data['Amount'] < 0).sum()
+    if "Amount" in fraud_data.columns:
+        negative_amounts = (fraud_data["Amount"] < 0).sum()
     else:
         negative_amounts = 0  # Consider 0 if column doesn't exist
 
@@ -161,15 +156,16 @@ def check_fraud_data(
     passed = (num_nulls == 0) and (negative_amounts == 0)
     metadata = {
         "num_nulls": dg.MetadataValue.int(num_nulls),
-        "num_negative_amounts": dg.MetadataValue.int(negative_amounts)
+        "num_negative_amounts": dg.MetadataValue.int(negative_amounts),
     }
 
     return dg.AssetCheckResult(
         passed=passed,
         metadata=metadata,
         description=(
-            "Passed" if passed else
-            f"{'Nulls present. ' if num_nulls > 0 else ''}{'Negative Amounts found.' if negative_amounts > 0 else ''}"
+            "Passed"
+            if passed
+            else f"{'Nulls present. ' if num_nulls > 0 else ''}{'Negative Amounts found.' if negative_amounts > 0 else ''}"
         ),
         asset_key="fraud_data",
     )
@@ -179,24 +175,21 @@ def check_fraud_data(
     description="Preprocess fraud data with feature engineering, normalization, and correlation analysis",
     compute_kind="python",
     group_name="ml_fraud_transform",
-    resource_defs={"mlflow_fraud": mlflow_resource}
+    resource_defs={"mlflow_fraud": mlflow_resource},
 )
-def preprocessed_fraud_data(
-    context: dg.AssetExecutionContext,
-    fraud_data: pd.DataFrame
-) -> dg.MaterializeResult:
+def preprocessed_fraud_data(context: dg.AssetExecutionContext, fraud_data: pd.DataFrame) -> dg.MaterializeResult:
     """Preprocess fraud detection data"""
 
     df: pd.DataFrame = fraud_data.copy()
     context.log.info(f"Starting preprocessing with {len(df)} rows")
 
     # Feature engineering: create Time_OfDay column
-    df['Time_OfDay'] = df['Time'].apply(categorize_time)
+    df["Time_OfDay"] = df["Time"].apply(categorize_time)
     context.log.info("Created Time_OfDay feature")
 
     # Data subsampling: balance fraudulent and non-fraudulent transactions
-    df_fraud = df[df['Class'] == 1]
-    df_non_fraud = df[df['Class'] == 0]
+    df_fraud = df[df["Class"] == 1]
+    df_non_fraud = df[df["Class"] == 0]
     num_fraud = len(df_fraud)
     df_non_fraud_subsample = df_non_fraud.sample(num_fraud, random_state=42)
     df_subsample = pd.concat([df_fraud, df_non_fraud_subsample])
@@ -204,33 +197,31 @@ def preprocessed_fraud_data(
 
     context.log.info(f"Created balanced subsample with {len(df_subsample)} rows")
     class_distribution = (
-        pd.Series(df_subsample['Class']).value_counts()
-        if hasattr(df_subsample['Class'], 'value_counts')
-        else None
+        pd.Series(df_subsample["Class"]).value_counts() if hasattr(df_subsample["Class"], "value_counts") else None
     )
-    context.log.info(
-        f"Class distribution: {dict(class_distribution) if class_distribution is not None else 'N/A'}"
-    )
+    context.log.info(f"Class distribution: {dict(class_distribution) if class_distribution is not None else 'N/A'}")
 
     # Data normalization
     scaler = StandardScaler()
-    columns_to_normalize = df_subsample.drop(['Class', 'Time_OfDay'], axis=1).columns
+    columns_to_normalize = df_subsample.drop(["Class", "Time_OfDay"], axis=1).columns
     df_subsample[columns_to_normalize] = scaler.fit_transform(df_subsample[columns_to_normalize])
     context.log.info("Applied feature normalization")
 
     # Correlation analysis and feature selection
     correlation_matrix = df_subsample.corr()
-    class_correlations = correlation_matrix['Class'].drop('Class')
+    class_correlations = correlation_matrix["Class"].drop("Class")
     sorted_class_correlations = class_correlations.abs().sort_values(ascending=False)
     correlation_threshold = 0.2
-    top_features: List[str] = sorted_class_correlations[sorted_class_correlations > correlation_threshold].index.tolist()
+    top_features: List[str] = sorted_class_correlations[
+        sorted_class_correlations > correlation_threshold
+    ].index.tolist()
 
     context.log.info(f"Selected {len(top_features)} features with correlation > {correlation_threshold}")
     context.log.info(f"Top features: {top_features}")
 
     # Output: Use the original df with selected columns and 'Class'
     features_to_output = [col for col in top_features if col in df.columns]
-    df_processed = df[features_to_output + ['Class']].copy()
+    df_processed = df[features_to_output + ["Class"]].copy()
 
     context.log.info(f"Final processed dataset shape: {df_processed.shape}")
 
@@ -251,20 +242,18 @@ def preprocessed_fraud_data(
         metadata={
             "preview": dg.MetadataValue.md(df_processed.head().to_markdown() or ""),
             "shape": dg.MetadataValue.text(f"{df_processed.shape[0]} rows, {df_processed.shape[1]} columns"),
-            "class_distribution": dg.MetadataValue.text(str(dict(pd.Series(df_processed['Class']).value_counts()))),
+            "class_distribution": dg.MetadataValue.text(str(dict(pd.Series(df_processed["Class"]).value_counts()))),
             "selected_features": dg.MetadataValue.text(", ".join(features_to_output)),
-            "correlation_threshold": dg.MetadataValue.float(correlation_threshold)
-        }
+            "correlation_threshold": dg.MetadataValue.float(correlation_threshold),
+        },
     )
 
 
 @dg.asset_check(
-    asset="preprocessed_fraud_data",
-    description="Checks that preprocessing produced no nulls and selected features"
+    asset="preprocessed_fraud_data", description="Checks that preprocessing produced no nulls and selected features"
 )
 def check_preprocessed_fraud_data(
-    context: dg.AssetCheckExecutionContext,
-    preprocessed_fraud_data: pd.DataFrame
+    context: dg.AssetCheckExecutionContext, preprocessed_fraud_data: pd.DataFrame
 ) -> dg.AssetCheckResult:
     # Check for nulls
     num_nulls = int(preprocessed_fraud_data.isnull().sum().sum())
@@ -277,16 +266,16 @@ def check_preprocessed_fraud_data(
     metadata = {
         "num_nulls": dg.MetadataValue.int(num_nulls),
         "has_features": dg.MetadataValue.bool(bool(has_features)),
-        "num_features": dg.MetadataValue.int(int(len(preprocessed_fraud_data.columns) - 1))
+        "num_features": dg.MetadataValue.int(int(len(preprocessed_fraud_data.columns) - 1)),
     }
 
     return dg.AssetCheckResult(
         passed=passed,
         metadata=metadata,
         description=(
-            "Passed" if passed else
-            f"{'Nulls present. ' if num_nulls > 0 else ''}"
-            f"{'No features selected. ' if not has_features else ''}"
+            "Passed"
+            if passed
+            else f"{'Nulls present. ' if num_nulls > 0 else ''}{'No features selected. ' if not has_features else ''}"
         ),
         asset_key="preprocessed_fraud_data",
     )
@@ -296,11 +285,10 @@ def check_preprocessed_fraud_data(
     description="Split preprocessed data into 80% train and 20% test",
     compute_kind="python",
     group_name="ml_fraud_transform",
-    resource_defs={"mlflow_fraud": mlflow_resource}
+    resource_defs={"mlflow_fraud": mlflow_resource},
 )
 def train_test_split_data(
-    context: dg.AssetExecutionContext,
-    preprocessed_fraud_data: pd.DataFrame
+    context: dg.AssetExecutionContext, preprocessed_fraud_data: pd.DataFrame
 ) -> dg.MaterializeResult:
     """Split the preprocessed fraud data into train and test sets"""
 
@@ -308,13 +296,11 @@ def train_test_split_data(
     context.log.info(f"Splitting data with shape: {df.shape}")
 
     # Prepare features and target
-    X = df.drop(['Class'], axis=1).to_numpy()
-    y = df['Class'].to_numpy()
+    X = df.drop(["Class"], axis=1).to_numpy()
+    y = df["Class"].to_numpy()
 
     # Split into train/test
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, stratify=y, random_state=42
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
 
     # Log split information
     context.log.info(f"Train set: {X_train.shape[0]} samples")
@@ -335,23 +321,17 @@ def train_test_split_data(
         mlflow_client.log_param("num_features", int(X_train.shape[1]))
         mlflow_client.log_param("split_ratio", "80/20")
         mlflow_client.log_param("stratified", True)
-        mlflow_client.log_param(
-            "train_class_dist",
-            str(dict(zip(range(len(train_class_dist)), train_class_dist)))
-        )
-        mlflow_client.log_param(
-            "test_class_dist",
-            str(dict(zip(range(len(test_class_dist)), test_class_dist)))
-        )
+        mlflow_client.log_param("train_class_dist", str(dict(zip(range(len(train_class_dist)), train_class_dist))))
+        mlflow_client.log_param("test_class_dist", str(dict(zip(range(len(test_class_dist)), test_class_dist))))
     except Exception as e:
         context.log.warning(f"MLflow logging (train_test_split_data) skipped due to error: {e}")
 
     split_data = {
-        'X_train': X_train,
-        'X_test': X_test,
-        'y_train': y_train,
-        'y_test': y_test,
-        'feature_names': df.drop(['Class'], axis=1).columns.tolist()
+        "X_train": X_train,
+        "X_test": X_test,
+        "y_train": y_train,
+        "y_test": y_test,
+        "feature_names": df.drop(["Class"], axis=1).columns.tolist(),
     }
 
     return dg.MaterializeResult(
@@ -366,21 +346,20 @@ def train_test_split_data(
             "train_class_dist": dg.MetadataValue.text(str(dict(zip(range(len(train_class_dist)), train_class_dist)))),
             "test_class_dist": dg.MetadataValue.text(str(dict(zip(range(len(test_class_dist)), test_class_dist)))),
             "split_ratio": dg.MetadataValue.text("80/20"),
-            "stratified": dg.MetadataValue.bool(True)
-        }
+            "stratified": dg.MetadataValue.bool(True),
+        },
     )
 
 
 @dg.asset_check(
     asset="train_test_split_data",
-    description="Verifies that stratification preserved class balance in train/test split"
+    description="Verifies that stratification preserved class balance in train/test split",
 )
 def check_train_test_split_data(
-    context: dg.AssetCheckExecutionContext,
-    train_test_split_data: Dict[str, Any]
+    context: dg.AssetCheckExecutionContext, train_test_split_data: Dict[str, Any]
 ) -> dg.AssetCheckResult:
-    y_train = train_test_split_data['y_train']
-    y_test = train_test_split_data['y_test']
+    y_train = train_test_split_data["y_train"]
+    y_test = train_test_split_data["y_test"]
 
     # Calculate class distributions
     train_class_dist = np.bincount(y_train)
@@ -409,15 +388,16 @@ def check_train_test_split_data(
         ),
         "test_ratio": dg.MetadataValue.float(
             float(test_class_dist[1] / test_class_dist[0] if has_both_classes_test else 0.0)
-        )
+        ),
     }
 
     return dg.AssetCheckResult(
         passed=passed,
         metadata=metadata,
         description=(
-            "Passed" if passed else
-            f"{'Train set missing classes. ' if not has_both_classes_train else ''}"
+            "Passed"
+            if passed
+            else f"{'Train set missing classes. ' if not has_both_classes_train else ''}"
             f"{'Test set missing classes. ' if not has_both_classes_test else ''}"
             f"{'Class ratios too different. ' if not ratio_similarity else ''}"
         ),
@@ -429,11 +409,10 @@ def check_train_test_split_data(
     description="Train RandomForest model with 3-fold CV, hyperparameter tuning",
     compute_kind="python",
     group_name="ml_fraud_model",
-    resource_defs={"mlflow_fraud": mlflow_resource}
+    resource_defs={"mlflow_fraud": mlflow_resource},
 )
 def trained_fraud_model(
-    context: dg.AssetExecutionContext,
-    train_test_split_data: Dict[str, Any]
+    context: dg.AssetExecutionContext, train_test_split_data: Dict[str, Any]
 ) -> dg.MaterializeResult:
     """Train RandomForest classifier with hyperparameter tuning"""
 
@@ -455,20 +434,17 @@ def trained_fraud_model(
         pass
 
     with mlflow_client.start_run(
-        experiment_id=experiment_id,
-        run_name=f"fraud_detection_training_{context.run_id[:8]}"
+        experiment_id=experiment_id, run_name=f"fraud_detection_training_{context.run_id[:8]}"
     ):
         run_id = mlflow.active_run().info.run_id
         mlflow_client.set_tag("model_type", "RandomForest")
         mlflow_client.set_tag("task", "fraud_detection")
 
-        X_train = train_test_split_data['X_train']
-        y_train = train_test_split_data['y_train']
-        feature_names = train_test_split_data['feature_names']
+        X_train = train_test_split_data["X_train"]
+        y_train = train_test_split_data["y_train"]
+        feature_names = train_test_split_data["feature_names"]
         xtr = np.asarray(X_train)
-        context.log.info(
-            f"Training model with {int(xtr.shape[0])} samples, {int(xtr.shape[1])} features"
-        )
+        context.log.info(f"Training model with {int(xtr.shape[0])} samples, {int(xtr.shape[1])} features")
 
         X_train_resampled = X_train
         y_train_resampled = y_train
@@ -489,10 +465,7 @@ def trained_fraud_model(
             ms.log_model(
                 best_model,
                 "model",
-                signature=infer_signature(
-                    X_train_resampled[:10],
-                    best_model.predict(X_train_resampled[:10])
-                )
+                signature=infer_signature(X_train_resampled[:10], best_model.predict(X_train_resampled[:10])),
             )
 
         if best_params:
@@ -513,35 +486,31 @@ def trained_fraud_model(
                 "mlflow_run_id": dg.MetadataValue.text(run_id),
                 "best_params": dg.MetadataValue.text(str(best_params)),
                 "best_cv_recall": dg.MetadataValue.float(float(best_score)),
-                "n_estimators": dg.MetadataValue.int(best_params['n_estimators'] if best_params else 0),
+                "n_estimators": dg.MetadataValue.int(best_params["n_estimators"] if best_params else 0),
                 "training_samples": dg.MetadataValue.int(X_train_resampled.shape[0]),
                 "num_features": dg.MetadataValue.int(X_train_resampled.shape[1]),
-                "feature_names": dg.MetadataValue.text(", ".join(feature_names))
-            }
+                "feature_names": dg.MetadataValue.text(", ".join(feature_names)),
+            },
         )
 
 
 @dg.asset_check(
     asset="trained_fraud_model",
-    description="Verifies that the model was trained successfully with reasonable performance"
+    description="Verifies that the model was trained successfully with reasonable performance",
 )
 def check_trained_fraud_model(
-    context: dg.AssetCheckExecutionContext,
-    trained_fraud_model: Dict[str, str]
+    context: dg.AssetCheckExecutionContext, trained_fraud_model: Dict[str, str]
 ) -> dg.AssetCheckResult:
     try:
         model = joblib.load(trained_fraud_model["model_path"])
     except Exception as e:
-        return dg.AssetCheckResult(
-            passed=False,
-            description=f"Failed to load model from path: {e}"
-        )
+        return dg.AssetCheckResult(passed=False, description=f"Failed to load model from path: {e}")
 
     # Check that model is a RandomForest
-    is_random_forest = hasattr(model, 'estimators_')
+    is_random_forest = hasattr(model, "estimators_")
 
     # Check that model has been fitted (has feature_importances_)
-    is_fitted = hasattr(model, 'feature_importances_')
+    is_fitted = hasattr(model, "feature_importances_")
 
     # Check that we have reasonable number of trees
     if is_fitted:
@@ -557,15 +526,16 @@ def check_trained_fraud_model(
         "is_random_forest": dg.MetadataValue.bool(bool(is_random_forest)),
         "is_fitted": dg.MetadataValue.bool(bool(is_fitted)),
         "n_estimators": dg.MetadataValue.int(int(n_estimators)),
-        "reasonable_trees": dg.MetadataValue.bool(bool(reasonable_trees))
+        "reasonable_trees": dg.MetadataValue.bool(bool(reasonable_trees)),
     }
 
     return dg.AssetCheckResult(
         passed=passed,
         metadata=metadata,
         description=(
-            "Passed" if passed else
-            f"{'Not a RandomForest. ' if not is_random_forest else ''}"
+            "Passed"
+            if passed
+            else f"{'Not a RandomForest. ' if not is_random_forest else ''}"
             f"{'Model not fitted. ' if not is_fitted else ''}"
             f"{'Unreasonable number of trees. ' if not reasonable_trees else ''}"
         ),
@@ -577,12 +547,10 @@ def check_trained_fraud_model(
     description="Evaluate model on test set with confusion matrix and MLflow image logging",
     compute_kind="python",
     group_name="ml_fraud_model",
-    resource_defs={"mlflow_fraud": mlflow_resource}
+    resource_defs={"mlflow_fraud": mlflow_resource},
 )
 def model_evaluation(
-    context: dg.AssetExecutionContext,
-    trained_fraud_model: Dict[str, str],
-    train_test_split_data: Dict[str, Any]
+    context: dg.AssetExecutionContext, trained_fraud_model: Dict[str, str], train_test_split_data: Dict[str, Any]
 ) -> dg.MaterializeResult:
     """Evaluate the trained model on test set and log results to MLflow"""
 
@@ -600,8 +568,8 @@ def model_evaluation(
         mlflow_client.set_tag("task", "fraud_detection")
         mlflow_client.set_tag("phase", "evaluation")
 
-        X_test = train_test_split_data['X_test']
-        y_test = train_test_split_data['y_test']
+        X_test = train_test_split_data["X_test"]
+        y_test = train_test_split_data["y_test"]
 
         context.log.info(f"Evaluating model on {X_test.shape[0]} test samples")
 
@@ -630,16 +598,13 @@ def model_evaluation(
         cm = confusion_matrix(y_test, y_pred)
 
         # Create and save confusion matrix plot
-        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
             plt.figure(figsize=(8, 6))
-            disp = ConfusionMatrixDisplay(
-                confusion_matrix=cm,
-                display_labels=['Not Fraud', 'Fraud']
-            )
-            disp.plot(cmap='Blues', values_format='d')
-            plt.title('Fraud Detection Model - Confusion Matrix')
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Not Fraud", "Fraud"])
+            disp.plot(cmap="Blues", values_format="d")
+            plt.title("Fraud Detection Model - Confusion Matrix")
             plt.tight_layout()
-            plt.savefig(tmp_file.name, dpi=300, bbox_inches='tight')
+            plt.savefig(tmp_file.name, dpi=300, bbox_inches="tight")
             plt.close()
 
             # Log image to MLflow
@@ -651,7 +616,7 @@ def model_evaluation(
         context.log.info("Confusion matrix saved and logged to MLflow")
 
         # Log classification report
-        class_report = classification_report(y_test, y_pred, target_names=['Not Fraud', 'Fraud'])
+        class_report = classification_report(y_test, y_pred, target_names=["Not Fraud", "Fraud"])
         context.log.info(f"Classification Report:\n{class_report}")
 
         # Log metrics to MLflow
@@ -665,12 +630,12 @@ def model_evaluation(
                 os.unlink(rpt.name)
 
         evaluation_results = {
-            'recall': recall,
-            'precision': precision,
-            'f1': f1,
-            'roc_auc': roc_auc,
-            'confusion_matrix': cm.tolist(),
-            'classification_report': class_report
+            "recall": recall,
+            "precision": precision,
+            "f1": f1,
+            "roc_auc": roc_auc,
+            "confusion_matrix": cm.tolist(),
+            "classification_report": class_report,
         }
 
         return dg.MaterializeResult(
@@ -681,22 +646,20 @@ def model_evaluation(
                 "test_f1": dg.MetadataValue.float(f1),
                 "test_roc_auc": dg.MetadataValue.float(roc_auc),
                 "test_samples": dg.MetadataValue.int(len(y_test)),
-                "confusion_matrix": dg.MetadataValue.text(f"TN:{cm[0, 0]}, FP:{cm[0, 1]}, FN:{cm[1, 0]}, TP:{cm[1, 1]}")
-            }
+                "confusion_matrix": dg.MetadataValue.text(
+                    f"TN:{cm[0, 0]}, FP:{cm[0, 1]}, FN:{cm[1, 0]}, TP:{cm[1, 1]}"
+                ),
+            },
         )
 
 
-@dg.asset_check(
-    asset="model_evaluation",
-    description="Verifies that model evaluation produced reasonable recall score"
-)
+@dg.asset_check(asset="model_evaluation", description="Verifies that model evaluation produced reasonable recall score")
 def check_model_evaluation(
-    context: dg.AssetCheckExecutionContext,
-    model_evaluation: Dict[str, Any]
+    context: dg.AssetCheckExecutionContext, model_evaluation: Dict[str, Any]
 ) -> dg.AssetCheckResult:
-    recall = model_evaluation['recall']
-    f1 = model_evaluation['f1']
-    roc_auc = model_evaluation['roc_auc']
+    recall = model_evaluation["recall"]
+    f1 = model_evaluation["f1"]
+    roc_auc = model_evaluation["roc_auc"]
 
     # Check that recall meets minimum threshold
     recall_threshold = 0.7
@@ -713,15 +676,16 @@ def check_model_evaluation(
         "recall_threshold": dg.MetadataValue.float(float(recall_threshold)),
         "recall_acceptable": dg.MetadataValue.bool(bool(recall_acceptable)),
         "f1_score": dg.MetadataValue.float(float(f1)),
-        "roc_auc": dg.MetadataValue.float(float(roc_auc))
+        "roc_auc": dg.MetadataValue.float(float(roc_auc)),
     }
 
     return dg.AssetCheckResult(
         passed=passed,
         metadata=metadata,
         description=(
-            "Passed" if passed else
-            f"{'Recall below threshold. ' if not recall_acceptable else ''}"
+            "Passed"
+            if passed
+            else f"{'Recall below threshold. ' if not recall_acceptable else ''}"
             f"{'Invalid F1 score. ' if not f1_reasonable else ''}"
             f"{'Invalid ROC-AUC. ' if not roc_auc_reasonable else ''}"
         ),
@@ -735,21 +699,19 @@ def check_model_evaluation(
     group_name="ml_fraud_deploy",
     resource_defs={
         "slack_fraud": dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN")),
-        "mlflow_fraud": mlflow_resource
-    }
+        "mlflow_fraud": mlflow_resource,
+    },
 )
 def notify_slack(
-    context: dg.AssetExecutionContext,
-    model_evaluation: Dict[str, Any],
-    trained_fraud_model: Dict[str, str]
+    context: dg.AssetExecutionContext, model_evaluation: Dict[str, Any], trained_fraud_model: Dict[str, str]
 ) -> dg.MaterializeResult:
     """Send notification to Slack"""
 
     model = joblib.load(trained_fraud_model["model_path"])
-    recall = model_evaluation['recall']
-    precision = model_evaluation['precision']
-    f1 = model_evaluation['f1']
-    roc_auc = model_evaluation['roc_auc']
+    recall = model_evaluation["recall"]
+    precision = model_evaluation["precision"]
+    f1 = model_evaluation["f1"]
+    roc_auc = model_evaluation["roc_auc"]
 
     context.log.info(f"Recall: {recall:.4f}, Precision: {precision:.4f}, F1: {f1:.4f}, ROC-AUC: {roc_auc:.4f}")
 
@@ -771,10 +733,7 @@ def notify_slack(
         📈 Experiment: fraud_detection_ml
         """
 
-        response = slack.get_client().chat_postMessage(
-            channel='aims_course_october2025',
-            text=message
-        )
+        response = slack.get_client().chat_postMessage(channel="aims_course_october2025", text=message)
         context.log.info(f"Slack API response: {response}")
         context.log.info("Successfully posted notification to Slack")
 
@@ -811,34 +770,22 @@ def notify_slack(
         context.log.error(f"Failed to save model: {e}")
 
     return dg.MaterializeResult(
-        value={
-            'recall': recall,
-            'precision': precision,
-            'f1': f1,
-            'roc_auc': roc_auc,
-            'slack_notification_sent': True
-        },
+        value={"recall": recall, "precision": precision, "f1": f1, "roc_auc": roc_auc, "slack_notification_sent": True},
         metadata={
             "final_recall": dg.MetadataValue.float(recall),
             "final_precision": dg.MetadataValue.float(precision),
             "final_f1": dg.MetadataValue.float(f1),
             "final_roc_auc": dg.MetadataValue.float(roc_auc),
             "slack_notification": dg.MetadataValue.bool(True),
-            "model_saved": dg.MetadataValue.bool(True)
-        }
+            "model_saved": dg.MetadataValue.bool(True),
+        },
     )
 
 
-@dg.asset_check(
-    asset="notify_slack",
-    description="Verifies that Slack notification was sent successfully"
-)
-def check_notify_slack(
-    context: dg.AssetCheckExecutionContext,
-    notify_slack: Dict[str, Any]
-) -> dg.AssetCheckResult:
-    slack_notification_sent = notify_slack['slack_notification_sent']
-    recall = notify_slack['recall']
+@dg.asset_check(asset="notify_slack", description="Verifies that Slack notification was sent successfully")
+def check_notify_slack(context: dg.AssetCheckExecutionContext, notify_slack: Dict[str, Any]) -> dg.AssetCheckResult:
+    slack_notification_sent = notify_slack["slack_notification_sent"]
+    recall = notify_slack["recall"]
 
     # Check that Slack notification was sent
     notification_ok = slack_notification_sent
@@ -851,15 +798,16 @@ def check_notify_slack(
     metadata = {
         "slack_notification_sent": dg.MetadataValue.bool(bool(slack_notification_sent)),
         "recall": dg.MetadataValue.float(float(recall)),
-        "recall_ok": dg.MetadataValue.bool(bool(recall_ok))
+        "recall_ok": dg.MetadataValue.bool(bool(recall_ok)),
     }
 
     return dg.AssetCheckResult(
         passed=passed,
         metadata=metadata,
         description=(
-            "Passed" if passed else
-            f"{'Slack notification not sent. ' if not notification_ok else ''}"
+            "Passed"
+            if passed
+            else f"{'Slack notification not sent. ' if not notification_ok else ''}"
             f"{'Invalid recall score. ' if not recall_ok else ''}"
         ),
         asset_key="notify_slack",
@@ -870,24 +818,21 @@ def check_notify_slack(
     description="Promotes the trained model to the 'Production' stage in the MLflow Model Registry.",
     compute_kind="python",
     group_name="ml_fraud_deploy",
-    resource_defs={"mlflow_fraud": mlflow_resource}
+    resource_defs={"mlflow_fraud": mlflow_resource},
 )
 def promote_fraud_model_to_production(
-    context: dg.AssetExecutionContext,
-    trained_fraud_model: Dict[str, str],
-    model_evaluation: Dict[str, Any]
+    context: dg.AssetExecutionContext, trained_fraud_model: Dict[str, str], model_evaluation: Dict[str, Any]
 ) -> dg.MaterializeResult:
     """
     Registers the model in MLflow and transitions it to the Production stage.
     """
     recall_threshold = 0.7
-    recall = model_evaluation['recall']
+    recall = model_evaluation["recall"]
     model_name = "fraud_detection_serving_model"
 
     if recall < recall_threshold:
         context.log.warning(
-            f"Model recall {recall:.4f} is below the threshold of {recall_threshold}. "
-            f"Skipping promotion to Production."
+            f"Model recall {recall:.4f} is below the threshold of {recall_threshold}. Skipping promotion to Production."
         )
         return dg.MaterializeResult(
             metadata={
@@ -906,19 +851,12 @@ def promote_fraud_model_to_production(
     model_uri = f"runs:/{run_id}/model"
 
     context.log.info(f"Registering model '{model_name}' from run ID '{run_id}'.")
-    registered_model = mlflow.register_model(
-        model_uri=model_uri,
-        name=model_name
-    )
+    registered_model = mlflow.register_model(model_uri=model_uri, name=model_name)
     model_version = registered_model.version
     context.log.info(f"Model registered as Version {model_version}.")
 
     context.log.info(f"Setting alias 'production' for Version {model_version} of '{model_name}'.")
-    registry_client.set_registered_model_alias(
-        name=model_name,
-        alias="production",
-        version=model_version
-    )
+    registry_client.set_registered_model_alias(name=model_name, alias="production", version=model_version)
     context.log.info("Model alias successfully set to 'production'.")
 
     return dg.MaterializeResult(

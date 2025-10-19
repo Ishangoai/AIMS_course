@@ -10,15 +10,56 @@ MODEL_SERVER_URL = "http://localhost:5001/invocations"
 
 # Credit Card Fraud Detection Features (V1-V28, Amount, Time)
 FEATURE_NAMES = [
-    "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10",
-    "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18", "V19", "V20",
-    "V21", "V22", "V23", "V24", "V25", "V26", "V27", "V28", "Amount", "Time"
+    "V1",
+    "V2",
+    "V3",
+    "V4",
+    "V5",
+    "V6",
+    "V7",
+    "V8",
+    "V9",
+    "V10",
+    "V11",
+    "V12",
+    "V13",
+    "V14",
+    "V15",
+    "V16",
+    "V17",
+    "V18",
+    "V19",
+    "V20",
+    "V21",
+    "V22",
+    "V23",
+    "V24",
+    "V25",
+    "V26",
+    "V27",
+    "V28",
+    "Amount",
+    "Time",
 ]
 
 # The 16 features to send to the backend, and their exact order as expected by backend
 SELECTED_FEATURE_NAMES = [
-    'V14', 'V4', 'V12', 'V11', 'V10', 'V16', 'V9', 'V3', 'V17', 'V2',
-    'V7', 'V18', 'V1', 'V6', 'V5', 'V19'
+    "V14",
+    "V4",
+    "V12",
+    "V11",
+    "V10",
+    "V16",
+    "V9",
+    "V3",
+    "V17",
+    "V2",
+    "V7",
+    "V18",
+    "V1",
+    "V6",
+    "V5",
+    "V19",
 ]
 
 
@@ -35,9 +76,36 @@ def time_to_seconds(t):
 
 # --- Prediction Function ---
 def predict_fraud(
-    v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
-    v11, v12, v13, v14, v15, v16, v17, v18, v19, v20,
-    v21, v22, v23, v24, v25, v26, v27, v28, amount, tx_time
+    v1,
+    v2,
+    v3,
+    v4,
+    v5,
+    v6,
+    v7,
+    v8,
+    v9,
+    v10,
+    v11,
+    v12,
+    v13,
+    v14,
+    v15,
+    v16,
+    v17,
+    v18,
+    v19,
+    v20,
+    v21,
+    v22,
+    v23,
+    v24,
+    v25,
+    v26,
+    v27,
+    v28,
+    amount,
+    tx_time,
 ):
     """Sends transaction features to the MLflow model server for a fraud prediction."""
 
@@ -49,14 +117,36 @@ def predict_fraud(
             time_seconds = 0
 
         input_feature_values = {
-            'V1': v1, 'V2': v2, 'V3': v3, 'V4': v4,
-            'V5': v5, 'V6': v6, 'V7': v7, 'V8': v8,
-            'V9': v9, 'V10': v10, 'V11': v11, 'V12': v12,
-            'V13': v13, 'V14': v14, 'V15': v15, 'V16': v16,
-            'V17': v17, 'V18': v18, 'V19': v19, 'V20': v20,
-            'V21': v21, 'V22': v22, 'V23': v23, 'V24': v24,
-            'V25': v25, 'V26': v26, 'V27': v27, 'V28': v28,
-            'Amount': amount, 'Time': time_seconds
+            "V1": v1,
+            "V2": v2,
+            "V3": v3,
+            "V4": v4,
+            "V5": v5,
+            "V6": v6,
+            "V7": v7,
+            "V8": v8,
+            "V9": v9,
+            "V10": v10,
+            "V11": v11,
+            "V12": v12,
+            "V13": v13,
+            "V14": v14,
+            "V15": v15,
+            "V16": v16,
+            "V17": v17,
+            "V18": v18,
+            "V19": v19,
+            "V20": v20,
+            "V21": v21,
+            "V22": v22,
+            "V23": v23,
+            "V24": v24,
+            "V25": v25,
+            "V26": v26,
+            "V27": v27,
+            "V28": v28,
+            "Amount": amount,
+            "Time": time_seconds,
         }
 
         selected_input = {k: input_feature_values[k] for k in SELECTED_FEATURE_NAMES}
@@ -69,12 +159,12 @@ def predict_fraud(
         response.raise_for_status()
 
         result = response.json()
-        prediction = result['predictions'][0]
+        prediction = result["predictions"][0]
 
         result_text = f"""
-        **Prediction:** {'🚨 FRAUD DETECTED' if prediction == 1 else '✅ Legitimate Transaction'}
+        **Prediction:** {"🚨 FRAUD DETECTED" if prediction == 1 else "✅ Legitimate Transaction"}
 
-        **Risk Level:** {'HIGH' if prediction == 1 else 'LOW'}
+        **Risk Level:** {"HIGH" if prediction == 1 else "LOW"}
         """
 
         return result_text
@@ -99,19 +189,9 @@ with gr.Blocks(title="Credit Card Fraud Detection") as iface:
         with gr.Column(scale=1):
             gr.Markdown("### Transaction Details")
 
-            amount = gr.Number(
-                label="Transaction Amount ($)",
-                value=100.0,
-                minimum=0.0,
-                maximum=10000.0,
-                step=0.01
-            )
+            amount = gr.Number(label="Transaction Amount ($)", value=100.0, minimum=0.0, maximum=10000.0, step=0.01)
 
-            tx_time = gr.Textbox(
-                label="Time (hh:mm:ss)",
-                value="10:00:00",
-                interactive=True
-            )
+            tx_time = gr.Textbox(label="Time (hh:mm:ss)", value="10:00:00", interactive=True)
 
             gr.Markdown("### Features (V1-V28)")
             gr.Markdown("*These are transformed features. Use sample values for testing.*")
@@ -163,17 +243,44 @@ with gr.Blocks(title="Credit Card Fraud Detection") as iface:
 
     output = gr.Markdown(
         label="Fraud Analysis Result",
-        value="Enter transaction details and click 'Analyze Transaction' to get a fraud prediction."
+        value="Enter transaction details and click 'Analyze Transaction' to get a fraud prediction.",
     )
 
     predict_btn.click(
         fn=predict_fraud,
         inputs=[
-            v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
-            v11, v12, v13, v14, v15, v16, v17, v18, v19, v20,
-            v21, v22, v23, v24, v25, v26, v27, v28, amount, tx_time
+            v1,
+            v2,
+            v3,
+            v4,
+            v5,
+            v6,
+            v7,
+            v8,
+            v9,
+            v10,
+            v11,
+            v12,
+            v13,
+            v14,
+            v15,
+            v16,
+            v17,
+            v18,
+            v19,
+            v20,
+            v21,
+            v22,
+            v23,
+            v24,
+            v25,
+            v26,
+            v27,
+            v28,
+            amount,
+            tx_time,
         ],
-        outputs=output
+        outputs=output,
     )
 
     # --- Sample Data Functions ---
@@ -181,44 +288,71 @@ with gr.Blocks(title="Credit Card Fraud Detection") as iface:
         """Load sample data for a legitimate transaction."""
         # Order: V1, ..., V28, Amount, Time
         return [
-            1.0, -0.5, 0.8, -1.2, 0.3, -0.7, 0.9, -0.4, 0.6, -0.8,
-            1.1, -0.3, 0.7, -0.9, 0.4, -0.6, 0.8, -0.2, 0.5, -0.7,
-            0.9, -0.1, 0.6, -0.5, 0.3, -0.4, 0.7, -0.3, 50.0, time(10, 0, 0)
+            1.0,
+            -0.5,
+            0.8,
+            -1.2,
+            0.3,
+            -0.7,
+            0.9,
+            -0.4,
+            0.6,
+            -0.8,
+            1.1,
+            -0.3,
+            0.7,
+            -0.9,
+            0.4,
+            -0.6,
+            0.8,
+            -0.2,
+            0.5,
+            -0.7,
+            0.9,
+            -0.1,
+            0.6,
+            -0.5,
+            0.3,
+            -0.4,
+            0.7,
+            -0.3,
+            50.0,
+            time(10, 0, 0),
         ]
 
     def load_fraud_sample():
         """Load sample data for a fraudulent transaction."""
         return [
             -2.857169754,  # V1
-            4.045601381,   # V2
+            4.045601381,  # V2
             -4.197298786,  # V3
-            5.487198631,   # V4
+            5.487198631,  # V4
             -3.070776168,  # V5
             -1.422686338,  # V6
-            -5.65131374,   # V7
-            2.019657395,   # V8
+            -5.65131374,  # V7
+            2.019657395,  # V8
             -5.015490987,  # V9
             -6.319707509,  # V10
-            3.779602208,   # V11
+            3.779602208,  # V11
             -8.077093646,  # V12
-            1.440888856,   # V13
+            1.440888856,  # V13
             -7.891908779,  # V14
-            0.530452788,   # V15
+            0.530452788,  # V15
             -7.954070045,  # V16
             -14.26505595,  # V17
             -5.771064426,  # V18
-            2.892169685,   # V19
-            0.981608722,   # V20
-            1.080322734,   # V21
-            -0.56138415,   # V22
-            0.102678427,   # V23
+            2.892169685,  # V19
+            0.981608722,  # V20
+            1.080322734,  # V21
+            -0.56138415,  # V22
+            0.102678427,  # V23
             -0.067194723,  # V24
             -0.476931194,  # V25
             -0.103716356,  # V26
-            1.166961492,   # V27
-            0.663632067,   # V28
-            1.0,           # Amount
-            time(9, 58, 19)   # Time derived from 35899.0 (in seconds since midnight = 9:58:19)
+            1.166961492,  # V27
+            0.663632067,  # V28
+            1.0,  # Amount
+            time(9, 58, 19),  # Time derived from 35899.0 (in seconds since midnight = 9:58:19)
         ]
 
     def clear_all():
@@ -229,28 +363,109 @@ with gr.Blocks(title="Credit Card Fraud Detection") as iface:
     sample_legitimate_btn.click(
         fn=load_legitimate_sample,
         outputs=[
-            v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
-            v11, v12, v13, v14, v15, v16, v17, v18, v19, v20,
-            v21, v22, v23, v24, v25, v26, v27, v28, amount, tx_time
-        ]
+            v1,
+            v2,
+            v3,
+            v4,
+            v5,
+            v6,
+            v7,
+            v8,
+            v9,
+            v10,
+            v11,
+            v12,
+            v13,
+            v14,
+            v15,
+            v16,
+            v17,
+            v18,
+            v19,
+            v20,
+            v21,
+            v22,
+            v23,
+            v24,
+            v25,
+            v26,
+            v27,
+            v28,
+            amount,
+            tx_time,
+        ],
     )
 
     sample_fraud_btn.click(
         fn=load_fraud_sample,
         outputs=[
-            v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
-            v11, v12, v13, v14, v15, v16, v17, v18, v19, v20,
-            v21, v22, v23, v24, v25, v26, v27, v28, amount, tx_time
-        ]
+            v1,
+            v2,
+            v3,
+            v4,
+            v5,
+            v6,
+            v7,
+            v8,
+            v9,
+            v10,
+            v11,
+            v12,
+            v13,
+            v14,
+            v15,
+            v16,
+            v17,
+            v18,
+            v19,
+            v20,
+            v21,
+            v22,
+            v23,
+            v24,
+            v25,
+            v26,
+            v27,
+            v28,
+            amount,
+            tx_time,
+        ],
     )
 
     clear_btn.click(
         fn=clear_all,
         outputs=[
-            v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
-            v11, v12, v13, v14, v15, v16, v17, v18, v19, v20,
-            v21, v22, v23, v24, v25, v26, v27, v28, amount, tx_time
-        ]
+            v1,
+            v2,
+            v3,
+            v4,
+            v5,
+            v6,
+            v7,
+            v8,
+            v9,
+            v10,
+            v11,
+            v12,
+            v13,
+            v14,
+            v15,
+            v16,
+            v17,
+            v18,
+            v19,
+            v20,
+            v21,
+            v22,
+            v23,
+            v24,
+            v25,
+            v26,
+            v27,
+            v28,
+            amount,
+            tx_time,
+        ],
     )
 
 # --- Launch the App ---
