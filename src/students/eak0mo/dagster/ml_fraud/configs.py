@@ -1,5 +1,6 @@
 import os
 from typing import List
+
 import pydantic as pyd
 from dagster import ConfigurableResource
 
@@ -23,7 +24,7 @@ class DataConfig(ConfigurableResource):
         description="Proportion of the dataset to include in the test split (0–1).",
     )
     random_state: int = pyd.Field(
-        default=42,
+        default=40,
         description="Random seed for reproducibility.",
     )
 
@@ -37,11 +38,11 @@ class ModelConfig(ConfigurableResource):
     """
 
     n_estimators: int = pyd.Field(
-        default=150,
+        default=161,
         description="Number of trees in the Random Forest ensemble.",
     )
     max_depth: int = pyd.Field(
-        default=10,
+        default=15,
         description="Maximum depth of each decision tree.",
     )
     max_depth_options: List[int] = pyd.Field(
@@ -49,7 +50,7 @@ class ModelConfig(ConfigurableResource):
         description="Options for maximum depth during hyperparameter tuning.",
     )
     random_state: int = pyd.Field(
-        default=42,
+        default=40,
         description="Random seed for reproducibility.",
     )
     scoring_metric: str = pyd.Field(
@@ -77,7 +78,7 @@ class ModelPromotionConfig(ConfigurableResource):
     """
 
     staging_f1_threshold: float = pyd.Field(
-        default=0.75,
+        default=0.80,
         description="Minimum F1-score threshold for promoting a model to staging.",
     )
     production_f1_threshold: float = pyd.Field(

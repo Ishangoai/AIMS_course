@@ -1,7 +1,7 @@
 # fraud_utils.py
 import os
+
 import joblib
-import numpy as np
 import pandas as pd
 
 # Use your exact model path
@@ -13,9 +13,10 @@ model = joblib.load(MODEL_PATH)
 # Feature names as expected by model
 FEATURE_NAMES = [f"V{i}" for i in range(1, 29)] + ["Amount"]
 
-def predict_fraud(features: list):
+
+def predict_fraud(features: list):  # type:ignore
     try:
-        df = pd.DataFrame([features], columns=FEATURE_NAMES)
+        df = pd.DataFrame([features], columns=FEATURE_NAMES)  # type:ignore
 
         # Fix column name mismatch
         if "Amount" in df.columns:

@@ -8,13 +8,15 @@ from .ml.resources import (
     Era5RequestConfig,
     PromotionConfig,
     TuningConfig,
+)
+from .ml_fraud import assets as ml_fraud_assets
+from .ml_fraud.resources import (
     data_config,
     mlflow_client,
     mlflow_resource,
     model_config,
     model_promotion_config,
 )
-from .ml_fraud import assets as ml_fraud_assets
 
 # _ = load_dotenv(find_dotenv())
 

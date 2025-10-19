@@ -8,7 +8,7 @@ from dagster import ConfigurableResource
 from dagster_mlflow import mlflow_tracking
 from mlflow.tracking import MlflowClient
 
-from .configs import DataConfig, ExperimentConfig, MLFlowConfig, ModelConfig, ModelPromotionConfig
+# from .configs import DataConfig, ExperimentConfig, MLFlowConfig, ModelConfig, ModelPromotionConfig
 
 # Configuration for Local SQLite and Local Artifacts
 # Using DAGSTER_HOME if set, otherwise, defaults to the current directory
@@ -20,12 +20,6 @@ SQLITE_DB_FILENAME = "mlflow_local_tracking.db"  # Name of the SQLite database f
 SQLITE_DB_PATH = os.path.join(BASE_DIR, SQLITE_DB_FILENAME)
 
 DEFAULT_EXPERIMENT_NAME = "era5_temperature_analysis"
-
-data_config = DataConfig()
-model_config = ModelConfig()
-mlflow_config = MLFlowConfig()
-experiment_config = ExperimentConfig()
-model_promotion_config = ModelPromotionConfig()
 
 
 # Define the MLflow resource

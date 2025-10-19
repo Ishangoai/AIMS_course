@@ -115,7 +115,7 @@ def raw_fraud_data(context: dg.OpExecutionContext) -> dg.MaterializeResult:
             "non_fraud_count": dg.MetadataValue.int(int(non_fraud_count)),
             "fraud_ratio": dg.MetadataValue.float(fraud_ratio),
             "preview_data": dg.MetadataValue.md(
-                df.head().to_markdown() if not df.empty else "No data to preview."
+                df.head().to_markdown() if not df.empty else "No data to preview."  # type: ignore
             ),
         },
     )
@@ -185,7 +185,7 @@ def cleaned_fraud_data(
                 metadata["duplicates_removed_count"]
             ),
             "preview_data": dg.MetadataValue.md(
-                df.head().to_markdown() if not df.empty else "No data to preview."
+                df.head().to_markdown() if not df.empty else "No data to preview."  # type: ignore
             ),
         },
     )
@@ -269,7 +269,7 @@ def transformed_fraud_data(
             "scaler_mean": dg.MetadataValue.float(metadata["amount_scaler_mean"]),
             "scaler_std": dg.MetadataValue.float(metadata["amount_scaler_std"]),
             "preview_data": dg.MetadataValue.md(
-                df.head().to_markdown() if not df.empty else "No data to preview."
+                df.head().to_markdown() if not df.empty else "No data to preview."  # type: ignore
             ),
         },
     )
@@ -725,6 +725,8 @@ def promote_fraud_model_to_staging(
     test_f1_score = metrics.get("test_f1_score", 0.0)
     test_roc_auc = metrics.get("test_roc_auc", 0.0)
     test_precision_fraud = metrics.get("test_precision_class_1", 0.0)
+    test_precision_legit = metrics.get("test_precision_class_0", 0.0)
+    test_recall_legit = metrics.get("test_recall_class_0", 0.0)
     test_recall_fraud = metrics.get("test_recall_class_1", 0.0)
 
     model_name = model_info.get("name")
@@ -758,13 +760,16 @@ def promote_fraud_model_to_staging(
 
         try:
             # Construct and send the success notification
-            slack_message = f""" Elisha and Lionel Model Performance:
+            slack_message = f""" Elisha and Lionel Staging Model Performance:
 - Accuracy: {test_accuracy:.4f}
 - F1 Score: {test_f1_score:.4f} (Threshold: {STAGING_F1_THRESHOLD})
 - ROC AUC: {test_roc_auc:.4f} (Threshold: {STAGING_ROC_AUC_THRESHOLD})
 - Precision (Fraud): {test_precision_fraud:.4f}
 - Recall (Fraud): {test_recall_fraud:.4f}
-"""
+- Precision (Not Fraud): {test_precision_legit:.4f}
+- Recall (Not Fraud): {test_recall_legit:.4f}
+🫠
+            """
             slack.get_client().chat_postMessage(
                 channel="aims_course_october2025", text=slack_message
             )
@@ -863,7 +868,6 @@ def promote_fraud_model_to_production(
         slack: Slack client for sending notifications.
     """
     mlflow_client = context.resources.mlflow_api_client
-    slack = context.resources.slack
     context.log.info("Starting model promotion to Production.")
 
     if (
@@ -921,14 +925,7 @@ def promote_fraud_model_to_production(
             name=model_name, version=prod_model_version, stage=PRODUCTION_STAGE_NAME
         )
 
-        # Send Slack notification
-        slack_message = f""" Elisha and Lionel's Model Promoted to Production
-Model '{model_name}' version {prod_model_version} is now in Production!
-"""
-        slack.get_client().chat_postMessage(
-            channel="aims_course_october2025", text=slack_message
-        )
-        context.log.info("Successfully promoted model to Production and sent Slack notification.")
+        context.log.info("Successfully promoted model to Production notification.")
 
         return dg.MaterializeResult(
             metadata={
