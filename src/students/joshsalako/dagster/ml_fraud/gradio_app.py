@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, time
 
 import gradio as gr
 import pandas as pd
@@ -21,16 +22,32 @@ SELECTED_FEATURE_NAMES = [
 ]
 
 
+def time_to_seconds(t):
+    """Convert a datetime.time object to seconds since midnight."""
+    if isinstance(t, str):
+        try:
+            t_obj = datetime.strptime(t, "%H:%M:%S").time()
+        except Exception:
+            t_obj = datetime.strptime(t, "%H:%M").time()
+        t = t_obj
+    return t.hour * 3600 + t.minute * 60 + t.second
+
+
 # --- Prediction Function ---
 def predict_fraud(
     v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
     v11, v12, v13, v14, v15, v16, v17, v18, v19, v20,
-    v21, v22, v23, v24, v25, v26, v27, v28, amount, time_seconds
+    v21, v22, v23, v24, v25, v26, v27, v28, amount, tx_time
 ):
     """Sends transaction features to the MLflow model server for a fraud prediction."""
 
     try:
-        # Map input values (as provided by the user via UI) to their feature names
+        # Convert Gradio Time input (datetime.time) to seconds since midnight
+        if tx_time is not None:
+            time_seconds = time_to_seconds(tx_time)
+        else:
+            time_seconds = 0
+
         input_feature_values = {
             'V1': v1, 'V2': v2, 'V3': v3, 'V4': v4,
             'V5': v5, 'V6': v6, 'V7': v7, 'V8': v8,
@@ -42,23 +59,18 @@ def predict_fraud(
             'Amount': amount, 'Time': time_seconds
         }
 
-        # Create a DataFrame
         selected_input = {k: input_feature_values[k] for k in SELECTED_FEATURE_NAMES}
         df_16 = pd.DataFrame([selected_input], columns=SELECTED_FEATURE_NAMES)
 
-        # Convert DataFrame to the JSON format required by the model server
-        # Use MLflow protocol for dataframe_split if needed by backend, else use just to_json(orient="split")
         json_data = json.dumps({"dataframe_split": json.loads(df_16.to_json(orient="split"))})
 
         headers = {"Content-Type": "application/json"}
         response = requests.post(MODEL_SERVER_URL, data=json_data, headers=headers)
         response.raise_for_status()
 
-        # Parse the prediction from the response
         result = response.json()
         prediction = result['predictions'][0]
 
-        # Format the result for display
         result_text = f"""
         **Prediction:** {'🚨 FRAUD DETECTED' if prediction == 1 else '✅ Legitimate Transaction'}
 
@@ -87,7 +99,6 @@ with gr.Blocks(title="Credit Card Fraud Detection") as iface:
         with gr.Column(scale=1):
             gr.Markdown("### Transaction Details")
 
-            # Amount and Time inputs
             amount = gr.Number(
                 label="Transaction Amount ($)",
                 value=100.0,
@@ -96,19 +107,16 @@ with gr.Blocks(title="Credit Card Fraud Detection") as iface:
                 step=0.01
             )
 
-            time_seconds = gr.Number(
-                label="Time (seconds since start of day)",
-                value=36000,  # 10 AM
-                minimum=0,
-                maximum=86399,  # 23:59:59
-                step=1
+            tx_time = gr.Textbox(
+                label="Time (hh:mm:ss)",
+                value="10:00:00",
+                interactive=True
             )
 
-            gr.Markdown("### PCA Features (V1-V28)")
+            gr.Markdown("### Features (V1-V28)")
             gr.Markdown("*These are transformed features. Use sample values for testing.*")
 
         with gr.Column(scale=2):
-            # Create input fields for V1-V28 features
             with gr.Row():
                 v1 = gr.Number(label="V1", value=0.0, step=0.01)
                 v2 = gr.Number(label="V2", value=0.0, step=0.01)
@@ -145,63 +153,85 @@ with gr.Blocks(title="Credit Card Fraud Detection") as iface:
                 v27 = gr.Number(label="V27", value=0.0, step=0.01)
                 v28 = gr.Number(label="V28", value=0.0, step=0.01)
 
-    with gr.Row():
-        with gr.Column():
-            # Sample data buttons
-            gr.Markdown("### Sample Data")
-            with gr.Row():
-                sample_legitimate_btn = gr.Button("Load Legitimate Sample", variant="secondary")
-                sample_fraud_btn = gr.Button("Load Fraud Sample", variant="secondary")
-                clear_btn = gr.Button("Clear All", variant="stop")
-
-        with gr.Column():
-            # Prediction button
+    with gr.Column():
+        gr.Markdown("### Control Panel")
+        with gr.Row():
+            sample_legitimate_btn = gr.Button("Load Legitimate Sample", variant="secondary")
+            sample_fraud_btn = gr.Button("Load Fraud Sample", variant="secondary")
+            clear_btn = gr.Button("Clear All", variant="stop")
             predict_btn = gr.Button("🔍 Analyze Transaction", variant="primary", size="lg")
 
-    # Output
     output = gr.Markdown(
         label="Fraud Analysis Result",
         value="Enter transaction details and click 'Analyze Transaction' to get a fraud prediction."
     )
 
-    # Event handlers
     predict_btn.click(
         fn=predict_fraud,
         inputs=[
             v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
             v11, v12, v13, v14, v15, v16, v17, v18, v19, v20,
-            v21, v22, v23, v24, v25, v26, v27, v28, amount, time_seconds
+            v21, v22, v23, v24, v25, v26, v27, v28, amount, tx_time
         ],
         outputs=output
     )
 
-    # Sample data functions
+    # --- Sample Data Functions ---
     def load_legitimate_sample():
         """Load sample data for a legitimate transaction."""
+        # Order: V1, ..., V28, Amount, Time
         return [
             1.0, -0.5, 0.8, -1.2, 0.3, -0.7, 0.9, -0.4, 0.6, -0.8,
             1.1, -0.3, 0.7, -0.9, 0.4, -0.6, 0.8, -0.2, 0.5, -0.7,
-            0.9, -0.1, 0.6, -0.5, 0.3, -0.4, 0.7, -0.3, 50.0, 36000
+            0.9, -0.1, 0.6, -0.5, 0.3, -0.4, 0.7, -0.3, 50.0, time(10, 0, 0)
         ]
 
     def load_fraud_sample():
         """Load sample data for a fraudulent transaction."""
         return [
-            -2.5, 3.1, -1.8, 2.7, -2.2, 1.9, -3.1, 2.4, -1.7, 2.8,
-            -2.9, 1.6, -2.3, 2.1, -1.9, 2.5, -2.7, 1.8, -2.1, 2.3,
-            -2.6, 1.4, -1.8, 2.0, -2.4, 1.7, -2.8, 1.9, 5000.0, 72000
+            -2.857169754,  # V1
+            4.045601381,   # V2
+            -4.197298786,  # V3
+            5.487198631,   # V4
+            -3.070776168,  # V5
+            -1.422686338,  # V6
+            -5.65131374,   # V7
+            2.019657395,   # V8
+            -5.015490987,  # V9
+            -6.319707509,  # V10
+            3.779602208,   # V11
+            -8.077093646,  # V12
+            1.440888856,   # V13
+            -7.891908779,  # V14
+            0.530452788,   # V15
+            -7.954070045,  # V16
+            -14.26505595,  # V17
+            -5.771064426,  # V18
+            2.892169685,   # V19
+            0.981608722,   # V20
+            1.080322734,   # V21
+            -0.56138415,   # V22
+            0.102678427,   # V23
+            -0.067194723,  # V24
+            -0.476931194,  # V25
+            -0.103716356,  # V26
+            1.166961492,   # V27
+            0.663632067,   # V28
+            1.0,           # Amount
+            time(9, 58, 19)   # Time derived from 35899.0 (in seconds since midnight = 9:58:19)
         ]
 
     def clear_all():
         """Clear all input fields."""
-        return [0.0] * 30  # 28 V features + Amount + Time
+        cleared = [0.0] * 28 + [0.0, time(0, 0, 0)]
+        return cleared
 
     sample_legitimate_btn.click(
         fn=load_legitimate_sample,
         outputs=[
             v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
             v11, v12, v13, v14, v15, v16, v17, v18, v19, v20,
-            v21, v22, v23, v24, v25, v26, v27, v28, amount, time_seconds
+            v21, v22, v23, v24, v25, v26, v27, v28, amount, tx_time
         ]
     )
 
@@ -210,7 +240,7 @@ with gr.Blocks(title="Credit Card Fraud Detection") as iface:
         outputs=[
             v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
             v11, v12, v13, v14, v15, v16, v17, v18, v19, v20,
-            v21, v22, v23, v24, v25, v26, v27, v28, amount, time_seconds
+            v21, v22, v23, v24, v25, v26, v27, v28, amount, tx_time
         ]
     )
 
@@ -219,7 +249,7 @@ with gr.Blocks(title="Credit Card Fraud Detection") as iface:
         outputs=[
             v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
             v11, v12, v13, v14, v15, v16, v17, v18, v19, v20,
-            v21, v22, v23, v24, v25, v26, v27, v28, amount, time_seconds
+            v21, v22, v23, v24, v25, v26, v27, v28, amount, tx_time
         ]
     )
 
