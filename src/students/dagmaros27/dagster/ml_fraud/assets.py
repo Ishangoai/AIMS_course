@@ -101,8 +101,10 @@ def preprocessed_data(context: dg.AssetExecutionContext, raw_fraud_dataset: pd.D
     compute_kind="python",
     group_name="ml_fraud_preprocess_split",
 )
-def split_dataset(context: dg.AssetExecutionContext,
-preprocessed_data: Tuple[pd.DataFrame, pd.Series]) -> dg.MaterializeResult:
+def split_dataset(
+    context: dg.AssetExecutionContext,
+    preprocessed_data: Tuple[pd.DataFrame, pd.Series]
+) -> dg.MaterializeResult:
     """Split data into training and test sets with stratification."""
     X, y = preprocessed_data
 
