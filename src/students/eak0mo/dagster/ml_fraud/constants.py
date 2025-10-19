@@ -9,5 +9,3 @@ STATUS_MODEL_SKIPPED = "skipped"
 STAGING_STAGE_NAME = "Staging"
 PRODUCTION_STAGE_NAME = "Production"
 ARCHIVED_STAGE_NAME = "Archived"
-
-GROUP_EMOJI = ":rightwards_hand::skin-tone-2::leftwards_hand::skin-tone-6:"
