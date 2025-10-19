@@ -210,13 +210,13 @@ def preprocessed_fraud_data(context: dg.AssetExecutionContext, fraud_data: pd.Da
     context.log.info("Applied feature normalization")
 
     # Correlation analysis and feature selection
-    correlation_matrix = df_subsample.corr()
+    correlation_matrix = df_subsample.corr()  # type: ignore[reportArgumentType]
     class_correlations = correlation_matrix["Class"].drop("Class")
-    sorted_class_correlations = class_correlations.abs().sort_values(ascending=False)
+    sorted_class_correlations = class_correlations.abs().sort_values(ascending=False)  # type: ignore[reportArgumentType]
     correlation_threshold = 0.2
     top_features: List[str] = sorted_class_correlations[
         sorted_class_correlations > correlation_threshold
-    ].index.tolist()
+    ].index.tolist()  # type: ignore[reportArgumentType]
 
     context.log.info(f"Selected {len(top_features)} features with correlation > {correlation_threshold}")
     context.log.info(f"Top features: {top_features}")
@@ -305,8 +305,8 @@ def train_test_split_data(
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
 
     # Log split information
-    context.log.info(f"Train set: {X_train.shape[0]} samples")
-    context.log.info(f"Test set: {X_test.shape[0]} samples")
+    context.log.info(f"Train set: {np.asarray(X_train).shape[0]} samples")
+    context.log.info(f"Test set: {np.asarray(X_test).shape[0]} samples")
 
     # Log class distributions
     train_class_dist = np.bincount(np.asarray(y_train).astype(int))
@@ -318,9 +318,9 @@ def train_test_split_data(
     # MLflow logging
     try:
         mlflow_client = context.resources.mlflow_fraud
-        mlflow_client.log_metric("train_samples", int(X_train.shape[0]))
-        mlflow_client.log_metric("test_samples", int(X_test.shape[0]))
-        mlflow_client.log_param("num_features", int(X_train.shape[1]))
+        mlflow_client.log_metric("train_samples", int(np.asarray(X_train).shape[0]))
+        mlflow_client.log_metric("test_samples", int(np.asarray(X_test).shape[0]))
+        mlflow_client.log_param("num_features", int(np.asarray(X_train).shape[1]))
         mlflow_client.log_param("split_ratio", "80/20")
         mlflow_client.log_param("stratified", True)
         mlflow_client.log_param("train_class_dist", str(dict(zip(range(len(train_class_dist)), train_class_dist))))
@@ -438,7 +438,7 @@ def trained_fraud_model(
     with mlflow_client.start_run(
         experiment_id=experiment_id, run_name=f"fraud_detection_training_{context.run_id[:8]}"
     ):
-        run_id = mlflow.active_run().info.run_id
+        run_id = mlflow.active_run().info.run_id  # pyright: ignore[reportOptionalMemberAccess]
         mlflow_client.set_tag("model_type", "RandomForest")
         mlflow_client.set_tag("task", "fraud_detection")
 

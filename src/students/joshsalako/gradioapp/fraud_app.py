@@ -150,9 +150,9 @@ def predict_fraud(
         }
 
         selected_input = {k: input_feature_values[k] for k in SELECTED_FEATURE_NAMES}
-        df_16 = pd.DataFrame([selected_input], columns=SELECTED_FEATURE_NAMES)
+        df_16 = pd.DataFrame([selected_input], columns=SELECTED_FEATURE_NAMES)  # type: ignore[reportArgumentType]
 
-        json_data = json.dumps({"dataframe_split": json.loads(df_16.to_json(orient="split"))})
+        json_data = json.dumps({"dataframe_split": json.loads(df_16.to_json(orient="split"))})  # type: ignore[reportArgumentType]
 
         headers = {"Content-Type": "application/json"}
         response = requests.post(MODEL_SERVER_URL, data=json_data, headers=headers)
