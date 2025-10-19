@@ -559,7 +559,7 @@ def promote_fraud_model_to_staging(context: dg.OpExecutionContext, evaluate_mode
         # 🎯 Send Slack message with metrics
         slack_message = (
             f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"*🚀 FINAL MODEL REPORT BY DANIEL AND ABDULRASHEED — To Catch Yahoos (especially xxxsan 🤠 ) 💼*\n"
+            f"*🚀 FINAL MODEL REPORT BY DANIEL AND ABDULRASHEED *\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"📊 *Overall Performance*\n"
             f"> ✅ *Accuracy:* `{test_accuracy:.4f}`\n"
@@ -574,8 +574,6 @@ def promote_fraud_model_to_staging(context: dg.OpExecutionContext, evaluate_mode
             f"> 🧾 *Precision:* `{test_precision_legitimate:.4f}`\n"
             f"> 🕵️ *Recall:* `{test_recall_legitimate:.4f}`\n"
             f"\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🔥 *Great job, model!* Ready to catch fraudsters like a champ 💪🤖\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━"
         )
 
