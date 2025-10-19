@@ -6,8 +6,8 @@
 set -e # Stop the script if any command fails
 
 # Model and environment details
-MODEL_NAME="serving_model_artifact"
-MODEL_STAGE="Production"
+MODEL_NAME="fraud_detection_serving_model"
+MODEL_ALIAS="production"
 MLFLOW_PORT=5001
 
 # Get the directory where this script is located
@@ -20,8 +20,8 @@ DB_PATH="$SCRIPT_DIR/../../../../../mlflow_local_tracking.db"
 export MLFLOW_TRACKING_URI="sqlite:///$DB_PATH"
 
 echo "Starting the MLflow model server..."
-echo "Model: '$MODEL_NAME' from stage '$MODEL_STAGE'"
+echo "Model: '$MODEL_NAME' from alias '$MODEL_ALIAS'" 
 
 
 # The --env-manager=local flag tells MLflow to use the current virtual environment
-mlflow models serve -m "models:/$MODEL_NAME/$MODEL_STAGE" --port "$MLFLOW_PORT"  --env-manager=local
+mlflow models serve -m "models:/$MODEL_NAME@$MODEL_ALIAS" --port "$MLFLOW_PORT"  --env-manager=local

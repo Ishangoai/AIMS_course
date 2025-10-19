@@ -1,10 +1,10 @@
+import json
+
 import gradio as gr
 import pandas as pd
 import requests
 
 # --- Configuration ---
-# The Gradio app now calls this URL to get predictions.
-# This server is started by deploy_local_model.sh
 MODEL_SERVER_URL = "http://localhost:5001/invocations"
 
 # Credit Card Fraud Detection Features (V1-V28, Amount, Time)
@@ -12,6 +12,12 @@ FEATURE_NAMES = [
     "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10",
     "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18", "V19", "V20",
     "V21", "V22", "V23", "V24", "V25", "V26", "V27", "V28", "Amount", "Time"
+]
+
+# The 16 features to send to the backend, and their exact order as expected by backend
+SELECTED_FEATURE_NAMES = [
+    'V14', 'V4', 'V12', 'V11', 'V10', 'V16', 'V9', 'V3', 'V17', 'V2',
+    'V7', 'V18', 'V1', 'V6', 'V5', 'V19'
 ]
 
 
@@ -24,26 +30,29 @@ def predict_fraud(
     """Sends transaction features to the MLflow model server for a fraud prediction."""
 
     try:
-        # Create a dictionary with feature names and values
-        input_data = {
-            "V1": v1, "V2": v2, "V3": v3, "V4": v4, "V5": v5,
-            "V6": v6, "V7": v7, "V8": v8, "V9": v9, "V10": v10,
-            "V11": v11, "V12": v12, "V13": v13, "V14": v14, "V15": v15,
-            "V16": v16, "V17": v17, "V18": v18, "V19": v19, "V20": v20,
-            "V21": v21, "V22": v22, "V23": v23, "V24": v24, "V25": v25,
-            "V26": v26, "V27": v27, "V28": v28, "Amount": amount, "Time": time_seconds
+        # Map input values (as provided by the user via UI) to their feature names
+        input_feature_values = {
+            'V1': v1, 'V2': v2, 'V3': v3, 'V4': v4,
+            'V5': v5, 'V6': v6, 'V7': v7, 'V8': v8,
+            'V9': v9, 'V10': v10, 'V11': v11, 'V12': v12,
+            'V13': v13, 'V14': v14, 'V15': v15, 'V16': v16,
+            'V17': v17, 'V18': v18, 'V19': v19, 'V20': v20,
+            'V21': v21, 'V22': v22, 'V23': v23, 'V24': v24,
+            'V25': v25, 'V26': v26, 'V27': v27, 'V28': v28,
+            'Amount': amount, 'Time': time_seconds
         }
 
-        # Create a DataFrame (model server expects this structure)
-        df = pd.DataFrame([input_data], columns=FEATURE_NAMES)
+        # Create a DataFrame
+        selected_input = {k: input_feature_values[k] for k in SELECTED_FEATURE_NAMES}
+        df_16 = pd.DataFrame([selected_input], columns=SELECTED_FEATURE_NAMES)
 
-        # Convert DataFrame to the JSON format required by the MLflow server
-        json_data = df.to_json(orient="split")
+        # Convert DataFrame to the JSON format required by the model server
+        # Use MLflow protocol for dataframe_split if needed by backend, else use just to_json(orient="split")
+        json_data = json.dumps({"dataframe_split": json.loads(df_16.to_json(orient="split"))})
 
-        # Send the POST request to the model server
         headers = {"Content-Type": "application/json"}
         response = requests.post(MODEL_SERVER_URL, data=json_data, headers=headers)
-        response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+        response.raise_for_status()
 
         # Parse the prediction from the response
         result = response.json()
@@ -54,8 +63,6 @@ def predict_fraud(
         **Prediction:** {'🚨 FRAUD DETECTED' if prediction == 1 else '✅ Legitimate Transaction'}
 
         **Risk Level:** {'HIGH' if prediction == 1 else 'LOW'}
-
-        *(Note: Confidence scores are not available from the standard model server endpoint.)*
         """
 
         return result_text
