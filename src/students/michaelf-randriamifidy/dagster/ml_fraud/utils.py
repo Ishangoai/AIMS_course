@@ -400,7 +400,7 @@ def log_feature_importance(
     else:
         top_features = np.array(feature_names)
         top_importances = importances
-        title = f"Top Feature Importance."
+        title = "Top Feature Importance."
 
     # Plot
     plt.figure(figsize=(8, max(4, 0.4 * len(top_features))))
