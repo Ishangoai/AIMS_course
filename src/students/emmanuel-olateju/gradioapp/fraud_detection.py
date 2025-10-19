@@ -13,7 +13,10 @@ CONFIG_PATH = os.path.join('dagster', 'ml_fraud', 'config.yaml')
 with open(CONFIG_PATH, 'r') as file:
     CONFIGS = yaml.safe_load(file)
 DATA_DIR = CONFIGS['artifacts']['data_dir']
-MODEL_PATH = "/workspaces/AIMS_course/src/students/emmanuel-olateju/gradioapp/utils/model.pkl"
+# MODEL_PATH = "/workspaces/AIMS_course/src/students/emmanuel-olateju/gradioapp/utils/model.pkl"
+# Get the directory of the current file
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(CURRENT_DIR, "utils", "model.pkl")
 
 
 def load_model(model_path: str) -> object:
