@@ -72,8 +72,10 @@ defs = dg.Definitions(
         "fraud_mlflow_client": fraud_mlflow_client,
          "fraud_data_api": fraud_data_api_resource,
     },
-    jobs=[de_job, ml_job,
-    ml_fraud_job
+    jobs=[
+        de_job,
+        ml_job,
+        ml_fraud_job,
     ],
     schedules=[era5_daily_schedule],
     asset_checks=[*all_de_checks, *all_ml_checks],
