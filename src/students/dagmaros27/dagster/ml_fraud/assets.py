@@ -22,7 +22,7 @@ MODEL_REGISTRY_NAME = "fraud_detection_model"
     group_name="ml_fraud_ingest",
     required_resource_keys={"fraud_data_api"},
 )
-def raw_fraud_dataset(context: dg.AssetExecutionContext) -> dg.MaterializeResult:
+def raw_fraud_dataset(context: dg.AssetExecutionContext) -> pd.DataFrame:
     """Fetch and load the fraud detection dataset using the FraudDataAPI resource."""
     data_api = context.resources.fraud_data_api
     url = getattr(data_api, "url", None)
@@ -41,9 +41,8 @@ def raw_fraud_dataset(context: dg.AssetExecutionContext) -> dg.MaterializeResult
 
     columns = [dg.TableColumn(k, str(v)) for k, v in df.dtypes.to_dict().items()]
 
-    return dg.MaterializeResult(
-        value=df,
-        metadata={
+    context.add_output_metadata(
+        {
             "num_rows": dg.MetadataValue.int(int(len(df))),
             "num_columns": dg.MetadataValue.int(int(len(df.columns))),
             "fraud_count": dg.MetadataValue.int(int(fraud_distribution.get(1, 0))),
@@ -52,8 +51,10 @@ def raw_fraud_dataset(context: dg.AssetExecutionContext) -> dg.MaterializeResult
             "preview": dg.MetadataValue.md(df.head().to_markdown() or ""),
             "dagster/column_schema": dg.TableSchema(columns=columns),
             "source": dg.MetadataValue.text(url),
-        },
+        }
     )
+
+    return df
 
 
 @dg.asset(
@@ -61,39 +62,42 @@ def raw_fraud_dataset(context: dg.AssetExecutionContext) -> dg.MaterializeResult
     compute_kind="python",
     group_name="ml_fraud_preprocess_split",
 )
-def preprocessed_data(context: dg.AssetExecutionContext, raw_fraud_dataset: pd.DataFrame) -> dg.MaterializeResult:
+def preprocessed_data(
+    context: dg.AssetExecutionContext,
+    raw_fraud_dataset: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
     """Preprocess the raw data — handle missing values and scale features."""
     context.log.info("Preprocessing data...")
     df = raw_fraud_dataset
 
-    X = df.drop("Class", axis=1)
-    y = df["Class"]
+    X: pd.DataFrame = df.drop("Class", axis=1)
+    y: pd.Series = df["Class"]  # type: ignore
 
-    missing_before = int(X.isna().sum().sum())
+    missing_before: int = int(X.isna().sum().sum())
     X = X.fillna(X.mean())
-    missing_after = int(X.isna().sum().sum())
+    missing_after: int = int(X.isna().sum().sum())
 
     scaler = StandardScaler()
-    X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+    X_scaled: pd.DataFrame = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
 
     context.log.info(f"Preprocessed shape: {X_scaled.shape}")
     context.log.info(f"Missing values before: {missing_before}, after: {missing_after}")
 
     columns = [dg.TableColumn(k, str(v)) for k, v in X_scaled.dtypes.to_dict().items()]
 
-    return dg.MaterializeResult(
-        value=(X_scaled, y),
-        metadata={
+    context.add_output_metadata(
+        {
             "num_features": dg.MetadataValue.int(int(X_scaled.shape[1])),
             "num_samples": dg.MetadataValue.int(int(X_scaled.shape[0])),
             "missing_values_filled": dg.MetadataValue.int(missing_before),
             "scaler_type": dg.MetadataValue.text("StandardScaler"),
-            "feature_mean": dg.MetadataValue.float(float(X_scaled.mean().mean())),
-            "feature_std": dg.MetadataValue.float(float(X_scaled.std().mean())),
+            "feature_mean": dg.MetadataValue.float(float(X_scaled.mean().mean())),  # type: ignore
+            "feature_std": dg.MetadataValue.float(float(X_scaled.std().mean())),  # type: ignore
             "preview": dg.MetadataValue.md(X_scaled.head().to_markdown() or ""),
             "dagster/column_schema": dg.TableSchema(columns=columns),
-        },
+        }
     )
+
+    return (X_scaled, y)
 
 
 @dg.asset(
@@ -104,34 +108,42 @@ def preprocessed_data(context: dg.AssetExecutionContext, raw_fraud_dataset: pd.D
 def split_dataset(
     context: dg.AssetExecutionContext,
     preprocessed_data: Tuple[pd.DataFrame, pd.Series]
-) -> dg.MaterializeResult:
+) -> Dict[str, Any]:
     """Split data into training and test sets with stratification."""
     X, y = preprocessed_data
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
 
-    train_fraud_rate = float((y_train.sum() / len(y_train)) * 100)
-    test_fraud_rate = float((y_test.sum() / len(y_test)) * 100)
+    train_fraud_rate: float = float((y_train.sum() / len(y_train)) * 100)  # type: ignore
+    test_fraud_rate: float = float((y_test.sum() / len(y_test)) * 100)  # type: ignore
 
-    context.log.info(f"Training set size: {X_train.shape}")
-    context.log.info(f"Test set size: {X_test.shape}")
+    context.log.info(f"Training set size: {X_train.shape}")  # type: ignore
+    context.log.info(f"Test set size: {X_test.shape}")  # type: ignore
     context.log.info(f"Training fraud rate: {train_fraud_rate:.2f}%")
     context.log.info(f"Test fraud rate: {test_fraud_rate:.2f}%")
 
-    return dg.MaterializeResult(
-        value={"X_train": X_train, "X_test": X_test, "y_train": y_train, "y_test": y_test},
-        metadata={
+    context.add_output_metadata(
+        {
             "train_size": dg.MetadataValue.int(int(len(X_train))),
             "test_size": dg.MetadataValue.int(int(len(X_test))),
-            "train_fraud_count": dg.MetadataValue.int(int(y_train.sum())),
-            "test_fraud_count": dg.MetadataValue.int(int(y_test.sum())),
+            "train_fraud_count": dg.MetadataValue.int(int(y_train.sum())),  # type: ignore
+            "test_fraud_count": dg.MetadataValue.int(int(y_test.sum())),  # type: ignore
             "train_fraud_rate_percent": dg.MetadataValue.float(float(train_fraud_rate)),
             "test_fraud_rate_percent": dg.MetadataValue.float(float(test_fraud_rate)),
             "test_split_ratio": dg.MetadataValue.float(0.2),
             "random_seed": dg.MetadataValue.int(42),
             "stratified": dg.MetadataValue.bool(True),
-        },
+        }
     )
+
+    return {
+        "X_train": X_train,
+        "X_test": X_test,
+        "y_train": y_train,
+        "y_test": y_test,
+    }
 
 
 @dg.asset(
@@ -232,8 +244,8 @@ def tune_hyperparameters(
 def train_model(
     context: dg.AssetExecutionContext,
     tune_hyperparameters: Tuple[RandomForestClassifier, Dict[str, Any]],
-    split_dataset: Dict[str, Any],
-) -> dg.MaterializeResult:
+    split_dataset: Dict[str, Any],  # <-- typing fixed below
+) -> dg.MaterializeResult[Tuple[RandomForestClassifier, Dict[str, float]]]:
     """Train final model with best hyperparameters and log to MLflow."""
 
     fraud_mlflow = context.resources.fraud_mlflow
@@ -241,12 +253,13 @@ def train_model(
     mlflow.set_experiment(fraud_mlflow.experiment_name)
 
     best_model, best_params = tune_hyperparameters
-    split_data = split_dataset
+    split_data: Dict[str, Any] = split_dataset
 
-    X_train = split_data["X_train"]
-    y_train = split_data["y_train"]
-    X_test = split_data["X_test"]
-    y_test = split_data["y_test"]
+    # Correct typing for Pyright
+    X_train: pd.DataFrame = split_data["X_train"]
+    y_train: pd.Series = split_data["y_train"]
+    X_test: pd.DataFrame = split_data["X_test"]
+    y_test: pd.Series = split_data["y_test"]
 
     # ✅ Attach to the currently active MLflow run
     active_run = mlflow.active_run()
@@ -267,7 +280,7 @@ def train_model(
     # Train model
     best_model.fit(X_train, y_train)
     y_pred = best_model.predict(X_test)
-    y_pred_proba = best_model.predict_proba(X_test)[:, 1]
+    y_pred_proba = best_model.predict_proba(X_test)[:, 1]  # type: ignore
 
     # Evaluate
     precision = float(precision_score(y_test, y_pred))
@@ -284,8 +297,8 @@ def train_model(
 
     # Log metrics and model to MLflow if active
     if active_run:
-        mlflow.log_metrics({k: float(v) for k, v in metrics.items()})
-        mlflow.sklearn.log_model(best_model, artifact_path="final_fraud_model")
+        mlflow.log_metrics(metrics)
+        mlflow.sklearn.log_model(best_model, artifact_path="final_fraud_model")  # type: ignore
 
     context.log.info(f"✅ Model training complete. F1={f1:.4f}, ROC-AUC={roc_auc:.4f}")
 
@@ -297,7 +310,7 @@ def train_model(
             "test_recall": dg.MetadataValue.float(recall),
             "test_f1_score": dg.MetadataValue.float(f1),
             "test_roc_auc": dg.MetadataValue.float(roc_auc),
-            "n_estimators": dg.MetadataValue.int(int(best_params["n_estimators"])),
+            "n_estimators": dg.MetadataValue.int(int(best_params.get("n_estimators", 100))),
             "training_samples": dg.MetadataValue.int(len(X_train)),
             "test_samples": dg.MetadataValue.int(len(X_test)),
             "mlflow_run_id": dg.MetadataValue.text(run_id or "none"),
@@ -343,7 +356,7 @@ def generate_evaluation_plots(
 
     # Confusion matrix
     ax = axes[0]
-    im = ax.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
+    im = ax.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)  # type: ignore
     ax.set_title("Confusion Matrix - Test Set")
     ax.set_xlabel("Predicted label")
     ax.set_ylabel("True label")
@@ -488,11 +501,11 @@ def register_model_to_registry(
     context.log.info(f"✅ Got experiment ID: {experiment_id}")
 
     runs = mlflow.search_runs(experiment_ids=[experiment_id], order_by=["start_time DESC"], max_results=1)
-    context.log.info(f"✅ Search runs returned type: {type(runs)}, shape: {runs.shape if hasattr(runs, 'shape')
-    else 'N/A'}")
+    context.log.info(
+        f"✅ Search runs returned type: {type(runs)}, shape: {runs.shape if hasattr(runs, 'shape') else 'N/A'}")  # type: ignore
     context.log.info(f"✅ Runs data:\n{runs}")
 
-    if runs.empty:
+    if runs.empty:  # type: ignore
         context.log.error("❌ No runs found in experiment")
         return dg.MaterializeResult(
             value=None,
@@ -500,7 +513,7 @@ def register_model_to_registry(
             "error": dg.MetadataValue.text("No runs found")}
         )
 
-    latest_run = runs.iloc[0]
+    latest_run = runs.iloc[0]  # type: ignore
     run_id: str = latest_run["run_id"]
     context.log.info(f"✅ Latest run ID: {run_id}")
 

@@ -1,23 +1,24 @@
 import os
+from typing import Any
 
 import mlflow
 import pandas as pd
 
-MODEL_NAME = "fraud_detection_model"
-MODEL_STAGE = "None"
+MODEL_NAME: str = "fraud_detection_model"
+MODEL_STAGE: str = "None"
 
 # Construct paths
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(SCRIPT_DIR, "..", "..", "..", "..", "..", "mlflow_local_tracking.db")
+SCRIPT_DIR: str = os.path.dirname(os.path.abspath(__file__))
+DB_PATH: str = os.path.join(SCRIPT_DIR, "..", "..", "..", "..", "..", "mlflow_local_tracking.db")
 
 # Set up MLflow Tracking
 mlflow.set_tracking_uri(f"sqlite:///{os.path.abspath(DB_PATH)}")
 
 # Construct the URI to load the model from the registry
-model_uri = f"models:/{MODEL_NAME}/{MODEL_STAGE}"
+model_uri: str = f"models:/{MODEL_NAME}/{MODEL_STAGE}"
 
 # Data as list of lists
-data = [
+data: list[list[float]] = [
     [-1.993556274551629, 0.5988795657903885, 0.0449136256231686, 0.0824829763851415, 0.7251818130833019,
      0.1465838797039726, 0.2254642748782944, 0.0552728370456679, 0.0463561245656008, 0.4190937150050794,
      -0.0075272654443768, -1.269077056730168, -0.0473167140952914, -0.7551631340304324, 0.2002333992752824,
@@ -50,18 +51,18 @@ data = [
      -0.6888092259277981, -1.2654930813369818, -0.6968210003381249, -0.8362353001431342, -0.2539666460460952]
 ]
 
-columns = [
+columns: list[str] = [
     "Time", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9",
     "V10", "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18",
     "V19", "V20", "V21", "V22", "V23", "V24", "V25", "V26", "V27",
     "V28", "Amount"
 ]
 
-# Explicitly cast columns to avoid type checker issues
-df = pd.DataFrame(data=data, columns=list(columns))
+# Create DataFrame
+df: pd.DataFrame = pd.DataFrame(data=data, columns=columns)  # type: ignore
 
 # Predict using MLflow
-results = mlflow.models.predict(
+results: Any = mlflow.models.predict(  # type: ignore
     model_uri=model_uri,
     input_data=df,
     env_manager="local",

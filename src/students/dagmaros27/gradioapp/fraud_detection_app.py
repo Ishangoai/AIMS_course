@@ -124,7 +124,7 @@ SAMPLE_JSON = json.dumps({
 # Build Gradio interface
 # ---------------------------------------------------------------------------
 with gr.Blocks(
-    theme=gr.themes.Soft(
+    theme=gr.themes.Soft(  # type: ignore
         primary_hue="red",
         secondary_hue="slate",
         neutral_hue="slate"
