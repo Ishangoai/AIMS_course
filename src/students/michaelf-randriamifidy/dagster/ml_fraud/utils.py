@@ -1,7 +1,7 @@
 import os
 import tempfile
 from datetime import datetime
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Optional, Sequence, Union, List
 
 
 import dagster_slack
@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn as ms
 import numpy as np
+import pandas as pd
 import requests
 import seaborn as sns
 from dagster import OpExecutionContext
@@ -311,7 +312,7 @@ def random_forest_summary_message(
 def log_confusion_matrix(
     y_true: np.ndarray,
     y_pred: np.ndarray,
-    labels: Optional[Sequence[Union[str, int]]] = None,
+    labels: Optional[List[Union[int, str]]] = None,
     artifact_name: str = "confusion_matrix.png"
 ) -> None:
     """
@@ -320,15 +321,18 @@ def log_confusion_matrix(
     Args:
         y_true (np.ndarray): True labels.
         y_pred (np.ndarray): Predicted labels.
-        labels (Optional[Sequence[str]]): Label names.
+        labels (Optional[List[Union[int, str]]]): Label names.
         artifact_name (str): Saved artifact name.
     """
-    cm = confusion_matrix(y_true, y_pred, labels=labels)
+    cm = confusion_matrix(y_true, y_pred)
 
     plt.figure(figsize=(6, 5))
+
     if labels is not None:
+        # Convert all labels to strings for DataFrame / heatmap
+        labels_str = [str(l) for l in labels]
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
-                    xticklabels=labels, yticklabels=labels)
+                    xticklabels=labels_str, yticklabels=labels_str)
     else:
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
 
@@ -342,3 +346,70 @@ def log_confusion_matrix(
         mlflow.log_artifact(path, artifact_path="plots")
 
     plt.close()
+
+
+def get_top_features_by_importance(
+    feature_names: Sequence[str],
+    importances: np.ndarray,
+    cumulative_threshold: float = 0.8
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Get top features contributing to the cumulative importance threshold.
+
+    Args:
+        feature_names (Sequence[str]): List of feature names.
+        importances (np.ndarray): Feature importance values.
+        cumulative_threshold (float): Fraction of total importance to include.
+
+    Returns:
+        tuple of (top_features, top_importances)
+    """
+    if len(feature_names) != len(importances):
+        raise ValueError("feature_names and importances must have the same length.")
+
+    sorted_idx = np.argsort(importances)[::-1]
+    sorted_features = np.array(feature_names)[sorted_idx]
+    sorted_importances = importances[sorted_idx]
+
+    cumulative_importance = np.cumsum(sorted_importances) / sorted_importances.sum()
+    top_n_idx = np.searchsorted(cumulative_importance, cumulative_threshold) + 1
+
+    return sorted_features[:top_n_idx], sorted_importances[:top_n_idx]
+
+
+def log_feature_importance(
+    feature_names: Sequence[str],
+    importances: np.ndarray,
+    cumulative_threshold: Optional[float] = 0.8,
+    artifact_name: str = "feature_importance.png"
+) -> None:
+    """
+    Plot and log feature importances as a bar plot to MLflow.
+
+    Args:
+        feature_names (Sequence[str]): List of feature names.
+        importances (np.ndarray): Feature importance values.
+        cumulative_threshold (Optional[float]): Fraction of importance to include.
+        artifact_name (str): File name for the saved artifact.
+    """
+    # Select top features if cumulative_threshold is set
+    if cumulative_threshold is not None:
+        top_features, top_importances = get_top_features_by_importance(
+            feature_names, importances, cumulative_threshold
+        )
+    else:
+        top_features = np.array(feature_names)
+        top_importances = importances
+
+    # Plot
+    plt.figure(figsize=(8, max(4, 0.4 * len(top_features))))
+    sns.barplot(x=top_importances, y=top_features, palette="viridis")
+    plt.xlabel("Importance")
+    plt.ylabel("Feature")
+    plt.title(f"Top Feature Importance. Cumulative Contribution of {cumulative_threshold * 100}%")
+
+    # Save and log to MLflow
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, artifact_name)
+        plt.savefig(path, bbox_inches="tight")
+        mlflow.log_artifact(path, artifact_path="plots")

@@ -13,7 +13,13 @@ from sklearn.model_selection import (
 from ...client_consumers import slack_provider
 from ...ml.resources import mlflow_resource
 from ..resources import FraudTuningConfig
-from ..utils import calculate_false_positive_rate, get_experiment, log_confusion_matrix, to_native
+from ..utils import (
+    calculate_false_positive_rate,
+    get_experiment,
+    log_confusion_matrix,
+    log_feature_importance,
+    to_native,
+)
 
 EXP_FRAUD_DETECTION = "fraud_detection"
 
@@ -111,13 +117,8 @@ def tune_random_forest_hyperparameters(
     else:
         raise ValueError("gridsearch tuning failed: no successful trials found.")
 
-<<<<<<< HEAD
     context.log.info(f"Final best n_estimators: {best_n_estimators_to_log:.4f}"
-                     ", Corresponding f1_score: {best_f1_score_to_log:.4f}")
-=======
-    context.log.info(f"Final best n_estimators: {best_n_estimators_to_log:.4f},",
-                     f"Corresponding f1_score: {best_f1_score_to_log:.4f}")
->>>>>>> ac5cee2fd7337c3e574625e476e1200a79c39c91
+                    ", Corresponding f1_score: {best_f1_score_to_log:.4f}")
 
     with mlflow_client.start_run(experiment_id=experiment_id,
                                 run_name="best_gridsearch_trial",
@@ -241,13 +242,22 @@ def test_model_fraud(
     fpr = calculate_false_positive_rate(y_test, preds)
 
     with mlflow_client.start_run(experiment_id=experiment_id,
-                            run_name="confusion_matrix",
+                            run_name="relevant_model_plots",
                             nested=True):
         context.log.info("Final Model Evaluation Metrics on Test Set"
                 ": accuracy={accuracy:.4f}, recall={recall:.4f}, fpr={fpr:.4f}")
+
         context.log.info("Logging Confusion matrix to Mlflow Artifacts")
         log_confusion_matrix(y_test, preds, labels=[0, 1])
         context.log.info("Confusion matrix logged as Artifact to Mlflow")
+
+        context.log.info("Logging Feature Importance Plot to MLflow Artifacts")
+        log_feature_importance(
+            feature_names=feature_names,
+            importances=model.feature_importances_,
+            cumulative_threshold=0.8  # automatically select top 80%
+        )
+        context.log.info("Feature Importance Plot logged as Artifact to MLflow")
 
     eval_metrics = {"test_accuracy": accuracy, "test_recall": recall, "test_fpr": fpr}
 
@@ -301,19 +311,6 @@ def test_model_fraud(
         "model_version_info": model_version_info,
         "status": "evaluated_successfully"
     }
-
-    # authors = "Rado Fitiavana and Michael Fitiavana"
-    # hyperparameters = model.get_params()
-    # n_estimators = hyperparameters["n_estimators"]
-    # message = random_forest_summary_message(authors, accuracy, recall, fpr, n_estimators)
-    # channel = "aims_course_october2025"
-
-    # try:
-    #     post_message_in_slack(slack, message, channel)
-    #     context.log.info(f"The following message is posted to Slack {channel} \n", message)
-    # except Exception as e:
-    #     error_msg = f"Error while posting model summary: {e}"
-    #     context.log.error(error_msg)
 
     return dg.MaterializeResult(
         value=output_value_for_downstream,
