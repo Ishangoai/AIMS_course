@@ -121,7 +121,11 @@ def load_sample_fraud():
 
 
 # Gradio Interface Definition
+<<<<<<< HEAD
 with gr.Blocks(title="Fraud Detection System", theme=gr.themes.Soft()) as fraud_detect:  # pyright: ignore
+=======
+with gr.Blocks(title="Fraud Detection System", theme=gr.themes.Soft()) as iface:  # pyright: ignore
+>>>>>>> 9a3f351c1f29374e0a367bcd9880b5504d3d5356
 
     gr.Markdown(
         """
@@ -272,7 +276,11 @@ if __name__ == "__main__":
     print("\n" + "=" * 70)
     print("🚀 Launching Gradio Fraud Detection Interface...")
     print("=" * 70)
+<<<<<<< HEAD
     fraud_detect.launch(
+=======
+    iface.launch(
+>>>>>>> 9a3f351c1f29374e0a367bcd9880b5504d3d5356
         server_name="0.0.0.0",
         server_port=7862,
         share=False,
