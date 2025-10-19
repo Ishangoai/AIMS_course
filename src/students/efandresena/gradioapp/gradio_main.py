@@ -280,13 +280,4 @@ with gr.Blocks(theme=gradio.themes.Soft(), title="Fraud Detection - Mirindra & T
 # =========================
 
 if __name__ == "__main__":
-    print("\n" + "=" * 60)
-    print("🚀 Launching Fraud Detection Gradio App...")
-    print("=" * 60 + "\n")
-
-    demo.launch(
-        debug=True,
-        share=True,
-        server_name="127.0.0.1",
-        server_port=7870
-    )
+    demo.launch(share=True)
