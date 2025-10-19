@@ -1,4 +1,5 @@
 import os
+import sys
 
 import gradio as gr
 import mlflow
@@ -16,20 +17,33 @@ mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
 # Load model from Production stage
 MODEL_NAME = "tuned-fraud-detector"
-MODEL_STAGE = "Production"
+MODEL_STAGE = "production"
 
 # Construct the model URI for the registry
-model_uri = f"models:/{MODEL_NAME}/{MODEL_STAGE}"
+model_uri = f"models:/{MODEL_NAME}@{MODEL_STAGE}"
 
 print(MLFLOW_TRACKING_URI)
 print(model_uri)
+
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..")))
+
+# Load model
+# model = ms.load_model(logged_model)
 
 
 def predict_fraud(*inputs):
     """Make fraud prediction"""
     try:
         # load model
+        # import sys
+
+        # # Add project root (where 'src' folder is) to sys.path
+
+        # print("Loading model...")
         model = ms.load_model(model_uri)
+        # model = mlflow.pyfunc.load_model(model_uri)
+        print(type(model))
 
         # Create input dataframe with correct column order
         input_data = pd.DataFrame(
@@ -58,6 +72,7 @@ def predict_fraud(*inputs):
 
 **Fraud Probability:** {fraud_prob:.2%}
 **Legitimate Probability:** {legit_prob:.2%}
+![Suspicious](https://media.tenor.com/NpIRDtlpMRAAAAAM/the-rock-rock-meme.gif)
 """
         else:
             result += f"""
@@ -65,6 +80,7 @@ def predict_fraud(*inputs):
 
 **Legitimate Probability:** {legit_prob:.2%}
 **Fraud Probability:** {fraud_prob:.2%}
+![Nice](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRtBkIscyGh0m8SdMffurtFasM9OI_IQiXZ3tmnRXiQTbYMfMJF5a1FQuKA8Okb-bMhn74&usqp=CAU)
 """
 
         result += f"\n---\n\n*Model: {model_uri}*"
@@ -75,17 +91,21 @@ def predict_fraud(*inputs):
         return f"Error making prediction: {str(e)}"
 
 
+gr.Markdown("# 💳 Fraud Detection System")
 # Create Gradio interface with custom theme
 with gr.Blocks(
     title="Fraud Detection System",
     css="""
-        .gradio-container {
-            max-width: 1400px !important;
-        }
-        .output-text {
-            font-size: 16px !important;
-        }
-    """,
+
+    .gradio-container {
+        min-width: 80% !important;
+        margin: auto !important;
+        padding: 20px !important;
+        border-radius: 10px !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+    }
+""",
 ) as iface:
     with gr.Row():
         with gr.Column(scale=1):
@@ -135,8 +155,9 @@ with gr.Blocks(
             V28 = gr.Slider(label="V28", minimum=-50, maximum=50, step=0.01)
 
     with gr.Row():
-        predict_btn = gr.Button("🔍 Analyze Transaction", variant="primary", size="lg")
-        output = gr.Markdown(label="Prediction Result", elem_classes="output-text")
+        with gr.Column():
+            predict_btn = gr.Button("🔍 Analyze Transaction", variant="primary", size="lg")
+            output = gr.Markdown(label="Prediction Result", elem_classes="output-text")
 
     # Connect prediction button
     all_inputs = [

@@ -6,8 +6,8 @@
 set -e # Stop the script if any command fails
 
 # Model and environment details
-MODEL_NAME="tuned-fraud-detector"
-MODEL_STAGE="production"
+MODEL_NAME="fraud-detection-model"
+MODEL_STAGE="Production"
 MLFLOW_PORT=5002
 
 # Get the directory where this script is located
@@ -24,4 +24,4 @@ echo "Model: '$MODEL_NAME' from stage '$MODEL_STAGE'"
 
 
 # The --env-manager=local flag tells MLflow to use the current virtual environment
-mlflow models serve -m "models:/$MODEL_NAME@$MODEL_STAGE" --port "$MLFLOW_PORT"  --env-manager=local
+mlflow models serve -m "models:/$MODEL_NAME/$MODEL_STAGE" --port "$MLFLOW_PORT"  --env-manager=local
