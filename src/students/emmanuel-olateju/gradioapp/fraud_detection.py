@@ -56,8 +56,8 @@ def create_class_distribution_chart(y_train, y_test):
     train_vals = [train_counts.get(0, 0), train_counts.get(1, 0)]
     test_vals = [test_counts.get(0, 0), test_counts.get(1, 0)]
 
-    bars1 = ax.bar(x - width / 2, train_vals, width, label='Training', color='#3b82f6', alpha=0.8)
-    bars2 = ax.bar(x + width / 2, test_vals, width, label='Test', color='#ef4444', alpha=0.8)
+    bars1 = ax.bar(x - width / 2, train_vals, width, label='Training', color='#3b82f6', alpha=0.8)  # type: ignore
+    bars2 = ax.bar(x + width / 2, test_vals, width, label='Test', color='#ef4444', alpha=0.8)  # type: ignore
 
     ax.set_xlabel('Transaction Type', fontsize=12, fontweight='bold')
     ax.set_ylabel('Count', fontsize=12, fontweight='bold')
@@ -260,7 +260,7 @@ def predict_batch_transactions(file):
         predictions = GLOBAL_MODEL.predict(df)  # type: ignore
 
         df['Prediction'] = predictions
-        df['Risk'] = df['Prediction'].map({0: 'Legitimate', 1: 'Fraud'})
+        df['Risk'] = df['Prediction'].map({0: 'Legitimate', 1: 'Fraud'})    # type: ignore
 
         fraud_count = sum(predictions)
         total = len(predictions)
