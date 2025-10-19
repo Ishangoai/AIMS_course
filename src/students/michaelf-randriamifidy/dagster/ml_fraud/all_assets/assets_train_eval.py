@@ -111,7 +111,8 @@ def tune_random_forest_hyperparameters(
     else:
         raise ValueError("gridsearch tuning failed: no successful trials found.")
 
-    context.log.info(f"Final best n_estimators: {best_n_estimators_to_log:.4f}, Corresponding f1_score: {best_f1_score_to_log:.4f}")
+    context.log.info(f"Final best n_estimators: {best_n_estimators_to_log:.4f},",
+                     f"Corresponding f1_score: {best_f1_score_to_log:.4f}")
 
     with mlflow_client.start_run(experiment_id=experiment_id,
                                 run_name="best_gridsearch_trial",

@@ -33,4 +33,4 @@ class FraudPromotionConfig(dg.Config):
     staging_fpr_threshold: float = pyd.Field(
         default=0.2,
         description="Maximum acceptable False Positive Rate for promoting a model to Staging"
-    )    
+    )

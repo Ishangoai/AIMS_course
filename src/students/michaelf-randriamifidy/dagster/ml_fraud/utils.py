@@ -1,6 +1,7 @@
 import os
 import tempfile
 from datetime import datetime
+
 import dagster_slack
 import joblib
 import matplotlib.pyplot as plt
@@ -38,6 +39,7 @@ class ClientDownloader:
         except IOError as e:
             raise RuntimeError(f"Failed to write file: {e}")
 
+
 def get_experiment(mlflow_client, name):
     try:
         experiment = mlflow_client.get_experiment_by_name("name")
@@ -48,7 +50,8 @@ def get_experiment(mlflow_client, name):
     except Exception:  # Handle cases where get_experiment_by_name might raise error if not found
         experiment_id = mlflow_client.create_experiment("name")
     experiment_id
-    
+
+
 def post_message_in_slack(slack: dagster_slack.SlackResource,
                             message: str,
                             channel: str = "aims_course_october2025"
