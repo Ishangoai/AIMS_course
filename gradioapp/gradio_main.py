@@ -19,7 +19,7 @@ from gradioapp.gradio_utils import (
 
 MODEL_NAME = "fraud_detection_rf"
 MODEL_STAGE = "latest"
-DB_PATH = "/home/mirandraf/Desktop/AIMS_course/src/students/efandresena/dagster/ml_fraud/mlflow_artifacts/mlflow_fraud_tracking.db"  # noqa: E501
+DB_PATH = "dagster/ml_fraud/mlflow_artifacts/mlflow_fraud_tracking.db"  # noqa: E501
 DATA_URL = "https://raw.githubusercontent.com/aduuna/Kaggle-Data-Credit-Card-Fraud-Detection/master/samplecreditcard.csv"
 
 # Feature names (excluding 'Class' label), reduced to 10 features
