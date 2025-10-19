@@ -11,7 +11,7 @@ import mlflow.sklearn as ms
 import numpy as np
 import requests
 import seaborn as sns
-from dagster import OpExecutionContext
+from dagster import AssetExecutionContext
 
 # from dagster_slack import SlackResource
 from mlflow import MlflowClient
@@ -154,7 +154,7 @@ def get_latest_staging_version(model_name: str, mlflow_client: MlflowClient) -> 
 def archive_existing_production_models(
     model_name: str,
     mlflow_client: MlflowClient,
-    context: OpExecutionContext
+    context: AssetExecutionContext
 ) -> None:
     """
     Archive all existing models in the 'Production' stage.
@@ -183,7 +183,7 @@ def promote_model_to_production(
     model_name: str,
     model_version: str,
     mlflow_client: MlflowClient,
-    context: OpExecutionContext
+    context: AssetExecutionContext
 ) -> None:
     """
     Promote a model version to the 'Production' stage.
@@ -221,7 +221,7 @@ def get_model_by_name(model_name: str, model_version: str) -> Any:
 def dump_model_to_pickle(
     model_name: str,
     model_version: str,
-    context: OpExecutionContext
+    context: AssetExecutionContext
 ) -> None:
     """
     Dump a promoted model to a local pickle file.
@@ -396,16 +396,18 @@ def log_feature_importance(
         top_features, top_importances = get_top_features_by_importance(
             feature_names, importances, cumulative_threshold
         )
+        title = f"Top Feature Importance. Cumulative Contribution of {cumulative_threshold * 100}%"
     else:
         top_features = np.array(feature_names)
         top_importances = importances
+        title = f"Top Feature Importance."
 
     # Plot
     plt.figure(figsize=(8, max(4, 0.4 * len(top_features))))
     sns.barplot(x=top_importances, y=top_features, palette="viridis")
     plt.xlabel("Importance")
     plt.ylabel("Feature")
-    plt.title(f"Top Feature Importance. Cumulative Contribution of {cumulative_threshold * 100}%")
+    plt.title(title)
 
     # Save and log to MLflow
     with tempfile.TemporaryDirectory() as tmpdir:
