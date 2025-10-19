@@ -63,17 +63,34 @@ def splitting_data(preprocess_data: pd.DataFrame) -> Dict:
 
 
 @asset(
-        group_name="Loading"
+        resource_defs={
+            "mlflow": mlflow_resource
+            },
+        group_name="Storage"
 )
-def save_data_artifacts(preprocess_data: pd.DataFrame, splitting_data: Dict) -> None:
+def save_data_artifacts(context: dg.AssetExecutionContext, preprocess_data: pd.DataFrame, splitting_data: Dict) -> None:
     "Save preprocessed data and split data artifacts to local storage or bucket"
+    mlflow = context.resources.mlflow
+
     data_dir = CONFIGS["artifacts"]["data_dir"]
     if os.path.exists(data_dir) is False:
         os.makedirs(data_dir, exist_ok=True)
+
+    # Save preprocessed data locally
+    preprocess_data_path = f"{data_dir}/preprocessed_data.csv"
     preprocess_data.to_csv(f"{data_dir}/preprocessed_data.csv", index=False)
+    # Log preprocessed data to MLflow
+    mlflow.log_artifact(preprocess_data_path, artifact_path="data")
+    context.log.info("✅ Preprocessed data logged to MLflow")
 
     for key, value in splitting_data.items():
+        file_path = f"{data_dir}/{key}.csv"
         pd.DataFrame(value).to_csv(f"{data_dir}/{key}.csv", index=False)
+
+        # Log each split to MLflow
+        mlflow.log_artifact(file_path, artifact_path="data")
+        context.log.info(f"✅ {key} logged to MLflow")
+    context.log.info("🎉 All data artifacts saved locally and logged to MLflow")
 
 
 # ----------------------- MODELING ASSETS --------------------------------- #
@@ -84,7 +101,7 @@ def save_data_artifacts(preprocess_data: pd.DataFrame, splitting_data: Dict) -> 
             },
         group_name="Modeling"
 )
-def train_model(context: dg.AssetExecutionContext, splitting_data: Dict):
+def train_model(context: dg.AssetExecutionContext, preprocess_data: pd.DataFrame, splitting_data: Dict):
 
     mlflow = context.resources.mlflow
     X_train = splitting_data['X_train']
@@ -94,27 +111,47 @@ def train_model(context: dg.AssetExecutionContext, splitting_data: Dict):
 
     context.log.info("🚀 Starting model training")
 
-    # Method 1: Get the active run object
+    # Get the active run object
     active_run = mlflow.active_run()
 
     # Access run information
     run_id = active_run.info.run_id
     experiment_id = active_run.info.experiment_id
     run_name = active_run.info.run_name
-    start_time = active_run.info.start_time
 
     context.log.info(f"Current MLflow run ID: {run_id}")
     context.log.info(f"Experiment ID: {experiment_id}")
     context.log.info(f"Run name: {run_name}")
 
-    # Method 2: Access run data (parameters, metrics, tags)
-    run_data = active_run.data
+    # ============= LOG DATA ARTIFACTS TO MLFLOW =============
+    context.log.info("📊 Logging data artifacts to MLflow...")
 
-    # Method 3: Get run info dict
-    run_info = active_run.info
+    # Create temporary directory for artifacts
+    import tempfile
+    temp_dir = tempfile.mkdtemp()
 
-    # Start an MLflow run via the resource context
-    # with mlflow.start_run(run_name="fraud_detection_model") as run:
+    try:
+        # Save and log preprocessed data
+        preprocess_data_path = os.path.join(temp_dir, "preprocessed_data.csv")
+        preprocess_data.to_csv(preprocess_data_path, index=False)
+        mlflow.log_artifact(preprocess_data_path)
+        context.log.info("✅ Preprocessed data logged to MLflow")
+
+        # Save and log split data
+        for key, value in splitting_data.items():
+            file_path = os.path.join(temp_dir, f"{key}.csv")
+            pd.DataFrame(value).to_csv(file_path, index=False)
+            mlflow.log_artifact(file_path)
+            context.log.info(f"✅ {key} logged to MLflow")
+
+        context.log.info("🎉 All data artifacts logged to MLflow")
+
+    finally:
+        # Clean up temporary directory
+        import shutil
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    # ============= TRAIN MODEL =============
     performance = model_training_testing(
         X_train, y_train, X_test, y_test,
         CONFIGS['training']['random_forest_params_space'],
@@ -167,10 +204,125 @@ def train_model(context: dg.AssetExecutionContext, splitting_data: Dict):
     context.log.info("✅ Model successfully logged to MLflow")
 
     # Log the run URL for easy access
-    run_url = f"{mlflow.tracking_uri}/#{experiment_id}/{run_id}"
+    run_url = f"{mlflow.tracking_uri}/#/experiments/{experiment_id}/runs/{run_id}"
     context.log.info(f"View run at: {run_url}")
-    # context.log.info(f"✅ MLflow run complete: {run.info.run_id}")
+
     return performance
+# def train_model(context: dg.AssetExecutionContext, splitting_data: Dict):
+
+#     mlflow = context.resources.mlflow
+#     X_train = splitting_data['X_train']
+#     X_test = splitting_data['X_test']
+#     y_train = splitting_data['y_train']
+#     y_test = splitting_data['y_test']
+
+#     context.log.info("🚀 Starting model training")
+
+#     # Method 1: Get the active run object
+#     active_run = mlflow.active_run()
+
+#     # Access run information
+#     run_id = active_run.info.run_id
+#     experiment_id = active_run.info.experiment_id
+#     run_name = active_run.info.run_name
+#     start_time = active_run.info.start_time
+
+#     context.log.info(f"Current MLflow run ID: {run_id}")
+#     context.log.info(f"Experiment ID: {experiment_id}")
+#     context.log.info(f"Run name: {run_name}")
+
+#     # Method 2: Access run data (parameters, metrics, tags)
+#     run_data = active_run.data
+
+#     # Method 3: Get run info dict
+#     run_info = active_run.info
+
+#     # Start an MLflow run via the resource context
+#     # with mlflow.start_run(run_name="fraud_detection_model") as run:
+#     performance = model_training_testing(
+#         X_train, y_train, X_test, y_test,
+#         CONFIGS['training']['random_forest_params_space'],
+#         CONFIGS['training']['random_state']
+#     )
+
+#     trained_model = performance["model"]
+
+#     # Log metrics
+#     mlflow.log_metrics({
+#         "accuracy": performance["accuracy"],
+#         "recall": performance["recall"],
+#         "roc_auc": performance["roc_auc"],
+#     })
+
+#     # Generate confusion matrix
+#     cm = performance["cm"]
+
+#     fig, ax = plt.subplots(figsize=(6, 5))
+#     im = ax.imshow(cm, cmap='Blues', interpolation='nearest')
+
+#     # Add colorbar
+#     plt.colorbar(im, ax=ax)
+
+#     # Add text annotations
+#     for i in range(cm.shape[0]):
+#         for j in range(cm.shape[1]):
+#             ax.text(j, i, str(cm[i, j]),
+#                             ha="center", va="center", color="black")
+
+#     ax.set_title("Confusion Matrix on Test Data")
+#     ax.set_xlabel("Predicted Label")
+#     ax.set_ylabel("True Label")
+
+#     # Set ticks
+#     ax.set_xticks(range(cm.shape[1]))
+#     ax.set_yticks(range(cm.shape[0]))
+
+#     plt.tight_layout()
+
+#     mlflow.log_figure(fig, "confusion_matrix.png")
+#     plt.close(fig)
+
+#     # ✅ Log model itself (works for sklearn models)
+#     mlflow.sklearn.log_model(
+#         sk_model=trained_model,
+#         artifact_path="model",
+#         registered_model_name="fraud_detection_model"
+#     )
+#     context.log.info("✅ Model successfully logged to MLflow")
+
+#     # Log the run URL for easy access
+#     run_url = f"{mlflow.tracking_uri}/#{experiment_id}/{run_id}"
+#     context.log.info(f"View run at: {run_url}")
+#     # context.log.info(f"✅ MLflow run complete: {run.info.run_id}")
+#     return performance
+
+
+@asset(
+        resource_defs={"slack": slack_resource},
+        group_name="Modeling"
+)
+def notify_modelling_results(context: dg.AssetExecutionContext, train_model: Dict) -> None:
+
+    accuracy = train_model['accuracy']
+    recall = train_model['recall']
+    roc_auc = train_model['roc_auc']
+
+    message = (
+        ":bar_chart: **Model Performance:**\n"
+        f"        • Accuracy: {accuracy:.4f}\n"
+        f"        • Recall: {recall:.4f}\n"
+        f"        • ROC-AUC: {roc_auc:.4f}\n"
+        ":bust_in_silhouette: Trained by: Emmanuel Olateju + Mohammed\n"
+        ":wrench: Model: RandomForest Classifier\n"
+        ":chart_with_upwards_trend: Experiment: fraud_detection_ml"
+    )
+    slack: dagster_slack.SlackResource = context.resources.slack
+    slack.get_client().chat_postMessage(
+        channel='aims_course_october2025',
+        text=f"{os.environ.get('GITHUB_USER', 'default')}'s \n {message}"
+    )
+
+
 # ------ Train_model asset - v1 ----------------
 # def train_model(context: dg.AssetExecutionContext, splitting_data: Dict) -> Dict:
 
@@ -203,29 +355,3 @@ def train_model(context: dg.AssetExecutionContext, splitting_data: Dict):
 #     print(message)
 
 #     return performance
-
-
-@asset(
-        resource_defs={"slack": slack_resource},
-        group_name="Modeling"
-)
-def notify_modelling_results(context: dg.AssetExecutionContext, train_model: Dict) -> None:
-
-    accuracy = train_model['accuracy']
-    recall = train_model['recall']
-    roc_auc = train_model['roc_auc']
-
-    message = (
-        ":bar_chart: **Model Performance:**\n"
-        f"        • Accuracy: {accuracy:.4f}\n"
-        f"        • Recall: {recall:.4f}\n"
-        f"        • ROC-AUC: {roc_auc:.4f}\n"
-        ":bust_in_silhouette: Trained by: Emmanuel Olateju + Mohammed\n"
-        ":wrench: Model: RandomForest Classifier\n"
-        ":chart_with_upwards_trend: Experiment: fraud_detection_ml"
-    )
-    slack: dagster_slack.SlackResource = context.resources.slack
-    slack.get_client().chat_postMessage(
-        channel='aims_course_october2025',
-        text=f"{os.environ.get('GITHUB_USER', 'default')}'s \n {message}"
-    )

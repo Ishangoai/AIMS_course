@@ -58,13 +58,7 @@ def load_fraud_detection_model():
     try:
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
-        # Option 1: Load a specific model by run_id
-        # Uncomment and set your run_id if you want to load a specific run
-        # run_id = "your_run_id_here"
-        # loaded_model = mlflow.sklearn.load_model(f"runs:/{run_id}/model")
-
-        # Option 2: Load the latest model from the experiment (recommended)
-        client = mlflow.tracking.MlflowClient()
+        client = mlflow.tracking.MlflowClient() # type: ignore
         experiment = client.get_experiment_by_name(EXPERIMENT_NAME)
 
         if experiment is None:
@@ -87,7 +81,8 @@ def load_fraud_detection_model():
 
         # Load the model
         model_uri = f"runs:/{run_id}/model"
-        loaded_model = mlflow.sklearn.load_model(model_uri)
+        loaded_model = mlflow.pyfunc.load_model(model_uri)
+        print(loaded_model)
 
         print(f"✅ Model loaded successfully from run: {run_id}")
         print(f"   ROC-AUC: {best_run.data.metrics.get('roc_auc', 'N/A')}")
@@ -98,6 +93,9 @@ def load_fraud_detection_model():
     except Exception as e:
         print(f"❌ Error loading model: {str(e)}")
         return None
+
+
+load_fraud_detection_model()
 
 
 async def lifespan(app: FastAPI):
@@ -276,14 +274,6 @@ async def fraud_detection_predict(request: FraudPredictionRequest):
 
         # Convert numeric predictions to labels
         predictions = ["Fraud" if pred == 1 else "Safe" for pred in predictions_numeric]
-
-        # Dummy prediction logic - replace with your actual model
-        # For now, just return random predictions based on number of samples
-        # num_samples = len(inputs_array) if len(inputs_array.shape) > 1 else 1
-        # predictions = [
-        #     "Fraud" if np.random.rand() > 0.5 else "Safe" 
-        #     for _ in range(num_samples)
-        # ]
 
         return FraudPredictionResponse(predictions=predictions)
 
