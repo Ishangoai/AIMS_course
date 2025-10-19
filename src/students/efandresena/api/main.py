@@ -3,7 +3,7 @@ import textwrap
 
 import gradio as gr
 
-from agents.chatbot.llm_gradio import llm_chat
+# from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
@@ -130,5 +130,5 @@ def update_user_details(username: str, request: UpdateUserRequest):
 
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
-gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
+# gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, fraud_app, path="/fraud-app")
