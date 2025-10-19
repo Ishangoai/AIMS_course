@@ -67,7 +67,7 @@ def tune_random_forest_hyperparameters(
     context.log.info(f"Data split: X_train_val: {X_train_val.shape}, X_test: {X_test.shape}")  # type: ignore
 
     # Define Hyperopt search space for RandomForest n_estimators
-    grid_n_estimators = [10, 20, 30]
+    grid_n_estimators = [10, 20, 30, 40, 50]
 
     # MLflow experiment context for nested runs
 

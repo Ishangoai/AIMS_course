@@ -1,10 +1,13 @@
 import gradio as gr
+import gradio.themes as themes
 import pandas as pd
-from .ui_utils import upload_file_and_get_predictions, get_csv_preview
+
+from .ui_utils import upload_file_and_get_predictions
+
 
 def build_interface():
 
-    theme = gr.themes.Soft(
+    theme = themes.Soft(
         primary_hue="blue",
         secondary_hue="cyan",
         neutral_hue="slate",
