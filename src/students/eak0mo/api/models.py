@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic import BaseModel
 
 
@@ -13,3 +15,12 @@ class UpdateUserRequest(BaseModel):
 class UserRequest(BaseModel):
     username: str
     name: str | None = None
+
+
+class FraudPredictionRequest(BaseModel):
+    features: List[float]  # 28 features + Amount = 29 values
+
+
+class FraudPredictionResponse(BaseModel):
+    prediction: int
+    probability: float
