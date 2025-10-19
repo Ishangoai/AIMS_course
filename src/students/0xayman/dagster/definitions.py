@@ -44,6 +44,11 @@ ml_job = dg.define_asset_job(
     },
 )
 
+ml_fraud_job = dg.define_asset_job(
+    name="ml_fraud_detection_job",
+    selection=dg.AssetSelection.groups("ml_fraud_data", "ml_fraud_model", "ml_fraud_notifications", "ml_fraud_promote"),
+)
+
 era5_daily_schedule = dg.ScheduleDefinition(
     job=ml_job,
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
@@ -56,7 +61,7 @@ defs = dg.Definitions(
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
     },
-    jobs=[de_job, ml_job],
+    jobs=[de_job, ml_job, ml_fraud_job],
     schedules=[era5_daily_schedule],
     asset_checks=[*all_de_checks, *all_ml_checks],
 )
