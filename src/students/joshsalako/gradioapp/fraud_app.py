@@ -118,7 +118,7 @@ def predict_fraud(
 ):
     """Predicts credit card fraud using in-app ML model."""
     if _fraud_model is None:
-        return "Error: ML model could not be loaded. Please check server logs."
+        return "The prediction service is currently unavailable. Please try again later or contact the administrator if the issue persists."
 
     try:
         # Convert Gradio Time input (datetime.time) to seconds since midnight
