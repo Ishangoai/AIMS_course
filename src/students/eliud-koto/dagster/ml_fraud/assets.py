@@ -1,16 +1,17 @@
-import dagster as dg
-import pandas as pd
-import dagster_slack
 import os
 import pickle
 import time
+
+import dagster as dg
+import dagster_slack
 import joblib
 import matplotlib.pyplot as plt
-import numpy as np
-# Import mlflow for type checking/attribute access resolution
-import mlflow 
-import mlflow.sklearn
 
+# Import mlflow for type checking/attribute access resolution
+import mlflow
+import mlflow.sklearn
+import numpy as np
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score,
@@ -20,11 +21,7 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
-from sklearn.model_selection import (
-    GridSearchCV,
-    cross_val_score,
-    train_test_split
-)
+from sklearn.model_selection import GridSearchCV, cross_val_score, train_test_split
 from sklearn.tree import plot_tree
 
 from ..ml.resources import mlflow_resource
@@ -148,19 +145,13 @@ def tuned_random_forest(
         "min_samples_split": [2, 5]
     }
 
-    # Fix 1: "Literal['raise']" is not assignable to "float" (reportArgumentType)
-    # The error_score parameter expects a float (like np.nan) or the string 'raise'.
-    # If the type checker is strict, use the float default or wrap 'raise' to ensure type compatibility.
-    # The simplest fix in the context of recent scikit-learn types is to use the default (np.nan or 'raise' if you want to use the literal value) but since it flags 'raise' as wrong type, we'll try to convert it to the default float type expected if we can't use 'raise'. However, GridSearchCV typically accepts a string, so the issue is likely with the specific type checker version. We'll try passing `np.nan` which is a valid float value for error_score to avoid the strict type error.
-    # Reverting to the string literal 'raise' and hoping the environment allows it, as 'raise' is the intended functionality. If the type checker insists on `float`, you should use `np.nan` instead, but that changes logic. Let's try changing the usage of the literal string 'raise' to the intended scikit-learn default. The default for `error_score` is usually `np.nan` which is a float. Let's switch to `np.nan` to satisfy the strict float type hint, which is a safer default anyway.
-
     grid_search = GridSearchCV(
         RandomForestClassifier(random_state=42),
         param_grid,
         cv=3,
         scoring="accuracy",
         n_jobs=-1,
-        error_score=np.nan # Corrected: Changed 'raise' to np.nan to satisfy the float type hint.
+        error_score=np.nan  # Corrected: Changed 'raise' to np.nan to satisfy the float type hint.
     )
 
     grid_search.fit(X_train, y_train)
@@ -420,24 +411,24 @@ def fraud_test_model(
 
     # Calculate metrics
     acc = accuracy_score(y_test, y_pred)
-    
+
     # Fix 2, 3, 4: Literal[0] is not assignable to "str" for zero_division.
-    # The zero_division parameter for scikit-learn metrics expects a string ('warn', 'ignore') 
-    # or a numeric value (0.0 or 1.0) or None in newer versions. If your environment 
-    # uses strict string typing, we must pass the numeric 0 as a string '0' or ensure 
+    # The zero_division parameter for scikit-learn metrics expects a string ('warn', 'ignore')
+    # or a numeric value (0.0 or 1.0) or None in newer versions. If your environment
+    # uses strict string typing, we must pass the numeric 0 as a string '0' or ensure
     # the type checker expects a float/int.
-    # Since 0.0 is the default float replacement value, let's use the string '0' 
-    # or the intended string 'warn'/'ignore'/'0'. The value '0' is usually implicitly 
-    # converted to 0.0, but the type checker is being strict. We'll use '0' as a string 
+    # Since 0.0 is the default float replacement value, let's use the string '0'
+    # or the intended string 'warn'/'ignore'/'0'. The value '0' is usually implicitly
+    # converted to 0.0, but the type checker is being strict. We'll use '0' as a string
     # as it's typically accepted, or 'warn' which is the default for most use cases.
     # Let's use the string '0' as it's often the intended behavior when setting it to 0.
     # Note: Using the string 'warn' or 'ignore' is generally preferred for production code.
     # If the goal is to replace the undefined score with 0.0, we use zero_division=0.0 (float).
     # The error message implies it expects a string. Let's try '0' which is common.
-    
-    # We will use '0' as a string literal to satisfy the type hint expecting a string, 
+
+    # We will use '0' as a string literal to satisfy the type hint expecting a string,
     # which is often used as shorthand for zero_division=0.0 in some environments.
-    
+
     precision = precision_score(y_test, y_pred, zero_division='0')
     recall = recall_score(y_test, y_pred, zero_division='0')
     f1 = f1_score(y_test, y_pred, zero_division='0')
@@ -458,10 +449,10 @@ def fraud_test_model(
 
     # Log per-class metrics
     # Fix 5: Cannot access attribute "items" for class "str".
-    # This happens because classification_report(output_dict=True) returns a dict, 
+    # This happens because classification_report(output_dict=True) returns a dict,
     # but the code attempts to iterate over the keys that might be strings (like 'accuracy').
     # We need to ensure we only iterate over dictionary items that contain metric details.
-    
+
     for label, metrics in report.items():
         if isinstance(metrics, dict):
             for metric_name, value in metrics.items():
