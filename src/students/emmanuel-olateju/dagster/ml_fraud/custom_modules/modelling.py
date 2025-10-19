@@ -72,5 +72,6 @@ def model_training_testing(
         "accuracy": accuracy,
         "recall": recall,
         "roc_auc": roc_auc,
-        "cm": cm
+        "cm": cm,
+        "model": best_rf
     }

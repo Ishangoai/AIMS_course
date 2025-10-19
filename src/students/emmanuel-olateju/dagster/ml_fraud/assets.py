@@ -121,6 +121,8 @@ def train_model(context: dg.AssetExecutionContext, splitting_data: Dict):
         CONFIGS['training']['random_state']
     )
 
+    trained_model = performance["model"]
+
     # Log metrics
     mlflow.log_metrics({
         "accuracy": performance["accuracy"],
@@ -156,8 +158,16 @@ def train_model(context: dg.AssetExecutionContext, splitting_data: Dict):
     mlflow.log_figure(fig, "confusion_matrix.png")
     plt.close(fig)
 
+    # ✅ Log model itself (works for sklearn models)
+    mlflow.sklearn.log_model(
+        sk_model=trained_model,
+        artifact_path="model",
+        registered_model_name="fraud_detection_model"
+    )
+    context.log.info("✅ Model successfully logged to MLflow")
+
     # Log the run URL for easy access
-    run_url = f"file://{mlflow.tracking_uri}/#{experiment_id}/{run_id}"
+    run_url = f"{mlflow.tracking_uri}/#{experiment_id}/{run_id}"
     context.log.info(f"View run at: {run_url}")
     # context.log.info(f"✅ MLflow run complete: {run.info.run_id}")
     return performance
