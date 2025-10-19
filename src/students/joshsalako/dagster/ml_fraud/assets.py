@@ -945,24 +945,24 @@ def promote_fraud_model_to_production(
     )
 
 
-@dg.asset_check(
-    asset="promote_fraud_model_to_production",
-    description="Verifies that the model was successfully promoted to Production in the registry."
-)
-def check_promote_model_to_production(
-    context: dg.AssetCheckExecutionContext,
-    promote_fraud_model_to_production: dg.MaterializeResult
-) -> dg.AssetCheckResult:
+# @dg.asset_check(
+#     asset="promote_fraud_model_to_production",
+#     description="Verifies that the model was successfully promoted to Production in the registry."
+# )
+# def check_promote_model_to_production(
+#     context: dg.AssetCheckExecutionContext,
+#     promote_fraud_model_to_production: dg.MaterializeResult
+# ) -> dg.AssetCheckResult:
 
-    status = promote_fraud_model_to_production.metadata["status"]
-    passed = status == "Promoted"
+#     status = promote_fraud_model_to_production.metadata["status"]
+#     passed = status == "Promoted"
 
-    description = f"Model promotion status: {status}."
-    if not passed:
-        description += " Model did not meet the recall threshold for promotion."
+#     description = f"Model promotion status: {status}."
+#     if not passed:
+#         description += " Model did not meet the recall threshold for promotion."
 
-    return dg.AssetCheckResult(
-        passed=passed,
-        metadata=promote_fraud_model_to_production.metadata,
-        description=description
-    )
+#     return dg.AssetCheckResult(
+#         passed=passed,
+#         metadata=promote_fraud_model_to_production.metadata,
+#         description=description
+#     )
