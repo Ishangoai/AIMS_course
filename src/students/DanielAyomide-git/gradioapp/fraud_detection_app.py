@@ -52,7 +52,7 @@ def wrapped_predict(*args):
 
     result = predict_fraud(inputs)
 
-    # Try to extract probability number from text
+    # Try to extract probability number from text.
     try:
         if "Fraudulent" in result:
             prob = float(result.split("(")[1].split("%")[0]) / 100
