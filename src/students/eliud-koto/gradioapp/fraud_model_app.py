@@ -1,6 +1,7 @@
-import gradio as gr 
+import gradio as gr
 import matplotlib.pyplot as plt
 import numpy as np
+
 # Note: Ensure this utility path is correct and accessible
 from gradioapp.utils.fraud_model_utils import predict_fraud_activity
 
@@ -60,7 +61,7 @@ def create_input_distribution_plot(input_values, feature_names):
         else:
             normalized_val = 100 * (value - min_val) / (max_val - min_val)
             normalized_values.append(normalized_val)
-    
+
     # Create color map based on normalized values
     colors = ['#ef4444' if v > 65 else '#fbbf24' if v > 35 else '#10b981'
               for v in normalized_values]
@@ -71,15 +72,15 @@ def create_input_distribution_plot(input_values, feature_names):
     ax.set_xticklabels(feature_names, rotation=45, ha='right')
     ax.set_ylabel('Raw Value')
     ax.set_title('Current Input Feature Values')
-    
+
     # Plotting a line at a fixed raw value (e.g., 500) might not be meaningful
     # due to varying feature ranges. Removing the midpoint line unless the plot
-    # uses normalized values. For a raw value plot, it's better to show actual 
+    # uses normalized values. For a raw value plot, it's better to show actual
     # value ranges. Keeping it simple for now without the custom line.
-    
+
     # ax.axhline(y=50, color='gray', linestyle='--', alpha=0.5, label='Midpoint')
     # ax.legend()
-    
+
     ax.grid(axis='y', alpha=0.3)
     plt.tight_layout()
 
@@ -180,7 +181,6 @@ body {
 
 .scrollable-inputs::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
 }
 
 .scrollable-inputs::-webkit-scrollbar-thumb {
@@ -235,7 +235,7 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
             # Set a small arbitrary range if they are equal to avoid errors
             min_val -= 1
             max_val += 1
-            
+
         return gr.Slider(min_val, max_val, value=default_val, label=name)
 
     # Instantiate all sliders
@@ -273,7 +273,7 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
                                 gr.Markdown("**🕐 Core Features**")
                                 # Time, V1-V10
                                 time.info = "Transaction time"
-                                gr.Group(components=[time] + v_col1) # Group them for layout
+                                gr.Group(components=[time] + v_col1)  # Group them for layout
 
                             # Input Column 2
                             with gr.Column():
@@ -294,7 +294,7 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
                                 # V25-V28, Amount
                                 gr.Group(components=v_col4 + [amount])
                                 amount.info = "Transaction amount"
-                                
+
                 # Results Column
                 with gr.Column(scale=1):
                     gr.Markdown("### 🎯 Prediction Result")
@@ -389,7 +389,7 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
         # Ensure we re-import the library needed for prediction output parsing
         # It's good practice to keep non-global imports within the function
         import re
-        
+
         prediction = wrapped_predict(*args)
 
         # Extract numeric value from prediction (assuming model output includes a probability/score)
@@ -405,10 +405,10 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
             pred_value = None
 
         # --- HTML Formatting for Result Box ---
-        
+
         # Default styling
-        result_html = f'<div class="result-box" style="background: #4a5568;">'
-        
+        result_html = '<div class="result-box" style="background: #4a5568;">'
+
         if pred_value is not None and pred_value > 0.5:
             # Assume pred_value > 0.5 means Fraud (or a score > 50 if scaled 0-100)
             # Using red/warning style
@@ -432,7 +432,7 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
         else:
             # Fallback for text-only prediction
             if "fraud" in prediction.lower() or "suspicious" in prediction.lower():
-                 result_html = (
+                result_html = (
                     f'<div class="result-box" style="background: linear-gradient('
                     f'135deg, #ef4444 0%, #dc2626 100%);">'
                     f'⚠️ **FRAUD DETECTED**'
@@ -449,7 +449,6 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
                 )
 
         result_html += '</div>'
-
 
         # Create probability plot
         prob_plot = None

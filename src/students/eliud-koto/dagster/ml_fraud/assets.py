@@ -1,13 +1,11 @@
 import os
 import pickle
 import time
-from typing import Dict, Any
 
 import dagster as dg
 import dagster_slack
 import joblib
 import matplotlib.pyplot as plt
-import mlflow
 import mlflow.sklearn as mlflow_sklearn
 
 # Import mlflow for type checking/attribute access resolution
@@ -433,16 +431,16 @@ def fraud_test_model(
     mlflow_client.log_metric("test_f1_score", f1)
 
     # Log per-class and summary metrics from the classification report
-    # This section incorporates the necessary type checks to handle the mixed structure 
+    # This section incorporates the necessary type checks to handle the mixed structure
     # (dicts for classes, floats for summaries) of the report.
-    for label, metrics in report.items(): # type: ignore
+    for label, metrics in report.items():  # type: ignore
         if isinstance(metrics, dict):
             # Handle per-class metrics (e.g., '0', '1', 'macro avg')
             for metric_name, value in metrics.items():
                 # Ensure the value is numeric before logging to MLflow
                 if isinstance(value, (int, float)):
                     mlflow_client.log_metric(f"test_{label}_{metric_name}", value)
-        
+
         # Handle top-level summary metrics (e.g., 'accuracy')
         elif isinstance(metrics, (int, float)):
             mlflow_client.log_metric(f"test_{label}", metrics)
@@ -641,7 +639,7 @@ def save_tuned_model(
 
     # Log model to MLflow properly
     # FIX 6: Using the globally imported mlflow.sklearn resolves the private import error.
- 
+
     mlflow_sklearn.log_model(
         sk_model=best_model,
         artifact_path="model",  # This is important!
