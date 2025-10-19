@@ -38,7 +38,7 @@ def fraud_data(
     df = pd.read_csv(fraud_data_source.data_source)
     columns = [dg.TableColumn(k, str(v)) for k, v in df.dtypes.to_dict().items()]
     mlflow_client = context.resources.mlflow
-    n_rows, n_columns = df.shape
+    n_rows, n_columns = df.shape   # pyright: ignore[reportAttributeAccessIssue]
     mlflow_client.log_metric("num_rows", n_rows)
     mlflow_client.log_metric("num_columns", n_columns)
     return dg.MaterializeResult(
@@ -105,7 +105,7 @@ def split_fraud_data(
     mlflow_client = context.resources.mlflow
     X = clean_fraud.drop('Class', axis=1)
     y = clean_fraud['Class']
-    context.log.info(f"Features X shape: {X.shape}, Target y shape: {y.shape}")
+    context.log.info(f"Features X shape: {X.shape}, Target y shape: {y.shape}")   # pyright: ignore[reportAttributeAccessIssue]
 
     # Train-test split (80% train, 20% test)
     X_train, X_test, y_train, y_test = train_test_split(X,
@@ -115,8 +115,8 @@ def split_fraud_data(
                                                         stratify=y
     )
 
-    context.log.info(f"Training set: X_train {X_train.shape}, y_train {y_train.shape}")
-    context.log.info(f"Test set: X_test {X_test.shape}, y_test {y_test.shape}")
+    context.log.info(f"Training set: X_train {X_train.shape}, y_train {y_train.shape}")  # pyright: ignore[reportAttributeAccessIssue]
+    context.log.info(f"Test set: X_test {X_test.shape}, y_test {y_test.shape}")   # pyright: ignore[reportAttributeAccessIssue]
     features = list(clean_fraud.columns)
     mlflow_client.log_metric("train_set_size", len(X_train))
     mlflow_client.log_metric("test_set_size", len(X_test))
@@ -342,7 +342,7 @@ def evaluate_fraud_model(
             "f1_score": dg.MetadataValue.float(f1),
             "roc_auc": dg.MetadataValue.float(roc_auc) if roc_auc else dg.MetadataValue.text("N/A"),
             "confusion_matrix": dg.MetadataValue.path(plot_path),
-            "preview": dg.MetadataValue.md(report_df.head().to_markdown()),
+            "preview": dg.MetadataValue.md(report_df.head().to_markdown()),  # pyright: ignore[reportAttributeAccessIssue]
             # "registered_model": dg.MetadataValue.json(model_version_info),
             # "model_name": dg.MetadataValue.text(model_version_info["name"]),
             # "model_version": dg.MetadataValue.text(str(model_version_info["version"])),
@@ -389,10 +389,10 @@ def fraud_message_slack(
     )
 
     slacks = context.resources.slack_notif
-    # slacks.get_client().chat_postMessage(
-    #     channel='aims_course_october2025',
-    #     text=msg
-    # )
+    slacks.get_client().chat_postMessage(
+        channel='aims_course_october2025',
+        text=msg
+    )
     context.log.info("Slack notification sent successfully.\n"
         f"Fraud Detection Model Training\n\n"
         f" Trained by: Josue{trained_by} 😄 & Rojoniaina 👧\n"

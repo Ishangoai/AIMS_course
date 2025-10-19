@@ -33,7 +33,7 @@ def mlflow_failure_hook(context):
 
     mlflow_client.log_metric("dagster_job_failed", 1)
     mlflow_client.set_tag("dagster_job_status", "failed")
-    mlflow_client.end_run(status="FAILED") 
+    mlflow_client.end_run(status="FAILED")
     error_message = f"Dagster job failed: {context.failure_event.message}"
     mlflow_client.set_tag("dagster_job_status", "failed")
     mlflow_client.set_tag("dagster_error_message", error_message)
