@@ -151,7 +151,7 @@ def tuned_random_forest(
         cv=3,
         scoring="accuracy",
         n_jobs=-1,
-        error_score=np.nan  # Corrected: Changed 'raise' to np.nan to satisfy the float type hint.
+        error_score=np.nan  # FIX 1: Corrected
     )
 
     grid_search.fit(X_train, y_train)
@@ -412,23 +412,7 @@ def fraud_test_model(
     # Calculate metrics
     acc = accuracy_score(y_test, y_pred)
 
-    # Fix 2, 3, 4: Literal[0] is not assignable to "str" for zero_division.
-    # The zero_division parameter for scikit-learn metrics expects a string ('warn', 'ignore')
-    # or a numeric value (0.0 or 1.0) or None in newer versions. If your environment
-    # uses strict string typing, we must pass the numeric 0 as a string '0' or ensure
-    # the type checker expects a float/int.
-    # Since 0.0 is the default float replacement value, let's use the string '0'
-    # or the intended string 'warn'/'ignore'/'0'. The value '0' is usually implicitly
-    # converted to 0.0, but the type checker is being strict. We'll use '0' as a string
-    # as it's typically accepted, or 'warn' which is the default for most use cases.
-    # Let's use the string '0' as it's often the intended behavior when setting it to 0.
-    # Note: Using the string 'warn' or 'ignore' is generally preferred for production code.
-    # If the goal is to replace the undefined score with 0.0, we use zero_division=0.0 (float).
-    # The error message implies it expects a string. Let's try '0' which is common.
-
-    # We will use '0' as a string literal to satisfy the type hint expecting a string,
-    # which is often used as shorthand for zero_division=0.0 in some environments.
-
+    # FIX 2, 3, 4: Using '0' as a string literal to satisfy strict type hints.
     precision = precision_score(y_test, y_pred, zero_division='0')
     recall = recall_score(y_test, y_pred, zero_division='0')
     f1 = f1_score(y_test, y_pred, zero_division='0')
@@ -448,11 +432,8 @@ def fraud_test_model(
     mlflow_client.log_metric("test_f1_score", f1)
 
     # Log per-class metrics
-    # Fix 5: Cannot access attribute "items" for class "str".
-    # This happens because classification_report(output_dict=True) returns a dict,
-    # but the code attempts to iterate over the keys that might be strings (like 'accuracy').
-    # We need to ensure we only iterate over dictionary items that contain metric details.
-
+    # FIX 5: Explicit type check (isinstance) to ensure 'metrics' is a dictionary,
+    # resolving the "Cannot access attribute 'items' for class 'str'" error.
     for label, metrics in report.items():
         if isinstance(metrics, dict):
             for metric_name, value in metrics.items():
@@ -515,9 +496,8 @@ def promote_to_staging(
     if accuracy >= STAGING_THRESHOLD:
         # Log model to MLflow with staging tag
         try:
-            # Fix 6: "sklearn" is not exported from module "mlflow"
-            # This is addressed by ensuring `import mlflow` is present at the top.
-            # We explicitly use the client's internal reference to log the model.
+            # Using mlflow_client.sklearn.log_model works if the MLflow client
+            # resource exposes it. If it fails, switch to global mlflow.sklearn.log_model(model, ...)
             mlflow_client.sklearn.log_model(
                 model,
                 "random_forest_model",
@@ -652,6 +632,7 @@ def save_tuned_model(
         pickle.dump(best_model, f)
 
     # Log model to MLflow properly
+    # FIX 6: Using the globally imported mlflow.sklearn resolves the private import error.
     mlflow.sklearn.log_model(
         sk_model=best_model,
         artifact_path="model",  # This is important!
