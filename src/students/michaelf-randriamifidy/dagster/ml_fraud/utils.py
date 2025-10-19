@@ -3,6 +3,8 @@ import tempfile
 from datetime import datetime
 from typing import Any, Optional, Sequence, Union
 
+
+import dagster_slack
 import joblib
 import matplotlib.pyplot as plt
 import mlflow
@@ -11,7 +13,7 @@ import numpy as np
 import requests
 import seaborn as sns
 from dagster import OpExecutionContext
-from dagster_slack import SlackResource
+# from dagster_slack import SlackResource
 from mlflow import MlflowClient
 from mlflow.entities.model_registry import ModelVersion
 from sklearn.metrics import confusion_matrix
@@ -69,19 +71,9 @@ def get_experiment(mlflow_client: MlflowClient, name: str) -> str:
 
     return experiment_id
 
-# def post_message_in_slack(slack: dagster_slack.SlackResource,
-#                             message: str,
-#                             channel: str = "aims_course_october2025"
-#                             ):
-
-#     slack.get_client().chat_postMessage(
-#         channel='aims_course_october2025',
-#         text=message
-#     )
-
 
 def post_message_in_slack(
-    slack: SlackResource,
+    slack: dagster_slack.SlackResource,
     message: str,
     channel: str = "aims_course_october2025"
 ) -> None:
@@ -89,7 +81,7 @@ def post_message_in_slack(
     Post a message to a specified Slack channel using a Dagster Slack resource.
 
     Args:
-        slack (SlackResource): The Slack resource instance used to access the Slack API.
+        slack (dagster_slack.SlackResource): The Slack resource instance used to access the Slack API.
         message (str): The text message to send to the channel.
         channel (str, optional): The Slack channel ID or name where the message will be sent.
             Defaults to "aims_course_october2025".
