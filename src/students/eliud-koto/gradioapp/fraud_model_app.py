@@ -256,7 +256,7 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
     v_col3 = v_cols[20:24]   # V21-V24
     v_col4 = v_cols[24:28]   # V25-V28
 
-    # --- Tabs Definition ---
+    # --- Tabs Definition  for---
 
     with gr.Tabs():
         # Tab 1: Input and Prediction
