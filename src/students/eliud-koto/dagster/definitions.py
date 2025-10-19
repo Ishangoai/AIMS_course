@@ -7,15 +7,19 @@ from .ml.resources import (
     PromotionConfig,
     TuningConfig,
 )
+from .ml_fraud import assets as ml_fraud_assets
 
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
 all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
+# Fixed typo: 'all_ml_fraud_assests' -> 'all_ml_fraud_assets'
+all_ml_fraud_assets = dg.load_assets_from_modules([ml_fraud_assets])
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
 def mlflow_failure_hook(context):
+    """Logs failure details to MLflow."""
     mlflow_client = context.resources.mlflow_tracking
     error_message = f"Dagster job failed: {context.failure_event.message}"
     mlflow_client.set_tag("dagster_job_status", "failed")
@@ -29,9 +33,17 @@ de_job = dg.define_asset_job(
     selection=dg.AssetSelection.groups("de_ingest", "de_transform"),
 )
 
+
 ml_job = dg.define_asset_job(
     name="era5_machine_learning_with_mlflow",
-    selection=dg.AssetSelection.groups("ml_ingest", "ml_transform", "ml_model", "ml_evaluate", "ml_promote"),
+    selection=dg.AssetSelection.groups(
+        "ml_ingest",
+        "ml_transform",
+        "ml_model",
+        "ml_evaluate",
+        "ml_promote",
+        "mlflow_tracking",
+    ),
     hooks={mlflow_failure_hook},
     config={
         "ops": {
@@ -48,19 +60,32 @@ ml_job = dg.define_asset_job(
     }
 )
 
+
 era5_daily_schedule = dg.ScheduleDefinition(
     job=ml_job,
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
     name="era5_daily_schedule"
 )
 
+
+ml_fraud_job = dg.define_asset_job(
+    name="fraud_detection_machine_learning_with_ml_flow",
+    selection=dg.AssetSelection.groups(
+        "ml_fraud_ingest",
+        "ml_fraud_model",
+        "ml_fraud_evaluate",
+        "ml_fraud_promote"
+    ),
+)
+
+
 # Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
-    assets=[*all_ml_assets, *all_de_assets],
+    assets=[*all_ml_assets, *all_de_assets, *all_ml_fraud_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
     },
-    jobs=[de_job, ml_job],
+    jobs=[de_job, ml_job, ml_fraud_job],
     schedules=[era5_daily_schedule],
     asset_checks=[*all_de_checks, *all_ml_checks]
 )
