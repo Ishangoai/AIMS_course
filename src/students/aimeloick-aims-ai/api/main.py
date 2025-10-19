@@ -8,6 +8,7 @@ from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
+from gradioapp.fraud_detector_assignment import app as app_fraud
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.image_assignement import app as app_image
 
@@ -19,7 +20,11 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
+<<<<<<< HEAD
     4. [**Image Assignement**](/app_image/)
+=======
+    4. [**Credit Card Fraud Assignement**](/app_fraud/)
+>>>>>>> feature_branch_aimeloick-aims-ai
     -----
     """),
     version="1.0.0",
@@ -130,4 +135,8 @@ def update_user_details(username: str, request: UpdateUserRequest):
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
+<<<<<<< HEAD
 gr.mount_gradio_app(app, app_image, path="/app_image")
+=======
+gr.mount_gradio_app(app, app_fraud, path="/app_fraud")
+>>>>>>> feature_branch_aimeloick-aims-ai
