@@ -16,7 +16,7 @@ MODEL_STAGE = "Production"
 # SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # DB_PATH = os.path.join(SCRIPT_DIR, "..", "..", "..", "..", "..", "mlflow_local_tracking.db")
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "model_v4.pkl")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model_v5.pkl")
 model = joblib.load(MODEL_PATH)
 
 # Set the tracking URI to find the local MLflow database
@@ -121,7 +121,7 @@ def load_sample_fraud():
 
 
 # Gradio Interface Definition
-with gr.Blocks(title="Fraud Detection System", theme=gr.themes.Soft()) as iface:  # pyright: ignore
+with gr.Blocks(title="Fraud Detection System", theme=gr.themes.Soft()) as fraud_detect:  # pyright: ignore
 
     gr.Markdown(
         """
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     print("\n" + "=" * 70)
     print("🚀 Launching Gradio Fraud Detection Interface...")
     print("=" * 70)
-    iface.launch(
+    fraud_detect.launch(
         server_name="0.0.0.0",
         server_port=7862,
         share=False,
