@@ -25,7 +25,7 @@ EXP_FRAUD_DETECTION = "fraud_detection"
 
 
 @dg.asset(
-    description="Tunes Random Forest  hyperparameters using Hyperopt and prepares data splits.",
+    description="Tunes Random Forest  hyperparameters using grid search and prepares data splits.",
     resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
     group_name="ml_model_fraud",
@@ -40,7 +40,7 @@ def tune_random_forest_hyperparameters(
 
     clean_df = pandas_data_df
 
-    if len(clean_df) < 20:  # Increased threshold for meaningful splits
+    if len(clean_df) < 20:
         msg = "Not enough data points for hyperparameter tuning, training, and testing. Need at least 20."
         context.log.error(msg)
         raise ValueError(msg)
@@ -52,21 +52,21 @@ def tune_random_forest_hyperparameters(
     X = X.values
     y = y.values
 
-    # Split data: 80% for training + hyperopt validation, 20% for final test
+    # Split data: 80% for training + grid search validation, 20% for final test
     X_train_val, X_test, y_train_val, y_test = train_test_split(X,
                                                                 y,
                                                                 test_size=0.2,
                                                                 random_state=42,
                                                                 shuffle=False)
 
-    if len(X_train_val) < 5 or len(X_test) < 1:  # Need enough for hyperopt val and at least one test sample
+    if len(X_train_val) < 5 or len(X_test) < 1:  # Need enough for grid search val and at least one test sample
         msg = "Train/validation or test set is too small after initial split."
         context.log.error(msg)
         raise ValueError(msg)
 
     context.log.info(f"Data split: X_train_val: {X_train_val.shape}, X_test: {X_test.shape}")  # type: ignore
 
-    # Define Hyperopt search space for RandomForest n_estimators
+    # Define grid search search space for RandomForest n_estimators
     grid_n_estimators = [10, 20, 30, 40, 50]
 
     # MLflow experiment context for nested runs
@@ -144,7 +144,7 @@ def tune_random_forest_hyperparameters(
 
 
 @dg.asset(
-description="Trains a Random Forest model using the best hyperparameters found by Hyperopt.",
+description="Trains a Random Forest model using the best hyperparameters found by grid search.",
     resource_defs={"mlflow_tracking": mlflow_resource},
     compute_kind="python",
     group_name="ml_model_fraud"
