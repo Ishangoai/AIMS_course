@@ -149,7 +149,16 @@ def predict_single(*slider_values):
     ax.barh([0.5], [probability_percent], color=color, height=0.5)
 
     # Texte de la probabilité
-    ax.text(probability_percent + 2, 0.5, f'{probability_percent:.1f}%', va='center', ha='left' if probability_percent < 90 else 'right', fontsize=12, weight='bold')
+    text_ha = 'left' if probability_percent < 90 else 'right'
+    ax.text(
+        probability_percent + 2,
+        0.5,
+        f'{probability_percent:.1f}%',
+        va='center',
+        ha=text_ha,
+        fontsize=12,
+        weight='bold'
+    )
     ax.set_title("Fraud Probability (%)", fontsize=14, pad=10)
 
     # Nettoyer l'esthétique
@@ -165,7 +174,10 @@ def predict_single(*slider_values):
 # =========================
 with gr.Blocks(theme=gr.themes.Soft(), title="Fraud Detection") as appli_fraud:
     gr.Markdown("# 💳 Credit Card Fraud Detection")
-    gr.Markdown("Choose a prediction mode: `Single Prediction` to test one transaction or `Batch Prediction` to analyze a CSV file.")
+    gr.Markdown(
+        "Choose a prediction mode: `Single Prediction` to test one transaction "
+        "or `Batch Prediction` to analyze a CSV file."
+    )
 
     with gr.Tabs():
         # Onglet 1: Single Prediction
@@ -221,16 +233,23 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Fraud Detection") as appli_fraud:
                         with gr.TabItem("Proportion"):
                             output_fraud_pie = gr.Plot()
                         with gr.TabItem(f"{feature_names[0]}"):
-                             output_feature1 = gr.Plot()
+                            output_feature1 = gr.Plot()
                         with gr.TabItem(f"{feature_names[1]}"):
-                             output_feature2 = gr.Plot()
+                            output_feature2 = gr.Plot()
                         with gr.TabItem(f"{feature_names[2]}"):
-                             output_feature3 = gr.Plot()
+                            output_feature3 = gr.Plot()
 
             predict_batch_button.click(
                 fn=predict_batch,
                 inputs=[upload_file, use_default_checkbox],
-                outputs=[output_amount_hist, output_fraud_pie, output_feature1, output_feature2, output_feature3, download_file]
+                outputs=[
+                    output_amount_hist,
+                    output_fraud_pie,
+                    output_feature1,
+                    output_feature2,
+                    output_feature3,
+                    download_file
+                ]
             )
 
 # Lancer l'application

@@ -1,34 +1,38 @@
-
 import dagster as dg
 import matplotlib.pyplot as plt
 import mlflow
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, confusion_matrix
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+)
 from sklearn.model_selection import StratifiedKFold, train_test_split
 
 from .resources import fraud_data_source
 
 
 @dg.asset(
-   description="Download data for fraud detection from a fixed URL resource.",
-   compute_kind="python",
-   group_name="ml_fraud"
+    description="Download data for fraud detection from a fixed URL resource.",
+    compute_kind="python",
+    group_name="ml_fraud"
 )
 def fraud_data(
-   context: dg.AssetExecutionContext,
-)  -> dg.MaterializeResult:
-   df = pd.read_csv(fraud_data_source.data_source)
-   columns = [dg.TableColumn(k, str(v)) for k, v in df.dtypes.to_dict().items()]
+    context: dg.AssetExecutionContext,
+) -> dg.MaterializeResult:
+    df = pd.read_csv(fraud_data_source.data_source)
+    columns = [dg.TableColumn(k, str(v)) for k, v in df.dtypes.to_dict().items()]
 
-   return dg.MaterializeResult(
-       value=df,
-       metadata={
-           "preview": dg.MetadataValue.md(df.head().to_markdown() or ""),
-           "dagster/row_count": len(df),
-           "dagster/column_schema": dg.TableSchema(columns=columns)
-       }
-   )
+    return dg.MaterializeResult(
+        value=df,
+        metadata={
+            "preview": dg.MetadataValue.md(df.head().to_markdown() or ""),
+            "dagster/row_count": len(df),
+            "dagster/column_schema": dg.TableSchema(columns=columns)
+        }
+    )
 
 
 @dg.multi_asset(
@@ -65,7 +69,6 @@ def train_test_split_data(
 
     train_df = X_train.copy()
     train_df["Class"] = y_train
-
     test_df = X_test.copy()
     test_df["Class"] = y_test
 
@@ -77,10 +80,6 @@ def train_test_split_data(
     # ✅ Dagster expects yields, not return dict
     yield dg.Output(train_df, output_name="train_data")
     yield dg.Output(test_df, output_name="test_data")
-
-
-import dagster as dg
-import pandas as pd
 
 
 @dg.asset(
@@ -96,21 +95,20 @@ def train_random_forest_model(
     Perform 3-fold cross-validation to tune one hyperparameter (n_estimators)
     of a RandomForestClassifier. Each trial is logged as an MLflow nested run.
     """
-
     # 🧩 Setup MLflow experiment (direct configuration)
-    mlflow.set_tracking_uri("file:./mlruns")   # dossier local
-    mlflow.set_experiment("fraud_detection")   # nom d'expérience
+    mlflow.set_tracking_uri("file:./mlruns")  # dossier local
+    mlflow.set_experiment("fraud_detection")  # nom d'expérience
 
     X = train_data.drop(columns=["Class"])
     y = train_data["Class"]
 
     # Paramètre à tuner
     param_grid = {"n_estimators": [50, 100, 200]}
-
     cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+
     context.log.info("Starting 3-fold cross-validation with RandomForestClassifier")
 
-    with mlflow.start_run(run_name="RandomForest_CV_Tuning") as parent_run:
+    with mlflow.start_run(run_name="RandomForest_CV_Tuning"):
         mlflow.log_param("cv_folds", 3)
         mlflow.log_param("tuned_hyperparameter", "n_estimators")
 
@@ -164,10 +162,6 @@ def evaluate_model_on_test_data(
     Evaluate the trained RandomForest model on the 20% test set,
     generate a confusion matrix plot, and log it as an image artifact in MLflow.
     """
-
-    import mlflow
-    from sklearn.metrics import classification_report
-
     # 🧩 Setup MLflow
     mlflow.set_tracking_uri("file:./mlruns")
     mlflow.set_experiment("fraud_detection")
@@ -204,7 +198,7 @@ def evaluate_model_on_test_data(
         plt.savefig(image_path, bbox_inches="tight")
         plt.close(fig)
 
-        # Log de l’image dans MLflow
+        # Log de l'image dans MLflow
         mlflow.log_artifact(image_path, artifact_path="plots")
 
     return {"test_accuracy": report["accuracy"], "confusion_matrix": cm.tolist()}
