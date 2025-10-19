@@ -12,15 +12,11 @@ import pandas as pd
 MODEL_NAME = "fraud-detection-rf"
 MODEL_STAGE = "Production"
 
-# Construct an absolute path to the database file
-# SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-# DB_PATH = os.path.join(SCRIPT_DIR, "..", "..", "..", "..", "..", "mlflow_local_tracking.db")
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model_v5.pkl")
 model = joblib.load(MODEL_PATH)
 
 # Set the tracking URI to find the local MLflow database
-# mlflow.set_tracking_uri(f"sqlite:///{os.path.abspath(DB_PATH)}")
 
 # Construct the model URI for the registry
 model_uri = f"models:/{MODEL_NAME}/{MODEL_STAGE}"
@@ -31,7 +27,6 @@ print("=" * 70)
 print(f"Model Name: {MODEL_NAME}")
 print(f"Model Stage: {MODEL_STAGE}")
 print(f"Model URI: {model_uri}")
-# print(f"MLflow DB: {os.path.abspath(DB_PATH)}")
 print("=" * 70)
 
 # Load the model into memory
@@ -98,28 +93,6 @@ def predict_fraud(time, amount, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
         return error_html, "Error during prediction", str(e), ""
 
 
-def load_sample_normal():
-    """Load a sample normal transaction"""
-    return (
-        150.0,  # time
-        50.00,  # amount
-        -1.2, 0.8, 0.3, -0.5, 0.6, -0.3, 0.4, -0.2, 0.7, -0.4,
-        0.5, -0.6, 0.3, -0.4, 0.2, -0.5, 0.4, -0.3, 0.5, -0.2,
-        0.3, -0.4, 0.6, -0.2, 0.3, -0.5, 0.4, -0.3
-    )
-
-
-def load_sample_fraud():
-    """Load a sample fraudulent transaction"""
-    return (
-        30000.0,  # time (unusual time)
-        5000.00,  # amount (high amount)
-        3.5, -2.8, 4.2, -3.1, 2.9, -3.5, 3.8, -2.5, 4.1, -3.2,
-        3.3, -2.9, 3.7, -3.4, 2.8, -3.6, 3.9, -2.7, 3.4, -3.1,
-        2.9, -3.3, 3.5, -2.8, 3.2, -3.4, 3.6, -2.9
-    )
-
-
 # Gradio Interface Definition
 with gr.Blocks(title="Fraud Detection System", theme=gr.themes.Soft()) as fraud_detect:  # pyright: ignore
 
@@ -127,8 +100,7 @@ with gr.Blocks(title="Fraud Detection System", theme=gr.themes.Soft()) as fraud_
         """
         # 🔒 Credit Card Fraud Detection System
         Enter transaction details below to check if a transaction is fraudulent.
-        This system uses a **RandomForest model** trained on credit card transactions and deployed via **MLflow**.
-        **Features V1-V28** are anonymized PCA-transformed features from the original dataset.
+        This system uses a **RandomForest model** trained on credit card transactions.
         """
     )
 
@@ -137,7 +109,7 @@ with gr.Blocks(title="Fraud Detection System", theme=gr.themes.Soft()) as fraud_
             gr.Markdown("### 📊 Transaction Information")
 
             time_input = gr.Number(
-                label="Time (seconds since first transaction)",
+                label="Time",
                 value=150.0,
                 info="Time elapsed since the first transaction in the dataset"
             )
@@ -198,10 +170,6 @@ with gr.Blocks(title="Fraud Detection System", theme=gr.themes.Soft()) as fraud_
                     value="🗑️ Clear All"
                 )
 
-            with gr.Row():
-                sample_normal_btn = gr.Button("📝 Load Sample Normal Transaction", size="sm")
-                sample_fraud_btn = gr.Button("⚠️ Load Sample Fraud Transaction", size="sm")
-
         with gr.Column(scale=1):
             gr.Markdown("### 📋 Prediction Results")
 
@@ -229,41 +197,12 @@ with gr.Blocks(title="Fraud Detection System", theme=gr.themes.Soft()) as fraud_
                 value="*Enter transaction details and click 'Analyze Transaction'*"
             )
 
-    gr.Markdown(
-        """
-        ---
-        ### ℹ️ About This System
-        - **Model**: RandomForest Classifier
-        - **Dataset**: Credit Card Transactions (Anonymized)
-        - **Features**: 30 features (Time, Amount, V1-V28)
-        - **MLflow Registry**: Models tracked and versioned
-        - **Deployment**: Production-ready model from MLflow
-        **Note**: The V1-V28 features are the result of PCA transformation to protect sensitive information.
-        In a real scenario, these would be derived from actual transaction data.
-        """
-    )
-
     # Connect the predict button
     predict_btn.click(
                 fn=predict_fraud,
                 inputs=[time_input, amount_input, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
                     v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28],
                 outputs=[risk_output, result_output, confidence_output, details_output]
-                )
-
-    # Connect sample buttons
-    sample_normal_btn.click(
-                fn=load_sample_normal,
-                inputs=[],
-                outputs=[time_input, amount_input, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
-                v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28]
-                )
-
-    sample_fraud_btn.click(
-                    fn=load_sample_fraud,
-                    inputs=[],
-                    outputs=[time_input, amount_input, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
-                            v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28]
                 )
 
 
