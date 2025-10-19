@@ -1,3 +1,4 @@
+
 import dagster as dg
 
 from .de import assets as de_assets
@@ -16,6 +17,7 @@ from .ml_fraud.assets import (
     train_model,
 )
 from .ml_fraud.jobs import data_preparation_job, dump_data_artifacts_job, model_training_job
+from .ml_fraud.resources import mlflow_client, mlflow_resource
 
 all_ml_fraud_assets = [
     ingest_dataset, preprocess_data, splitting_data, save_data_artifacts,
@@ -75,6 +77,8 @@ defs = dg.Definitions(
     assets=[*all_ml_fraud_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
+        "mlflow": mlflow_resource,
+        "mlflow_api_client": mlflow_client
     },
     # jobs=[de_job, ml_job, data_preparation_job],
     jobs=[data_preparation_job, dump_data_artifacts_job, model_training_job],

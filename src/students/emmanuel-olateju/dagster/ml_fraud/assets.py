@@ -14,20 +14,18 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import yaml
 from dagster import asset
-from dagster_mlflow import mlflow_tracking
 
 from .custom_modules.modelling import model_training_testing
 from .custom_modules.preprocessing import clean_data, data_splitting, split_features_labels
+
+# from .resources import mlflow_resource
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.yaml')
 with open(CONFIG_PATH, 'r') as file:
     CONFIGS = yaml.safe_load(file)
 
+
 slack_resource = dagster_slack.SlackResource(token=dg.EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN"))
-mlflow_resource = mlflow_tracking.configured({
-    "experiment_name": "fraud_detection_experiment",
-    "mlflow_tracking_uri": "http://127.0.0.1:5000"  # or your remote MLflow server URI
-})
 
 
 # ----------------------------- DATA PREPARATION ASSETS ----------------------------- #
@@ -63,9 +61,7 @@ def splitting_data(preprocess_data: pd.DataFrame) -> Dict:
 
 
 @asset(
-        resource_defs={
-            "mlflow": mlflow_resource
-            },
+        required_resource_keys={"mlflow"},
         group_name="Storage"
 )
 def save_data_artifacts(context: dg.AssetExecutionContext, preprocess_data: pd.DataFrame, splitting_data: Dict) -> None:
@@ -97,8 +93,8 @@ def save_data_artifacts(context: dg.AssetExecutionContext, preprocess_data: pd.D
 @asset(
         resource_defs={
             "slack": slack_resource,
-            "mlflow": mlflow_resource
             },
+        required_resource_keys={"mlflow"},
         group_name="Modeling"
 )
 def train_model(context: dg.AssetExecutionContext, preprocess_data: pd.DataFrame, splitting_data: Dict):

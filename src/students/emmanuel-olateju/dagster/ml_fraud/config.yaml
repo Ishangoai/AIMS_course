@@ -12,5 +12,6 @@ training:
     bootstrap: [True, False]
 
 artifacts:
-  model_dir: "src/students/emmanuel-olateju/dagster/artifacts/models/"
-  data_dir: "src/students/emmanuel-olateju/dagster/artifacts/data/"
+  model_dir: "/workspaces/AIMS_course/src/students/emmanuel-olateju/dagster/artifacts/models/"
+  data_dir: "/workspaces/AIMS_course/src/students/emmanuel-olateju/dagster/artifacts/data/"
+  
