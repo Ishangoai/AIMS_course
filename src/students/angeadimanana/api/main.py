@@ -8,9 +8,9 @@ from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
+from gradioapp.gradio_ml_fraud_app import fraud_detect
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.image_editor_app import image_transformation
-from gradioapp.gradio_ml_fraud_app import fraud_detect
 
 app = FastAPI(
     title="AIMS Course API",
