@@ -7,7 +7,6 @@ from ..resources import FraudPromotionConfig
 from ..utils import (
     archive_existing_production_models,
     dump_model_to_pickle,
-    get_experiment,
     get_latest_staging_version,
     get_model_by_name,
     post_message_in_slack,

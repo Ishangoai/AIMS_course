@@ -5,6 +5,9 @@ import pandas as pd
 
 from ...ml.resources import mlflow_resource
 from ..resources import FraudResourceConfig
+from ..utils import get_experiment
+
+EXP_FRAUD_DETECTION = "fraud_detection"
 
 
 @dg.asset(
@@ -18,7 +21,7 @@ def pandas_data_df(
 ) -> dg.MaterializeResult:
 
     mlflow_client = context.resources.mlflow_tracking
-
+    experiment_id = get_experiment(mlflow_client, EXP_FRAUD_DETECTION)
     client = context.resources.downloader.client
     context.log.info("Download data from Kaggle")
 
@@ -33,8 +36,10 @@ def pandas_data_df(
 
     os.remove(OUTPUT_FILENAME)
 
-    dataset = mlflow_client.data.from_pandas(df, name="fraud_data_classification")
-    mlflow_client.log_input(dataset=dataset, context="training")
+    with mlflow_client.start_run(experiment_id=experiment_id,
+                                nested=True):
+        dataset = mlflow_client.data.from_pandas(df, name="fraud_data_classification")
+        mlflow_client.log_input(dataset=dataset, context="training")
 
     columns = [dg.TableColumn(k, str(v)) for k, v in df.dtypes.to_dict().items()]
 
