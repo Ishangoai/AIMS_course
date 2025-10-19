@@ -40,7 +40,7 @@ ml_fraud_job = dg.define_asset_job(
         "ml_fraud_transform",
         "ml_fraud_model",
         "ml_fraud_evaluate",
-        "ml_fraud_message"),
+        "ml_fraud_promote"),
     hooks={mlflow_failure_hook},
     config={
         "ops": {

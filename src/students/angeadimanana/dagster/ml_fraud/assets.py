@@ -1,4 +1,4 @@
-
+# pyright: ignore-all
 import base64
 import io
 
@@ -103,11 +103,11 @@ def split_train_test(
 
     # Separate features and target
     X: pd.DataFrame = raw_fraud_data.drop('Class', axis=1)
-    y: pd.Series = raw_fraud_data['Class']
+    y: pd.Series = raw_fraud_data['Class']  # pyright: ignore
 
     context.log.info(f"Features shape: {X.shape}, Target shape: {y.shape}")
 
-    X_train, X_test, y_train, y_test = train_test_split(
+    X_train, X_test, y_train, y_test = train_test_split(  # pyright: ignore
         X, y,
         test_size=config.test_size,
         random_state=config.random_state,
@@ -174,55 +174,87 @@ def tune_random_forest(
     X_train = split_train_test["X_train"]
     y_train = split_train_test["y_train"]
 
-    context.log.info(f"Starting hyperparameter tuning for: {tuning_config.hyperparameter_to_tune}")
+    context.log.info("Starting hyperparameter tuning for:")
     context.log.info(f"Training on {len(X_train)} samples with {tuning_config.cv_folds}-fold CV")
 
-    # Define parameter grid based on config
-    param_grid = {}
-    if tuning_config.hyperparameter_to_tune == "n_estimators":
-        param_grid = {"n_estimators": tuning_config.n_estimators_options}
-    elif tuning_config.hyperparameter_to_tune == "max_depth":
-        param_grid = {"max_depth": tuning_config.max_depth_options}
-    elif tuning_config.hyperparameter_to_tune == "min_samples_split":
-        param_grid = {"min_samples_split": tuning_config.min_samples_split_options}
-    else:
-        raise ValueError(f"Unknown hyperparameter: {tuning_config.hyperparameter_to_tune}")
+    # Define parameter grid - TUNE ALL PARAMETERS TOGETHER
+    param_grid = {
+        "n_estimators": tuning_config.n_estimators_options,
+        "max_depth": tuning_config.max_depth_options,
+        # "min_samples_split": tuning_config.min_samples_split_options
+    }
 
     context.log.info(f"Parameter grid: {param_grid}")
 
+    # Calculate total combinations
+    total_combinations = (
+        len(tuning_config.n_estimators_options) *
+        len(tuning_config.max_depth_options)
+        )
+
+    total_fits = total_combinations * tuning_config.cv_folds
+
+    context.log.info(f"Total combinations: {total_combinations}")
+    context.log.info(f"Total fits (with CV): {total_fits}")
+    context.log.info("⚠️  This may take a few minutes...")
+
     # Log tuning configuration to MLflow
-    mlflow_client.log_param("hyperparameter_tuned", tuning_config.hyperparameter_to_tune)
+    mlflow_client.log_param("hyperparameters_tuned", "n_estimators, max_depth")
     mlflow_client.log_param("cv_folds", tuning_config.cv_folds)
+    mlflow_client.log_param("total_combinations", total_combinations)
+    mlflow_client.log_param("total_cv_fits", total_fits)
     mlflow_client.log_param("param_grid", str(param_grid))
 
-    # Initialize RandomForest
-    rf = RandomForestClassifier(random_state=42, n_jobs=-1)
+    # Initialize RandomForest with class_weight='balanced' for imbalanced data
+    rf = RandomForestClassifier(
+        random_state=42,
+        n_jobs=-1,
+        class_weight='balanced'  # IMPORTANT: Handle class imbalance
+    )
+
+    context.log.info("✅ Using class_weight='balanced' to handle imbalanced data")
 
     # Perform GridSearchCV
     grid_search = GridSearchCV(
         estimator=rf,
         param_grid=param_grid,
         cv=tuning_config.cv_folds,
-        scoring='accuracy',
+        scoring='f1',  # Use F1 instead of accuracy for imbalanced data
         verbose=2,
         n_jobs=-1,
         return_train_score=True
     )
 
     context.log.info("Running GridSearchCV...")
+    context.log.info("Scoring metric: F1 (better for imbalanced data)")
     grid_search.fit(X_train, y_train)
     context.log.info("GridSearchCV completed!")
 
     # Log all CV results
     cv_results = grid_search.cv_results_
-    context.log.info(f"Logging {len(cv_results['params'])} trials")
+    context.log.info(f"Total trials executed: {len(cv_results['params'])}")
 
-    for i in range(len(cv_results['params'])):
+    # Log top 10 results
+    context.log.info("\n" + "=" * 80)
+    context.log.info("TOP 10 HYPERPARAMETER COMBINATIONS")
+    context.log.info("=" * 80)
+
+    # Sort by mean test score
+    sorted_indices = sorted(
+        range(len(cv_results['mean_test_score'])),
+        key=lambda i: cv_results['mean_test_score'][i],
+        reverse=True
+    )
+
+    for rank, i in enumerate(sorted_indices[:10], 1):
         param_values = cv_results['params'][i]
+        score = cv_results['mean_test_score'][i]
+        std = cv_results['std_test_score'][i]
         context.log.info(
-            f"Trial {i}: {param_values} -> "
-            f"CV accuracy={cv_results['mean_test_score'][i]:.4f} "
-            f"(±{cv_results['std_test_score'][i]:.4f})"
+            f"Rank {rank:2d}: F1={score:.4f} (±{std:.4f}) | "
+            f"n_est={param_values['n_estimators']:3d}, "
+            f"depth={param_values['max_depth']:2d}, "
+            # f"split={param_values['min_samples_split']:2d}"
         )
 
     # Create a summary of all trials
@@ -231,8 +263,9 @@ def tune_random_forest(
         trial_info = {
             "trial": i,
             **cv_results['params'][i],
-            "mean_cv_accuracy": float(cv_results['mean_test_score'][i]),
-            "std_cv_accuracy": float(cv_results['std_test_score'][i])
+            "mean_cv_f1": float(cv_results['mean_test_score'][i]),
+            "std_cv_f1": float(cv_results['std_test_score'][i]),
+            "mean_train_f1": float(cv_results['mean_train_score'][i])
         }
         all_trials_summary.append(trial_info)
 
@@ -250,14 +283,17 @@ def tune_random_forest(
     best_params = grid_search.best_params_
     best_score = float(grid_search.best_score_)
 
-    context.log.info("=" * 60)
-    context.log.info("BEST HYPERPARAMETERS FOUND:")
-    context.log.info(f"  Parameters: {best_params}")
-    context.log.info(f"  CV Accuracy: {best_score:.4f}")
-    context.log.info("=" * 60)
+    context.log.info("\n" + "=" * 80)
+    context.log.info("BEST HYPERPARAMETERS FOUND")
+    context.log.info("=" * 80)
+    context.log.info(f"  n_estimators: {best_params['n_estimators']}")
+    context.log.info(f"  max_depth: {best_params['max_depth']}")
+    # context.log.info(f"  min_samples_split: {best_params['min_samples_split']}")
+    context.log.info(f"  CV F1 Score: {best_score:.4f}")
+    context.log.info("=" * 80)
 
     mlflow_client.log_params({f"best_{k}": v for k, v in best_params.items()})
-    mlflow_client.log_metric("best_cv_accuracy", best_score)
+    mlflow_client.log_metric("best_cv_f1_score", best_score)
 
     return {
         "best_params": best_params,
@@ -361,9 +397,9 @@ def test_fraud_model(
 
     # Calculate metrics - CONVERT TO PYTHON TYPES
     accuracy = float(accuracy_score(y_test, predictions))
-    precision = float(precision_score(y_test, predictions, zero_division=0))
-    recall = float(recall_score(y_test, predictions, zero_division=0))
-    f1 = float(f1_score(y_test, predictions, zero_division=0))
+    precision = float(precision_score(y_test, predictions, zero_division=0))  # pyright: ignore
+    recall = float(recall_score(y_test, predictions, zero_division=0))  # pyright: ignore
+    f1 = float(f1_score(y_test, predictions, zero_division=0))  # pyright: ignore
 
     context.log.info(
         "Final Model Evaluation Metrics on Test Set:"
@@ -434,7 +470,7 @@ def test_fraud_model(
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
         f.write("CLASSIFICATION REPORT\n")
         f.write("=" * 60 + "\n")
-        f.write(report)
+        f.write(report)  # pyright: ignore
         f.write("\n" + "=" * 60 + "\n")
         f.write("\nConfusion Matrix:\n")
         f.write(f"TN: {cm[0, 0]}, FP: {cm[0, 1]}\n")
