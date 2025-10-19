@@ -1,11 +1,13 @@
 import os
+import pickle
 import textwrap
 
 import gradio as gr
+import numpy as np
 from agents.chatbot.llm_gradio import llm_chat
-from api.models import UpdateUserRequest, UserRequest
+from api.models import FraudPredictionRequest, FraudPredictionResponse, UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.fraud_detection_app import fraud_app
@@ -126,6 +128,17 @@ def update_user_details(username: str, request: UpdateUserRequest):
         raise HTTPException(status_code=404, detail="User not found")
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
+
+
+@app.post("/predict", response_model=FraudPredictionResponse, summary="Predict fraud", description="Predict whether a transaction is fraudulent.")  # noqa: E501
+def predict(request: FraudPredictionRequest = Body(...)):
+    features = np.array(request.features).reshape(1, -1)
+    try:
+        prediction = model.predict(features)[0]
+        probability = model.predict_proba(features)[0][1]  # probability of class 1 (fraud)
+        return FraudPredictionResponse(prediction=int(prediction), probability=float(probability))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 gr.mount_gradio_app(app, demo, path="/gradio")
