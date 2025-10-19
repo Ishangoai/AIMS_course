@@ -14,7 +14,7 @@ from gradioapp.gradio_utils import (
 )
 
 # =========================
-# Configuration
+# Configuratio
 # =========================
 
 MODEL_NAME = "fraud_detection_rf"
