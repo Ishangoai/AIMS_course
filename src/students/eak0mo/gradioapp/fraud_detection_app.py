@@ -32,7 +32,7 @@ def donut_meter_matplotlib(prob: float, status: str, color: str) -> Figure:
     labels = ["Fraudulent", "Legitimate"]
 
     fig, ax = plt.subplots(figsize=(5.5, 5.5))
-    wedges, _ = ax.pie(
+    wedges = ax.pie(
         sizes,
         colors=colors,
         startangle=90,
@@ -69,7 +69,7 @@ def donut_meter_matplotlib(prob: float, status: str, color: str) -> Figure:
         f"{labels[1]} ({sizes[1] * 100:.1f}%)",
     ]
     ax.legend(
-        wedges,
+        wedges,  # type: ignore
         legend_labels,
         loc="lower center",
         bbox_to_anchor=(0.5, -0.15),
