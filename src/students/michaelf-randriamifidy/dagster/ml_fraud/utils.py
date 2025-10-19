@@ -1,8 +1,7 @@
 import os
 import tempfile
 from datetime import datetime
-from typing import Any, Optional, Sequence, Union, List
-
+from typing import Any, List, Optional, Sequence, Union
 
 import dagster_slack
 import joblib
@@ -10,10 +9,10 @@ import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn as ms
 import numpy as np
-import pandas as pd
 import requests
 import seaborn as sns
 from dagster import OpExecutionContext
+
 # from dagster_slack import SlackResource
 from mlflow import MlflowClient
 from mlflow.entities.model_registry import ModelVersion
@@ -330,7 +329,7 @@ def log_confusion_matrix(
 
     if labels is not None:
         # Convert all labels to strings for DataFrame / heatmap
-        labels_str = [str(l) for l in labels]
+        labels_str = [str(label) for label in labels]
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
                     xticklabels=labels_str, yticklabels=labels_str)
     else:

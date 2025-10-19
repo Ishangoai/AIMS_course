@@ -4,7 +4,9 @@ from collections import abc
 import dagster as dg
 import dagster_slack
 import pandas as pd
+
 from ..client_consumers import slack_provider
+
 
 @dg.asset(
     description="Ingests raw data from a source (in this example, we create a dummy DataFrame).",
