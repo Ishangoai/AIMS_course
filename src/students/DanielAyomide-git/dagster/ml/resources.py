@@ -8,7 +8,7 @@ from dagster import ConfigurableResource
 from dagster_mlflow import mlflow_tracking
 from mlflow.tracking import MlflowClient
 
-from .configs import DataConfig, ExperimentConfig, MLFlowConfig, ModelConfig, ModelPromotionConfig
+# from .configs import DataConfig, ExperimentConfig, MLFlowConfig, ModelConfig, ModelPromotionConfig
 
 # Configuration for Local SQLite and Local Artifacts
 # Using DAGSTER_HOME if set, otherwise, defaults to the current directory
@@ -20,12 +20,6 @@ SQLITE_DB_FILENAME = "mlflow_local_tracking.db"  # Name of the SQLite database f
 SQLITE_DB_PATH = os.path.join(BASE_DIR, SQLITE_DB_FILENAME)
 
 DEFAULT_EXPERIMENT_NAME = "era5_temperature_analysis"
-
-data_config = DataConfig()
-model_config = ModelConfig()
-mlflow_config = MLFlowConfig()
-experiment_config = ExperimentConfig()
-model_promotion_config = ModelPromotionConfig()
 
 
 # Define the MLflow resource
@@ -90,49 +84,27 @@ class PromotionConfig(dg.Config):
 
 
 class DataConfig(ConfigurableResource):
-    """Data processing configuration.
-    """
+    """Data processing configuration."""
+
     dataset_url: str = pyd.Field(
         default="https://raw.githubusercontent.com/aduuna/Kaggle-Data-Credit-Card-Fraud-Detection/master/samplecreditcard.csv",
-        description="URL to download the dataset from"
+        description="URL to download the dataset from",
     )
-    test_size: float = pyd.Field(
-        default=0.2,
-        description="Proportion of the dataset to include in the test split"
-    )
-    random_state: int = pyd.Field(
-        default=42,
-        description="Random seed for reproducibility"
-    )
+    test_size: float = pyd.Field(default=0.2, description="Proportion of the dataset to include in the test split")
+    random_state: int = pyd.Field(default=42, description="Random seed for reproducibility")
 
 
 class ModelConfig(ConfigurableResource):
-    """Model training configuration.
-    """
-    n_estimators: int = pyd.Field(
-        default=100,
-        description="Number of trees in the Random Forest"
-    )
-    max_depth: int = pyd.Field(
-        default=10,
-        description="Maximum depth of the tree"
-    )
+    """Model training configuration."""
+
+    n_estimators: int = pyd.Field(default=100, description="Number of trees in the Random Forest")
+    max_depth: int = pyd.Field(default=10, description="Maximum depth of the tree")
     max_depth_options: List[int] = pyd.Field(
-        default=[5, 10, 15, 20],
-        description="Options for maximum depth during hyperparameter tuning"
+        default=[5, 10, 15, 20], description="Options for maximum depth during hyperparameter tuning"
     )
-    random_state: int = pyd.Field(
-        default=42,
-        description="Random seed for reproducibility"
-    )
-    scoring_metric: str = pyd.Field(
-        default="f1",
-        description="Metric to optimize during hyperparameter tuning"
-    )
-    cv_folds: int = pyd.Field(
-        default=3,
-        description="Number of cross-validation folds"
-    )
+    random_state: int = pyd.Field(default=42, description="Random seed for reproducibility")
+    scoring_metric: str = pyd.Field(default="f1", description="Metric to optimize during hyperparameter tuning")
+    cv_folds: int = pyd.Field(default=3, description="Number of cross-validation folds")
 
 
 class ModelPromotionConfig(ConfigurableResource):
@@ -143,21 +115,18 @@ class ModelPromotionConfig(ConfigurableResource):
     F1 score is the harmonic mean of precision and recall, providing a balance between the two metrics.
     ROC-AUC measures the model's ability to distinguish between classes across all classification thresholds.
     """
+
     staging_f1_threshold: float = pyd.Field(
-        default=0.75,
-        description="Minimum F1-score threshold for promoting a model to Staging."
+        default=0.75, description="Minimum F1-score threshold for promoting a model to Staging."
     )
     production_f1_threshold: float = pyd.Field(
-        default=0.80,
-        description="Minimum F1-score threshold for promoting a model to Production."
+        default=0.80, description="Minimum F1-score threshold for promoting a model to Production."
     )
     staging_roc_auc_threshold: float = pyd.Field(
-        default=0.80,
-        description="Minimum ROC-AUC threshold for promoting a model to Staging."
+        default=0.80, description="Minimum ROC-AUC threshold for promoting a model to Staging."
     )
     production_roc_auc_threshold: float = pyd.Field(
-        default=0.85,
-        description="Minimum ROC-AUC threshold for promoting a model to Production."
+        default=0.85, description="Minimum ROC-AUC threshold for promoting a model to Production."
     )
 
 
@@ -169,11 +138,10 @@ class MLFlowConfig(ConfigurableResource):
         description=(
             "Base directory for all MLflow data. Using DAGSTER_HOME if set, "
             "otherwise, defaults to the current directory"
-        )
+        ),
     )
     db_filename: str = pyd.Field(
-        default="mlflow_local_tracking.db",
-        description="Name of the SQLite database file for local tracking"
+        default="mlflow_local_tracking.db", description="Name of the SQLite database file for local tracking"
     )
 
     @property
@@ -189,6 +157,12 @@ class ExperimentConfig(ConfigurableResource):
     """Configuration for the experiment."""
 
     experiment_name: str = pyd.Field(
-        default="ml_fraud_detection",
-        description="Name of the experiment for this project"
+        default="ml_fraud_detection", description="Name of the experiment for this project"
     )
+
+
+data_cgnfig = DataConfig()
+model_config = ModelConfig()
+mlflow_config = MLFlowConfig()
+experiment_config = ExperimentConfig()
+model_promotion_config = ModelPromotionConfig()

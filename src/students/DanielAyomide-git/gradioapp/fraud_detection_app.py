@@ -2,8 +2,8 @@ import re
 
 import gradio as gr
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
+import plotly.graph_objects as go
 
 # Assuming this import works in your environment
 from gradioapp.utils.fraud_utils import predict_fraud
@@ -104,7 +104,7 @@ def batch_predict(csv_file):
     """Processes a CSV file for batch fraud prediction."""
     if csv_file is None:
         # Return empty data frame if no file is uploaded
-        return "Please upload dataset", pd.DataFrame(columns=["TransactionID", "Prediction", "Fraud Probability"])
+        return "Please upload dataset", pd.DataFrame(columns=["TransactionID", "Prediction", "Fraud Probability"])  # type: ignore
 
     df = pd.read_csv(csv_file.name)
     predictions = []
@@ -128,7 +128,7 @@ def batch_predict(csv_file):
 
 def clear_predictions():
     """Clears the batch prediction dataframe."""
-    return pd.DataFrame(columns=["TransactionID", "Prediction", "Fraud Probability"])
+    return pd.DataFrame(columns=["TransactionID", "Prediction", "Fraud Probability"])  # type: ignore
 
 
 def descriptive_analysis(csv_file):
@@ -205,7 +205,7 @@ def hide_group():
 # ---- Gradio UI ----
 with gr.Blocks(css="body {background: #f2f7ff;}") as fraud_app:
     # State component to hold the last predicted dataframe for visualization
-    prediction_state = gr.State(pd.DataFrame(columns=["TransactionID", "Prediction", "Fraud Probability"]))
+    prediction_state = gr.State(pd.DataFrame(columns=["TransactionID", "Prediction", "Fraud Probability"]))  # type: ignore
 
     gr.Markdown("# AIMS Course: Fraud Detection Predictor")
     gr.Markdown("Fill in transaction features or upload CSV for batch prediction.")

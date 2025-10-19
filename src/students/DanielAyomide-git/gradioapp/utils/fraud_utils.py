@@ -16,7 +16,7 @@ FEATURE_NAMES = [f"V{i}" for i in range(1, 29)] + ["Amount"]
 
 def predict_fraud(features: list):
     try:
-        df = pd.DataFrame([features], columns=FEATURE_NAMES)
+        df = pd.DataFrame([features], columns=FEATURE_NAMES)  # type: ignore
 
         # Fix column name mismatch
         if "Amount" in df.columns:

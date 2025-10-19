@@ -551,32 +551,32 @@ def promote_fraud_model_to_staging(context: dg.OpExecutionContext, evaluate_mode
             context.log.error(f"Error during model promotion: {e}")
             return dg.MaterializeResult(
                 metadata={
-                    "status": dg.MetadataValue.teext(STATUS_MODEL_NOT_PROMOTED_TO_STAGING),
+                    "status": dg.MetadataValue.text(STATUS_MODEL_NOT_PROMOTED_TO_STAGING),
                     "reason": dg.MetadataValue.text(f"Promotion failed: {e}"),
                 }
             )
 
         # 🎯 Send Slack message with metrics
         slack_message = (
-    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-    f"*🚀 FINAL MODEL REPORT BY DANIEL AND ABDULRASHEED — To Catch Yahoos (especially xxxsan 🤠 ) 💼*\n"
-    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-    f"📊 *Overall Performance*\n"
-    f"> ✅ *Accuracy:* `{test_accuracy:.4f}`\n"
-    f"> 🎯 *F1-score:* `{test_f1_score:.4f}`\n"
-    f"> 📈 *ROC-AUC:* `{test_roc_auc:.4f}`\n"
-    f"\n"
-    f"💰 *Fraud Detection Metrics*\n"
-    f"> 💸 *Precision:* `{test_precision_fraud:.4f}`\n"
-    f"> 🔍 *Recall:* `{test_recall_fraud:.4f}`\n"
-    f"\n"
-    f"🏦 *Legitimate Transaction Metrics*\n"
-    f"> 🧾 *Precision:* `{test_precision_legitimate:.4f}`\n"
-    f"> 🕵️ *Recall:* `{test_recall_legitimate:.4f}`\n"
-    f"\n"
-    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-    f"🔥 *Great job, model!* Ready to catch fraudsters like a champ 💪🤖\n"
-    f"━━━━━━━━━━━━━━━━━━━━━━━"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"*🚀 FINAL MODEL REPORT BY DANIEL AND ABDULRASHEED — To Catch Yahoos (especially xxxsan 🤠 ) 💼*\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📊 *Overall Performance*\n"
+            f"> ✅ *Accuracy:* `{test_accuracy:.4f}`\n"
+            f"> 🎯 *F1-score:* `{test_f1_score:.4f}`\n"
+            f"> 📈 *ROC-AUC:* `{test_roc_auc:.4f}`\n"
+            f"\n"
+            f"💰 *Fraud Detection Metrics*\n"
+            f"> 💸 *Precision:* `{test_precision_fraud:.4f}`\n"
+            f"> 🔍 *Recall:* `{test_recall_fraud:.4f}`\n"
+            f"\n"
+            f"🏦 *Legitimate Transaction Metrics*\n"
+            f"> 🧾 *Precision:* `{test_precision_legitimate:.4f}`\n"
+            f"> 🕵️ *Recall:* `{test_recall_legitimate:.4f}`\n"
+            f"\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🔥 *Great job, model!* Ready to catch fraudsters like a champ 💪🤖\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━"
         )
 
         try:

@@ -1,4 +1,3 @@
-
 import dagster as dg
 import dagster_slack
 
@@ -8,13 +7,15 @@ from .ml.resources import (
     Era5RequestConfig,
     PromotionConfig,
     TuningConfig,
+)
+from .ml_fraud import assets as ml_fraud_assets
+from .ml_fraud.resources import (
     data_config,
     mlflow_client,
     mlflow_resource,
     model_config,
     model_promotion_config,
 )
-from .ml_fraud import assets as ml_fraud_assets
 
 # _ = load_dotenv(find_dotenv())
 
@@ -57,17 +58,11 @@ ml_job = dg.define_asset_job(
     hooks={mlflow_failure_hook},
     config={
         "ops": {
-            "raw_xarray_dataset": {
-                "config": Era5RequestConfig().model_dump()
-            },
-            "promote_model_to_production": {
-                "config": PromotionConfig().model_dump()
-            },
-            "tune_ridge_hyperparameters": {
-                "config": TuningConfig().model_dump()
-            }
+            "raw_xarray_dataset": {"config": Era5RequestConfig().model_dump()},
+            "promote_model_to_production": {"config": PromotionConfig().model_dump()},
+            "tune_ridge_hyperparameters": {"config": TuningConfig().model_dump()},
         }
-    }
+    },
 )
 
 ml_fraud_job = dg.define_asset_job(
@@ -78,24 +73,20 @@ ml_fraud_job = dg.define_asset_job(
         "ml_fraud_data_split",
         "ml_fraud_main_model",
         "ml_fraud_evaluate_model",
-        "ml_fraud_promote_model"
-    )
+        "ml_fraud_promote_model",
+    ),
 )
 
 # Schedules
 era5_daily_schedule = dg.ScheduleDefinition(
     job=ml_job,
     cron_schedule="0 7 * * *",  # Every day at 7:00 AM
-    name="era5_daily_schedule"
+    name="era5_daily_schedule",
 )
 
 # Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
-    assets=[
-        *all_ml_assets,
-        *all_de_assets,
-        *all_ml_fraud_assets
-    ],
+    assets=[*all_ml_assets, *all_de_assets, *all_ml_fraud_assets],
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
         "data_config": data_config,
@@ -103,17 +94,9 @@ defs = dg.Definitions(
         "model_promotion_config": model_promotion_config,
         "mlflow": mlflow_resource,
         "mlflow_api_client": mlflow_client,
-        "slack": dagster_slack.SlackResource(token=SLACK_TOKEN)
+        "slack": dagster_slack.SlackResource(token=SLACK_TOKEN),
     },
-    jobs=[
-        de_job,
-        ml_job,
-        ml_fraud_job
-    ],
+    jobs=[de_job, ml_job, ml_fraud_job],
     schedules=[era5_daily_schedule],
-    asset_checks=[
-        *all_de_checks,
-        *all_ml_checks,
-        *all_ml_fraud_asset_checks
-    ]
+    asset_checks=[*all_de_checks, *all_ml_checks, *all_ml_fraud_asset_checks],
 )
