@@ -2,7 +2,7 @@ import gradio as gr
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Note: Ensure this utility path is correct and accessible
+# Note: Ensure this utility path is correct and accessible.
 from gradioapp.utils.fraud_model_utils import predict_fraud_activity
 
 # --- Utility Functions ---
@@ -66,21 +66,12 @@ def create_input_distribution_plot(input_values, feature_names):
     colors = ['#ef4444' if v > 65 else '#fbbf24' if v > 35 else '#10b981'
               for v in normalized_values]
 
-    # Use input_values for bar height, but normalized_values for color
+    # Use input_values for bar height
     ax.bar(range(len(input_values)), input_values, color=colors, alpha=0.7)
     ax.set_xticks(range(len(input_values)))
     ax.set_xticklabels(feature_names, rotation=45, ha='right')
     ax.set_ylabel('Raw Value')
     ax.set_title('Current Input Feature Values')
-
-    # Plotting a line at a fixed raw value (e.g., 500) might not be meaningful
-    # due to varying feature ranges. Removing the midpoint line unless the plot
-    # uses normalized values. For a raw value plot, it's better to show actual
-    # value ranges. Keeping it simple for now without the custom line.
-
-    # ax.axhline(y=50, color='gray', linestyle='--', alpha=0.5, label='Midpoint')
-    # ax.legend()
-
     ax.grid(axis='y', alpha=0.3)
     plt.tight_layout()
 
@@ -89,16 +80,8 @@ def create_input_distribution_plot(input_values, feature_names):
 
 # Custom CSS for better styling
 custom_css = """
-body {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-}
-
 .gradio-container {
     max-width: 1800px !important;
-    margin: 0 auto !important;
-}
-
-.main {
     margin: 0 auto !important;
 }
 
@@ -131,13 +114,6 @@ body {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
-.tabs {
-    background: rgba(30, 30, 46, 0.8);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
 #predict-btn {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     border: none !important;
@@ -152,7 +128,6 @@ body {
 }
 
 .result-box {
-    /* Style is applied dynamically in predict_and_visualize */
     color: white;
     border-radius: 12px;
     padding: 1.5rem;
@@ -195,8 +170,7 @@ body {
 
 # --- Gradio Interface Definition ---
 
-# FIX 3: Access theme via gr.themes.Soft()
-with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
+with gr.Blocks(css=custom_css, theme="black") as fraud_app:
 
     # Header Section
     with gr.Row():
@@ -217,45 +191,6 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
     # Define feature names
     feature_names = ['Time'] + [f'V{i}' for i in range(1, 29)] + ['Amount']
 
-    # --- Input Components Definition ---
-
-    input_components = {}
-
-    def create_slider(name):
-        """Helper to create a slider component."""
-        min_val, max_val = FEATURE_RANGES[name]
-        default_val = 0
-        if name == 'Time':
-            default_val = max_val / 2
-        elif name == 'Amount':
-            default_val = 100
-        # Check if min/max are equal, which would cause an error in the slider
-        if min_val == max_val:
-            default_val = min_val
-            # Set a small arbitrary range if they are equal to avoid errors
-            min_val -= 1
-            max_val += 1
-
-        return gr.Slider(min_val, max_val, value=default_val, label=name)
-
-    # Instantiate all sliders
-    for name in feature_names:
-        input_components[name] = create_slider(name)
-
-    # Group sliders for easier access and to pass to functions
-    sliders = [input_components[name] for name in feature_names]
-    time, amount = input_components['Time'], input_components['Amount']
-    # The dictionary v_features is not strictly necessary for component grouping,
-    # but keeping it doesn't hurt. v_cols is used below.
-    # v_features = {f'v{i}': input_components[f'V{i}'] for i in range(1, 29)}
-    v_cols = [input_components[f'V{i}'] for i in range(1, 29)]
-
-    # Split V features into columns (10, 10, 8 for V1-V28)
-    v_col1 = v_cols[0:10]    # V1-V10
-    v_col2 = v_cols[10:20]   # V11-V20
-    v_col3 = v_cols[20:24]   # V21-V24
-    v_col4 = v_cols[24:28]   # V25-V28
-
     # --- Tabs Definition ---
 
     with gr.Tabs():
@@ -271,29 +206,81 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
                             # Input Column 1
                             with gr.Column():
                                 gr.Markdown("**🕐 Core Features**")
-                                # Time, V1-V10
-                                time.info = "Transaction time"
-                                gr.Group(components=[time] + v_col1)  # Group them for layout  # type: ignore
+                                # Create Time slider
+                                time_min, time_max = FEATURE_RANGES['Time']
+                                time_slider = gr.Slider(
+                                    minimum=time_min,
+                                    maximum=time_max,
+                                    value=time_max / 2,
+                                    label='Time'
+                                )
+
+                                # Create V1-V10 sliders
+                                v_sliders_1 = []
+                                for i in range(1, 11):
+                                    min_val, max_val = FEATURE_RANGES[f'V{i}']
+                                    slider = gr.Slider(
+                                        minimum=min_val,
+                                        maximum=max_val,
+                                        value=0,
+                                        label=f'V{i}'
+                                    )
+                                    v_sliders_1.append(slider)
 
                             # Input Column 2
                             with gr.Column():
                                 gr.Markdown("**🔢 Additional Features**")
-                                # V11-V20
-                                gr.Group(components=v_col2)  # type: ignore
+                                # Create V11-V20 sliders
+                                v_sliders_2 = []
+                                for i in range(11, 21):
+                                    min_val, max_val = FEATURE_RANGES[f'V{i}']
+                                    slider = gr.Slider(
+                                        minimum=min_val,
+                                        maximum=max_val,
+                                        value=0,
+                                        label=f'V{i}'
+                                    )
+                                    v_sliders_2.append(slider)
 
                         with gr.Row():
                             # Input Column 3
                             with gr.Column():
                                 gr.Markdown("**📈 Extended Features**")
-                                # V21-V24
-                                gr.Group(components=v_col3)  # type: ignore
+                                # Create V21-V24 sliders
+                                v_sliders_3 = []
+                                for i in range(21, 25):
+                                    min_val, max_val = FEATURE_RANGES[f'V{i}']
+                                    slider = gr.Slider(
+                                        minimum=min_val,
+                                        maximum=max_val,
+                                        value=0,
+                                        label=f'V{i}'
+                                    )
+                                    v_sliders_3.append(slider)
 
                             # Input Column 4
                             with gr.Column():
                                 gr.Markdown("**🎯 Final Features**")
-                                # V25-V28, Amount
-                                gr.Group(components=v_col4 + [amount])  # type: ignore
-                                amount.info = "Transaction amount"
+                                # Create V25-V28 sliders
+                                v_sliders_4 = []
+                                for i in range(25, 29):
+                                    min_val, max_val = FEATURE_RANGES[f'V{i}']
+                                    slider = gr.Slider(
+                                        minimum=min_val,
+                                        maximum=max_val,
+                                        value=0,
+                                        label=f'V{i}'
+                                    )
+                                    v_sliders_4.append(slider)
+
+                                # Create Amount slider
+                                amount_min, amount_max = FEATURE_RANGES['Amount']
+                                amount_slider = gr.Slider(
+                                    minimum=amount_min,
+                                    maximum=amount_max,
+                                    value=100,
+                                    label='Amount'
+                                )
 
                 # Results Column
                 with gr.Column(scale=1):
@@ -308,7 +295,6 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
                                               size="lg", scale=1)
 
                     # Result Display
-                    # We will use HTML for the result box to dynamically apply CSS
                     result = gr.HTML(
                         label="Classification Result",
                         elem_classes="prediction-card",
@@ -382,52 +368,45 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
             Contact Koto and Melvin.
             """)
 
+    # Collect all sliders in order
+    all_sliders = [time_slider] + v_sliders_1 + v_sliders_2 + v_sliders_3 + v_sliders_4 + [amount_slider]
+
     # --- Backend Logic ---
 
     def predict_and_visualize(*args):
         """Runs prediction and creates all visualizations."""
-        # Ensure we re-import the library needed for prediction output parsing
-        # It's good practice to keep non-global imports within the function
         import re
 
         prediction = wrapped_predict(*args)
 
-        # Extract numeric value from prediction (assuming model output includes a probability/score)
+        # Extract numeric value from prediction
         pred_value = None
         try:
-            # Find the first floating point number in the prediction string
             numbers = re.findall(r'\d+\.\d+|\d+', str(prediction))
             if numbers:
                 pred_value = float(numbers[0])
-            else:
-                pred_value = None
         except Exception:
             pred_value = None
 
         # --- HTML Formatting for Result Box ---
 
-        # Default styling
-        result_html = '<div class="result-box" style="background: #4a5568;">'
-
         if pred_value is not None and pred_value > 0.5:
-            # Assume pred_value > 0.5 means Fraud (or a score > 50 if scaled 0-100)
-            # Using red/warning style
             result_html = (
                 f'<div class="result-box" style="background: linear-gradient('
                 f'135deg, #ef4444 0%, #dc2626 100%);">'
-                f'⚠️ **FRAUD DETECTED**'
+                f'⚠️ <strong>FRAUD DETECTED</strong>'
                 f'<br>Score: {pred_value:.4f}'
                 f'<br><br>Recommendation: Flag for review'
+                f'</div>'
             )
         elif pred_value is not None:
-            # Assume pred_value <= 0.5 means Legitimate
-            # Using green/success style
             result_html = (
                 f'<div class="result-box" style="background: linear-gradient('
                 f'135deg, #10b981 0%, #059669 100%);">'
-                f'✅ **LEGITIMATE TRANSACTION**'
+                f'✅ <strong>LEGITIMATE TRANSACTION</strong>'
                 f'<br>Score: {pred_value:.4f}'
                 f'<br><br>Recommendation: Approve transaction'
+                f'</div>'
             )
         else:
             # Fallback for text-only prediction
@@ -435,25 +414,24 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
                 result_html = (
                     f'<div class="result-box" style="background: linear-gradient('
                     f'135deg, #ef4444 0%, #dc2626 100%);">'
-                    f'⚠️ **FRAUD DETECTED**'
+                    f'⚠️ <strong>FRAUD DETECTED</strong>'
                     f'<br><br>{prediction}'
                     f'<br><br>Recommendation: Flag for review'
+                    f'</div>'
                 )
             else:
                 result_html = (
                     f'<div class="result-box" style="background: linear-gradient('
                     f'135deg, #10b981 0%, #059669 100%);">'
-                    f'✅ **LEGITIMATE TRANSACTION**'
+                    f'✅ <strong>LEGITIMATE TRANSACTION</strong>'
                     f'<br><br>{prediction}'
                     f'<br><br>Recommendation: Approve transaction'
+                    f'</div>'
                 )
-
-        result_html += '</div>'
 
         # Create probability plot
         prob_plot = None
         try:
-            # NOTE: You must ensure 'model' is accessible from this utility file
             from gradioapp.utils.fraud_model_utils import model
             if hasattr(model, 'predict_proba'):
                 proba = model.predict_proba([list(args)])[0]
@@ -475,9 +453,7 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
                 plt.tight_layout()
                 prob_plot = fig
         except Exception as e:
-            # Log error if model or predict_proba fails
             print(f"Error creating probability plot: {e}")
-            pass
 
         # Create input distribution plot
         input_plot = create_input_distribution_plot(list(args), feature_names)
@@ -486,7 +462,6 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
 
     def reset_sliders():
         """Reset all sliders to their default values."""
-        # The order must match the order in the 'sliders' list
         defaults = [
             FEATURE_RANGES['Time'][1] / 2,  # Time
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # V1-V10
@@ -500,7 +475,6 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
     def load_feature_importance():
         """Load feature importance plot on app start."""
         try:
-            # NOTE: You must ensure 'model' is accessible from this utility file
             from gradioapp.utils.fraud_model_utils import model
             return create_feature_importance_plot(model, feature_names)
         except Exception as e:
@@ -510,7 +484,7 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
     # Connect prediction button
     predict_btn.click(
         fn=predict_and_visualize,
-        inputs=sliders,
+        inputs=all_sliders,
         outputs=[result, probability_plot, input_dist_plot]
     )
 
@@ -518,12 +492,11 @@ with gr.Blocks(css=custom_css, theme='dark') as fraud_app:
     reset_btn.click(
         fn=reset_sliders,
         inputs=[],
-        outputs=sliders
+        outputs=all_sliders
     )
 
     # Load feature importance when app starts
     fraud_app.load(load_feature_importance, outputs=feature_importance_plot)
 
 if __name__ == "__main__":
-    # Launch app with custom port if needed
     fraud_app.launch()
