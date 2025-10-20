@@ -1,7 +1,9 @@
+import os
+
 import gradio as gr
 import requests
 
-API_URL = "http://0.0.0.0:8080"
+API_URL = f"http://127.0.0.1:{os.environ.get('PORT', '8080')}"
 
 
 def greet_user():
