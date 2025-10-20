@@ -1,7 +1,9 @@
+import os
+
 import gradio as gr
 import requests
 
-API_URL = "http://0.0.0.0:8080"
+API_URL = f"http://127.0.0.1:{os.environ.get('PORT', '8080')}"
 
 
 def greet_user():
@@ -88,3 +90,6 @@ with gr.Blocks() as app:
         delete_button = gr.Button("Delete User")
         delete_output = gr.Textbox(label="Deletion Status", interactive=False)
         delete_button.click(fn=delete_user, inputs=delete_input, outputs=delete_output)
+
+
+# import requests

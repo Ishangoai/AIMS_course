@@ -1,0 +1,17 @@
+training:
+  dataset_link: "https://raw.githubusercontent.com/aduuna/Kaggle-Data-Credit-Card-Fraud-Detection/master/samplecreditcard.csv"
+  model_output_path: "models/fraud_model.pt"
+  test_size: 0.2
+  random_state: 42
+  random_forest_params_space:
+    n_estimators: [5]
+    max_depth: [3]
+    min_samples_split: [10]
+    min_samples_leaf: [100]
+    max_features: ['sqrt', 'log2']
+    bootstrap: [True, False]
+
+artifacts:
+  model_dir: "/workspaces/AIMS_course/src/students/emmanuel-olateju/dagster/artifacts/models/"
+  data_dir: "/workspaces/AIMS_course/src/students/emmanuel-olateju/dagster/artifacts/data/"
+  
