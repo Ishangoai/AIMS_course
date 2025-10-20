@@ -2,7 +2,7 @@ import gradio as gr
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Note: Ensure this utility path is correct and accessible
+# Note: Ensure this utility path is correct and accessible.
 from gradioapp.utils.fraud_model_utils import predict_fraud_activity
 
 # --- Utility Functions ---
