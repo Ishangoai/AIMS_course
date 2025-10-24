@@ -90,7 +90,7 @@ def create_writer(llm):
     When you have enough information, respond with the final, complete section content in this format:
 
     Thought: I now know the final answer
-    Final Answer: [The full text of the report section]
+    Final Answer: [The content for the section, written as plain text. Do NOT include the section title in your answer.]
 
     Begin!
 

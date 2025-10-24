@@ -27,11 +27,8 @@ def main():
 
     # You can also save the report to a file
     with open(f"report_on_{topic.replace(' ', '_')}.md", "w") as f:
-        f.write(f"# Report on: {topic}\n\n")
+        f.write(f"# {topic}\n\n")
         f.write(report)
-        f.write("\n\n---\n\n")
-        f.write("## Review\n\n")
-        f.write(review)
 
     print(f"\nReport saved to report_on_{topic.replace(' ', '_')}.md")
 
