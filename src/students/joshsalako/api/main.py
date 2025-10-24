@@ -23,7 +23,7 @@ app = FastAPI(
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Simple Image Editing App**](/image-app/)
     5. [**Credit Card Fraud Detection App**](/fraud-detection/)
-    6. [**Technical Report Writer**(/writer/)]
+    6. [**Technical Report Writer**](/writer/)
     -----
     """),
     version="1.0.0",
