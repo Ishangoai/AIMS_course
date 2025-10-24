@@ -30,6 +30,7 @@ def test_get_wikipedia_tool():
 def test_wikipedia_search_tool_success(mock_session):
     """Tests the success case for the Wikipedia search tool."""
     mock_instance = mock_session.return_value
+    mock_instance.headers = MagicMock()
     mock_search_response = MagicMock()
     mock_search_response.json.return_value = ["query", ["Test Page"], "", ["url"]]
     mock_content_response = MagicMock()
@@ -50,6 +51,7 @@ def test_wikipedia_search_tool_success(mock_session):
 def test_wikipedia_search_tool_no_search_result(mock_session):
     """Tests the case where Wikipedia search returns no results."""
     mock_instance = mock_session.return_value
+    mock_instance.headers = MagicMock()
     mock_response = MagicMock()
     mock_response.json.return_value = ["query", [], "", []]
     mock_instance.get.return_value = mock_response
@@ -65,6 +67,7 @@ def test_wikipedia_search_tool_no_search_result(mock_session):
 def test_wikipedia_search_tool_page_does_not_exist(mock_session):
     """Tests the case where a page title is found, but the page does not exist."""
     mock_instance = mock_session.return_value
+    mock_instance.headers = MagicMock()
     mock_search_response = MagicMock()
     mock_search_response.json.return_value = ["query", ["Nonexistent Page"], "", []]
     mock_content_response = MagicMock()
@@ -83,6 +86,7 @@ def test_wikipedia_search_tool_page_does_not_exist(mock_session):
 def test_wikipedia_search_tool_request_exception(mock_session):
     """Tests the handling of a requests exception."""
     mock_instance = mock_session.return_value
+    mock_instance.headers = MagicMock()
     mock_instance.get.side_effect = requests.exceptions.RequestException("API error")
 
     tool = WikipediaSearchTool()
@@ -95,6 +99,7 @@ def test_wikipedia_search_tool_request_exception(mock_session):
 def test_wikipedia_search_tool_content_truncation(mock_session):
     """Tests that long content is correctly truncated."""
     mock_instance = mock_session.return_value
+    mock_instance.headers = MagicMock()
     mock_search_response = MagicMock()
     mock_search_response.json.return_value = ["query", ["Long Page"], "", []]
     mock_content_response = MagicMock()
