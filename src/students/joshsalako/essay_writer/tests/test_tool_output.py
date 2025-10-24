@@ -1,4 +1,4 @@
-from tools import get_wikipedia_tool
+from ..tools import get_wikipedia_tool
 
 
 def test_tool():
