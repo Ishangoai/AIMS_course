@@ -17,7 +17,7 @@ def test_get_llm_api_key_exists(mock_getpass_module, mock_chat_model, monkeypatc
 
     mock_getpass_module.getpass.assert_not_called()
     mock_chat_model.assert_called_once_with(
-        model="gemini-2.5-flash", temperature=0.5
+        model="gemini-2.5-flash-lite", temperature=0.5
     )
 
 
