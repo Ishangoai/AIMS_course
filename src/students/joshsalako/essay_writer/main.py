@@ -2,8 +2,8 @@
 This is the main entry point for the essay writer agent.
 It takes a topic from the user and generates a report.
 """
-from agent import run_agent
-from tools import count_words
+from .agent import run_agent
+from .tools import count_words
 
 
 def main():

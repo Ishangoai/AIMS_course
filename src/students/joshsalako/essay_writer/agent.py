@@ -23,7 +23,7 @@ def get_llm():
     """Initializes and returns the Google Gemini LLM."""
     if "GOOGLE_API_KEY" not in os.environ:
         os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google API Key: ")
-    return ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.5)
+    return ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0.5)
 
 # --- Agent State ---
 
@@ -39,17 +39,17 @@ class ReportState(TypedDict):
 # --- Planner Agent ---
 
 
-class ReportPlan(BaseModel):
-    """Data model for the report plan."""
-    title: str = Field(description="The title of the report")
-    sections: List['SectionPlan'] = Field(description="List of sections in the report")
-
-
 class SectionPlan(BaseModel):
     """Data model for a single section of the report."""
     title: str = Field(description="The title of the section")
     description: str = Field(description="A brief description of what the section should cover")
     word_count: int = Field(description="The target word count for this section")
+
+
+class ReportPlan(BaseModel):
+    """Data model for the report plan."""
+    title: str = Field(description="The title of the report")
+    sections: List[SectionPlan] = Field(description="List of sections in the report")
 
 
 def create_planner(llm):
@@ -72,20 +72,37 @@ def create_planner(llm):
 def create_writer(llm):
     """Creates the writer agent."""
     tools = [get_wikipedia_tool()]
-    prompt = ChatPromptTemplate.from_template("""You are an expert technical writer.
+    prompt_template = """You are an expert technical writer.
     Your task is to write a section of a report based on a provided plan.
     You have access to a Wikipedia search tool to gather information. Use it to find relevant facts and information.
     Write the section in a technical and informative style. Do not hallucinate.
-    The section should be approximately {word_count} words long.
 
-    Report Topic: {topic}
-    Section to write:
-    Title: {section_title}
-    Description: {section_description}
+    You have access to the following tools:
+    {tools}
 
-    Write the content for this section:""")
+    To get the information you need, use the following format:
+
+    Thought: Do I need to use a tool? Yes
+    Action: the action to take, should be one of [{tool_names}]
+    Action Input: the input to the action
+    Observation: the result of the action
+
+    When you have enough information, respond with the final, complete section content in this format:
+
+    Thought: I now know the final answer
+    Final Answer: [The full text of the report section]
+
+    Begin!
+
+    Write a report section based on the following details:
+    {input}
+
+    Thought:{agent_scratchpad}
+    """
+    prompt = ChatPromptTemplate.from_template(prompt_template)
     agent = create_react_agent(llm, tools, prompt)
-    return AgentExecutor(agent=agent, tools=tools, verbose=True)
+    return AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
+
 
 # --- Reviewer Agent ---
 
@@ -126,12 +143,16 @@ def writer_node(state: ReportState):
     draft_sections = []
     for i, section in enumerate(sections):
         print(f"---WRITING SECTION {i + 1}/{len(sections)}: {section['title']}---")
-        response = writer.invoke({
-            "topic": state["plan"]["title"],
-            "section_title": section["title"],
-            "section_description": section["description"],
-            "word_count": section["word_count"]
-        })
+
+        # Format the input for the writer agent
+        input_prompt = f"""
+        Report Topic: {state["plan"]["title"]}
+        Section to write:
+        Title: {section['title']}
+        Description: {section['description']}
+        The section should be approximately {section['word_count']} words long.
+        """
+        response = writer.invoke({"input": input_prompt})
         draft_sections.append(response["output"])
     return {"draft_sections": draft_sections}
 
