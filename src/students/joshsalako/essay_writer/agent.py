@@ -56,10 +56,20 @@ def create_planner(llm):
     """Creates the planner agent."""
     prompt_template = """You are an expert report planner.
     Your job is to create a detailed plan for a report on a given topic.
-    The report must be approximately 1000 words long.
-    The plan should include an introduction, at least 3-4 main sections, and a conclusion.
-    For each section, provide a title, a brief description of what it should cover, and a target word count.
-    Distribute the word count appropriately across the sections to meet the 1000-word target.
+    Your final plan must produce a report with a total word count of approximately 1040 words.
+
+    Create a plan with the following sections:
+    1. An introduction.
+    2. At least 3-4 main body sections that cover the topic in detail.
+    3. A conclusion.
+
+    For each section, you must provide:
+    - A clear title.
+    - A brief description of what the section should cover.
+    - A specific target word count.
+
+    **Crucially, the word counts for all sections must sum up to exactly 1040 words.
+    ** Distribute the words logically, with the introduction and conclusion being shorter than the main body sections.
 
     Topic: "{topic}"
     """
@@ -84,7 +94,7 @@ def create_writer(llm):
 
     Thought: Do I need to use a tool? Yes
     Action: the action to take, should be one of [{tool_names}]
-    Action Input: the input to the action
+    Action Input: the input to the action (if your first search fails, try a broader or more general query)
     Observation: the result of the action
 
     When you have enough information, respond with the final, complete section content in this format:
@@ -95,7 +105,7 @@ def create_writer(llm):
 
     Begin!
 
-    Write a report section based on the following details:
+    Write a report section based on the following details, you MUST adhere strictly to the word count provided:
     {input}
 
     Thought:{agent_scratchpad}
