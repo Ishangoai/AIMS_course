@@ -23,7 +23,7 @@ def get_llm():
     """Initializes and returns the Google Gemini LLM."""
     if "GOOGLE_API_KEY" not in os.environ:
         os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google API Key: ")
-    return ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0.5)
+    return ChatGoogleGenerativeAI(model="gemini-2.0-flash-lite", temperature=0.5)
 
 # --- Agent State ---
 
@@ -90,7 +90,8 @@ def create_writer(llm):
     When you have enough information, respond with the final, complete section content in this format:
 
     Thought: I now know the final answer
-    Final Answer: [The content for the section, written as plain text. Do NOT include the section title in your answer.]
+    Final Answer: [The content for the section, written as plain text.
+    Do NOT include or return back the section title in your answer.]
 
     Begin!
 
