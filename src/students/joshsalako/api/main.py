@@ -11,6 +11,7 @@ from gradioapp.app import app as demo
 from gradioapp.fraud_app import iface as fraud_app
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.image_assignment import image_app
+from gradioapp.writer import demo
 
 app = FastAPI(
     title="AIMS Course API",
@@ -22,6 +23,7 @@ app = FastAPI(
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Simple Image Editing App**](/image-app/)
     5. [**Credit Card Fraud Detection App**](/fraud-detection/)
+    6. [**Technical Report Writer**(/writer/)]
     -----
     """),
     version="1.0.0",
@@ -132,3 +134,4 @@ gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, image_app, path="/image-app")
 gr.mount_gradio_app(app, fraud_app, path="/fraud-detection")
+gr.mount_gradio_app(app, demo, path="/writer")
