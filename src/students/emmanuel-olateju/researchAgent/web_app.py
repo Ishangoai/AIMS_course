@@ -1,6 +1,7 @@
 """
 Gradio interface for Agentic Report Generation System.
 Simplified structure with topic selection and dual modes.
+NOW WITH INTEGRATED HUMAN-IN-THE-LOOP FEEDBACK
 """
 
 import contextlib
@@ -26,16 +27,19 @@ try:
     print("🔍 DEBUG: Attempting to import 'agent' module...")
     import agent as agent_module
     run_agent = agent_module.run_agent
+    apply_human_feedback = getattr(agent_module, 'apply_human_feedback', None)
     visualize_graph = getattr(agent_module, 'visualize_graph', lambda: None)
     print("✅ SUCCESS: Real agent imported!")
     print(f"   Module file: {agent_module.__file__}")
+    if apply_human_feedback:
+        print("   ✅ apply_human_feedback function found!")
 except Exception as e:
     print(f"❌ FAILED to import agent: {type(e).__name__}: {e}")
     print("\n⚠️  Falling back to MOCK MODE")
     MOCK_MODE = True
 
     # Mock fallback
-    def mock_run_agent(topic, temperature, max_iterations):
+    def mock_run_agent(topic, temperature, max_iterations, enable_human_feedback=False):
         print(f"⚠️  MOCK: Generating fake report for '{topic}'")
         time.sleep(2)
         return {
@@ -52,12 +56,23 @@ except Exception as e:
                 "total_claims": 0,
                 "overall_quality": "MOCK",
                 "iterations_used": 0,
-                "research_sources": 0
+                "research_sources": 0,
+                "human_feedback_applied": False
             },
-            "review_feedback": "MOCK MODE ACTIVE"
+            "review_feedback": "MOCK MODE ACTIVE",
+            "awaiting_human_feedback": enable_human_feedback
         }
 
+    def mock_apply_feedback(state, feedback):
+        print(f"⚠️  MOCK: Applying feedback: {feedback[:50]}...")
+        time.sleep(1)
+        state["final_report"] = f"# REVISED MOCK REPORT\n\nFeedback received: {feedback}\n\nThis is a mock revision."
+        state["awaiting_human_feedback"] = False
+        state["quality_metrics"]["human_feedback_applied"] = True
+        return state
+
     run_agent = mock_run_agent
+    apply_human_feedback = mock_apply_feedback
     def visualize_graph():
         return None
 
@@ -114,8 +129,8 @@ def simple_mode_generate(dropdown_topic, custom_topic, temperature, max_iteratio
     def agent_thread():
         """Run agent in separate thread with stdout capture."""
         try:
-            with contextlib.redirect_stdout(QueueIO(log_queue)):
-                result = run_agent(topic, temperature, max_iterations)
+            with contextlib.redirect_stdout(QueueIO(log_queue)): # type: ignore
+                result = run_agent(topic, temperature, max_iterations, enable_human_feedback=False)
                 result_queue.put(result)
         except Exception as e:
             result_queue.put(e)
@@ -185,7 +200,7 @@ def simple_mode_generate(dropdown_topic, custom_topic, temperature, max_iteratio
 
 
 def hitl_generate_draft(dropdown_topic, custom_topic, temperature, max_iterations):
-    """Generate initial draft for human review."""
+    """Generate initial draft for human review using enable_human_feedback=True."""
     topic = get_actual_topic(dropdown_topic, custom_topic)
 
     if not topic or topic == "Custom Topic":
@@ -193,69 +208,81 @@ def hitl_generate_draft(dropdown_topic, custom_topic, temperature, max_iteration
             "⚠️ **Error:** Please select a topic or enter a custom topic.",
             "",
             "",
-            gr.update(interactive=False),
-            gr.update(interactive=False)
+            None,  # draft_state
+            gr.update(interactive=False),  # feedback_box
+            gr.update(interactive=False),  # approve_btn
+            gr.update(interactive=False)   # revise_btn
         )
 
     try:
-        # Generate draft (single iteration)
-        result = run_agent(topic, temperature, 1)
+        # Generate draft WITH human feedback enabled (pauses after review)
+        print(f"\n🎯 HITL: Generating draft for '{topic}' with human feedback enabled...")
+        result = run_agent(topic, temperature, max_iterations, enable_human_feedback=True)
 
-        report = result.get("final_report", "")
+        report = result.get("draft_report", result.get("final_report", ""))
         metadata = result.get("metadata", {})
         metrics = result.get("quality_metrics", {})
+        awaiting = result.get("awaiting_human_feedback", False)
+
+        print(f"   Awaiting feedback: {awaiting}")
+        print(f"   Report length: {len(report)} chars")
 
         status = (
             f"📋 **Draft Ready for Review**\n\n"
             f"**Topic:** {metadata.get('title', topic)}\n"
             f"**Word Count:** {metrics.get('word_count', 0)} words\n"
-            f"**Quality:** {metrics.get('overall_quality', 'Unknown')}\n\n"
+            f"**Quality:** {metrics.get('overall_quality', 'Unknown')}\n"
+            f"**Citations:** {metrics.get('citations_count', 0)}\n\n"
             f"👉 **Review the draft below.**\n"
             f"- If satisfied, click '✅ Approve & Finalize'\n"
-            f"- To request changes, provide feedback and click '🔄 Revise Draft'"
+            f"- To request changes, provide feedback and click '🔄 Revise with Feedback'"
         )
 
+        # Return the full state object for later use
         return (
             status,
             report,
             report,
+            result,  # Store the entire state for apply_human_feedback
             gr.update(interactive=True),   # Enable feedback box
-            gr.update(interactive=True)    # Enable approve button
+            gr.update(interactive=True),   # Enable approve button
+            gr.update(interactive=True)    # Enable revise button
         )
 
     except Exception as e:
-        error_msg = f"❌ **Error:** {str(e)}"
+        import traceback
+        error_detail = traceback.format_exc()
+        error_msg = f"❌ **Error:** {str(e)}\n\n```\n{error_detail}\n```"
+        print(f"\n❌ ERROR in hitl_generate_draft:\n{error_detail}")
         return (
             error_msg,
             "",
             "",
+            None,
+            gr.update(interactive=False),
             gr.update(interactive=False),
             gr.update(interactive=False)
         )
 
 
-def hitl_finalize(dropdown_topic, custom_topic, temperature, max_iterations, feedback, current_draft):
-    """Finalize report with optional feedback."""
-    topic = get_actual_topic(dropdown_topic, custom_topic)
+def hitl_approve_draft(dropdown_topic, custom_topic, temperature, max_iterations, draft_state):
+    """Approve draft without feedback - finalize as-is."""
+    if draft_state is None:
+        return (
+            "⚠️ **Error:** No draft state found. Please generate a draft first.",
+            "",
+            ""
+        )
 
     try:
-        # If feedback provided, mention it
-        if feedback and feedback.strip():
-            status_msg = "🔄 **Revising with your feedback...**\n\n"
-        else:
-            status_msg = "✅ **Finalizing report...**\n\n"  # type:ignore  # noqa: F841
-
-        # Generate final version
-        # TODO: In real implementation, pass feedback to agent for revision
-        result = run_agent(topic, temperature, max_iterations)
-
-        report = result.get("final_report", "")
-        metadata = result.get("metadata", {})
-        metrics = result.get("quality_metrics", {})
+        # Simply finalize the existing draft
+        report = draft_state.get("draft_report", draft_state.get("final_report", ""))
+        metadata = draft_state.get("metadata", {})
+        metrics = draft_state.get("quality_metrics", {})
 
         status = (
-            f"✅ **Report Finalized!**\n\n"
-            f"**Topic:** {metadata.get('title', topic)}\n"
+            f"✅ **Report Approved & Finalized!**\n\n"
+            f"**Topic:** {metadata.get('title', get_actual_topic(dropdown_topic, custom_topic))}\n"
             f"**Word Count:** {metrics.get('word_count', 0)} words\n"
             f"**Quality:** {metrics.get('overall_quality', 'Unknown')}\n"
             f"**Iterations:** {metrics.get('iterations_used', 0)}\n\n"
@@ -265,7 +292,62 @@ def hitl_finalize(dropdown_topic, custom_topic, temperature, max_iterations, fee
         return (status, report, report)
 
     except Exception as e:
-        error_msg = f"❌ **Error:** {str(e)}"
+        import traceback
+        error_detail = traceback.format_exc()
+        error_msg = f"❌ **Error:** {str(e)}\n\n```\n{error_detail}\n```"
+        print(f"\n❌ ERROR in hitl_approve_draft:\n{error_detail}")
+        return (error_msg, "", "")
+
+
+def hitl_revise_with_feedback(dropdown_topic, custom_topic, temperature, max_iterations,
+                               feedback, draft_state):
+    """Revise draft with human feedback using apply_human_feedback()."""
+    if draft_state is None:
+        return (
+            "⚠️ **Error:** No draft state found. Please generate a draft first.",
+            "",
+            ""
+        )
+
+    if not feedback or not feedback.strip():
+        return (
+            "⚠️ **Error:** Please provide feedback for revision.",
+            draft_state.get("draft_report", ""),
+            draft_state.get("draft_report", "")
+        )
+
+    try:
+        print("\n🔄 HITL: Applying human feedback...")
+        print(f"   Feedback: {feedback[:100]}...")
+
+        # Use the actual apply_human_feedback function from agent.py
+        revised_result = apply_human_feedback(draft_state, feedback) # type: ignore
+
+        report = revised_result.get("final_report", revised_result.get("draft_report", ""))
+        metadata = revised_result.get("metadata", {})
+        metrics = revised_result.get("quality_metrics", {})
+        feedback_applied = metrics.get("human_feedback_applied", False)
+
+        print(f"   Revision complete. Feedback applied: {feedback_applied}")
+        print(f"   New report length: {len(report)} chars")
+
+        status = (
+            f"✅ **Report Revised & Finalized!**\n\n"
+            f"**Topic:** {metadata.get('title', get_actual_topic(dropdown_topic, custom_topic))}\n"
+            f"**Word Count:** {metrics.get('word_count', 0)} words\n"
+            f"**Quality:** {metrics.get('overall_quality', 'Unknown')}\n"
+            f"**Iterations:** {metrics.get('iterations_used', 0)}\n"
+            f"**Human Feedback:** {'✅ Applied' if feedback_applied else '⚠️ Not applied'}\n\n"
+            f"📥 Your revised report is ready for download."
+        )
+
+        return (status, report, report)
+
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        error_msg = f"❌ **Error during revision:**\n\n```\n{str(e)}\n\n{error_detail}\n```"
+        print(f"\n❌ ERROR in hitl_revise_with_feedback:\n{error_detail}")
         return (error_msg, "", "")
 
 
@@ -377,19 +459,20 @@ def prepare_download_pdf(report_text, dropdown_topic, custom_topic):
 
 
 # Build Gradio Interface
-with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Generator") as app:
+with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Generator") as researchAid:
 
     # Header
     gr.Markdown(
         """
         # 🤖 Agentic Report Generator
 
-        **Multi-Agent AI System with Analytical Rewriting**
+        **Multi-Agent AI System with Analytical Rewriting & Human-in-the-Loop Feedback**
 
         Generate comprehensive technical reports using a 7-agent system with advanced features:
         - 📊 Low-temperature content analysis (Phase 1)
         - ✏️ Strategic rewriting at moderate temperature (Phase 2)
         - 🔍 Automated fact-checking and validation
+        - 👤 Human-in-the-loop feedback for iterative refinement
         - 📚 Wikipedia-powered research
 
         ---
@@ -475,7 +558,20 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Generator") as app:
 
         # ============ HITL MODE TAB ============
         with gr.Tab("👤 Human-in-the-Loop Mode"):
-            gr.Markdown("### Review draft and provide feedback before finalization")
+            gr.Markdown(
+                """
+                ### Review draft and provide feedback before finalization
+
+                **How it works:**
+                1. Generate a draft report
+                2. Review the draft and decide:
+                   - **Approve as-is** ✅ → Finalize immediately
+                   - **Request changes** 🔄 → Provide feedback and regenerate
+                """
+            )
+
+            # Hidden state to store draft result
+            draft_state = gr.State(None)
 
             with gr.Row():
                 with gr.Column(scale=1):
@@ -532,9 +628,9 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Generator") as app:
                             )
 
                     feedback_box = gr.Textbox(
-                        label="💬 Your Feedback (Optional)",
-                        placeholder="Leave empty to approve, or provide feedback for revision...",
-                        lines=3,
+                        label="💬 Your Feedback for Revision",
+                        placeholder="Describe what changes you'd like to see...",
+                        lines=4,
                         interactive=False
                     )
 
@@ -545,7 +641,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Generator") as app:
                             interactive=False
                         )
                         revise_btn = gr.Button(
-                            "🔄 Revise Draft",
+                            "🔄 Revise with Feedback",
                             variant="secondary",
                             interactive=False
                         )
@@ -572,13 +668,14 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Generator") as app:
 
     # Footer
     mode_status = "🟢 PRODUCTION" if not MOCK_MODE else "🔴 MOCK"
+    feedback_status = "✅ Enabled" if apply_human_feedback else "❌ Not Available"
     gr.Markdown(
         f"""
         ---
-        **Status:** {mode_status} | **Powered by:** LangGraph • Google Gemini • Wikipedia API
+        **Status:** {mode_status} | **Human Feedback:** {feedback_status} | **Powered by:** LangGraph • Google Gemini • Wikipedia API
         **Architecture:** 7-Agent System (Planner → Research → Writer → Fact Checker → Validator → Reviewer)
-        **Key Feature:** Two-Phase Analytical Rewriting (Low-temp Analysis + Strategic Rewrite)
-        """
+        **Key Features:** Two-Phase Analytical Rewriting + Human-in-the-Loop Feedback
+        """  # noqa: E501
     )
 
     # ============ EVENT HANDLERS ============
@@ -610,24 +707,25 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Generator") as app:
         outputs=[download_simple_file]
     )
 
-    # HITL Mode - Draft
+    # HITL Mode - Generate Draft (stores state)
     draft_btn.click(
         fn=hitl_generate_draft,
         inputs=[topic_hitl, custom_hitl, temp_hitl, iter_hitl],
-        outputs=[status_hitl, draft_html, draft_text, feedback_box, approve_btn]
+        outputs=[status_hitl, draft_html, draft_text, draft_state,
+                feedback_box, approve_btn, revise_btn]
     )
 
     # HITL Mode - Approve (no feedback)
     approve_btn.click(
-        fn=hitl_finalize,
-        inputs=[topic_hitl, custom_hitl, temp_hitl, iter_hitl, gr.Textbox(value=""), draft_text],
+        fn=hitl_approve_draft,
+        inputs=[topic_hitl, custom_hitl, temp_hitl, iter_hitl, draft_state],
         outputs=[status_hitl, final_html, final_text]
     )
 
-    # HITL Mode - Revise (with feedback)
+    # HITL Mode - Revise (with feedback using apply_human_feedback)
     revise_btn.click(
-        fn=hitl_finalize,
-        inputs=[topic_hitl, custom_hitl, temp_hitl, iter_hitl, feedback_box, draft_text],
+        fn=hitl_revise_with_feedback,
+        inputs=[topic_hitl, custom_hitl, temp_hitl, iter_hitl, feedback_box, draft_state],
         outputs=[status_hitl, final_html, final_text]
     )
 
@@ -646,4 +744,4 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Generator") as app:
 
 
 if __name__ == "__main__":
-    app.launch(share=False, server_name="0.0.0.0", server_port=7860)
+    researchAid.launch(share=False, server_name="0.0.0.0", server_port=7860)
