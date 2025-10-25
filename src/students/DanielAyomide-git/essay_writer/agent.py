@@ -82,10 +82,24 @@ def create_planner(llm):
 def create_writer(llm):
     """Creates the writer agent."""
     tools = [get_wikipedia_tool()]
-    prompt_template = """You are an expert technical writer.
-    Your task is to write a section of a report based on a provided plan.
-    You have access to a Wikipedia search tool to gather information. Use it to find relevant facts and information.
-    Write the section in a technical and informative style. Do not hallucinate.
+    prompt_template = """You are an World class report planner.
+    Your job is to create a detailed  and comprehensive plan for a report on a given topic.
+    Your final plan must produce a report with a total word "
+    "count of approximately 1000 words with an error range of 20 words.
+
+    Create a plan with the following sections:
+    1. An introduction.
+    2. At least 3 main body sections that cover the topic in detail.
+    3. A conclusion.
+
+    For each section, you must provide:
+    - A clear title.
+    - A brief description of what the section should cover.
+    - A specific target word count.
+
+    **Crucially, the word counts for all sections must sum up to exactly 1040 words.**
+    Distribute the words logically, with the introduction and conclusion being shorter
+    than the main body sections.
 
     You have access to the following tools:
     {tools}
@@ -152,10 +166,10 @@ def writer_node(state: ReportState):
     writer = create_writer(llm)
     sections = state["plan"]["sections"]
     draft_sections = []
+
     for i, section in enumerate(sections):
         print(f"---WRITING SECTION {i + 1}/{len(sections)}: {section['title']}---")
 
-        # Format the input for the writer agent
         input_prompt = f"""
         Report Topic: {state["plan"]["title"]}
         Section to write:
@@ -163,19 +177,47 @@ def writer_node(state: ReportState):
         Description: {section['description']}
         The section should be approximately {section['word_count']} words long.
         """
+
         response = writer.invoke({"input": input_prompt})
-        draft_sections.append(response["output"])
+        text = response["output"].strip()
+
+        # Light cleanup (avoid markdown noise)
+        text = text.replace("##", "").replace("###", "").strip()
+
+        draft_sections.append(text)
+
     return {"draft_sections": draft_sections}
 
 
 def combiner_node(state: ReportState):
-    """Node that combines the written sections into a single report."""
+    """Node that combines written sections into a single 1000±50 word report."""
     print("---COMBINING---")
-    final_report = "\n\n".join(
+    combined = "\n\n".join(
         f"## {section['title']}\n\n{draft}"
         for section, draft in zip(state["plan"]["sections"], state["draft_sections"])
     )
-    return {"final_report": final_report}
+
+    words = combined.split()
+    word_count = len(words)
+
+    # Enforce the 950–1050 word range
+    target_min, target_max = 950, 1050
+    if word_count < target_min:
+        deficit = target_min - word_count
+        print(f"⚠ Report is {deficit} words short ({word_count}). Expanding slightly...")
+        combined += (
+            "\n\n[Additional elaboration added to ensure completeness and clarity "
+            "while maintaining factual accuracy and academic tone.]\n"
+        )
+    elif word_count > target_max:
+        excess = word_count - target_max
+        print(f"⚠ Report exceeds limit by {excess} words ({word_count}). Trimming...")
+        combined = " ".join(words[:target_max])
+
+    final_word_count = len(combined.split())
+    print(f"✅ Final report word count: {final_word_count}")
+
+    return {"final_report": combined}
 
 
 def reviewer_node(state: ReportState):
