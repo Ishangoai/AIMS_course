@@ -62,7 +62,7 @@ def generate_report(topic: str):
         word_count = ""
         editable_text = ""
     else:
-        report_text = result.get("final_report", "No report generated.")
+        report_text = result.get("final_report", "No report to display.")
         report_text = report_text.replace("*", "\\*")
         editable_text = report_text
         word_count = f"📝 Word Count: {len(report_text.split())}" if report_text else ""
