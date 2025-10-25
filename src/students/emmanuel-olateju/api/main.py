@@ -13,6 +13,7 @@ from gradioapp.heart_disease_app import heart_app
 from gradioapp.imagedit import image_edit_app
 from gradioapp.imagedit_v2 import image_edit_v2_app
 from gradioapp.imagedit_vibe import imagedit_vibe_app
+from researchAgent.web_app import researchAid
 
 # from gradioapp.imagedit_v3 import image_editor
 
@@ -25,8 +26,9 @@ app = FastAPI(
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Imagedit 🖼️](/image-edit/)
-    5. [**Fraud Detection Model Endpoint**](/fraud-detection/invocations) - POST endpoint
-    6. [**Fraud Detection App**](/fraud-detection) - POST endpoint
+    5. [**Fraud Detection Model Endpoint**](/fraud-detection/invocations/) - POST endpoint
+    6. [**Fraud Detection App**](/fraud-detection/) - POST endpoint
+    7. [**AI Research Aid**](/AIResearchAid/)
     -----
     """),
     version="1.0.0",
@@ -161,4 +163,5 @@ gr.mount_gradio_app(app, image_edit_app, path="/image-edit")
 gr.mount_gradio_app(app, image_edit_v2_app, path="/image-edit-v2")
 gr.mount_gradio_app(app, imagedit_vibe_app, path="/image-edit-vibe")
 gr.mount_gradio_app(app, fd_app, path="/fraud-detection")
+gr.mount_gradio_app(app, researchAid, path="/AIResearchAid")
 # gr.mount_gradio_app(app, image_editor, path="/image-edit-v3")
