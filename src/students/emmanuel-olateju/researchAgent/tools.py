@@ -1,6 +1,6 @@
 """
 Tools module for the agentic report generation system.
-Provides Wikipedia integration and validation utilities.
+Provides Google Search integration and validation utilities.
 """
 
 import os
@@ -11,84 +11,159 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import re
 from typing import Any, Dict, List
 
-from langchain_community.tools import WikipediaQueryRun
-from langchain_community.utilities import WikipediaAPIWrapper
+from langchain_core.tools import Tool
+from langchain_google_community import GoogleSearchAPIWrapper
 
 # ============================================================================
-# WIKIPEDIA TOOL
+# GOOGLE SEARCH TOOL
 # ============================================================================
 
 
-def get_wikipedia_tool():
+def get_google_search_tool():
     """
-    Creates a Wikipedia search tool with custom configuration.
+    Creates a Google Search tool with custom configuration.
+
+    Requires:
+        - GOOGLE_API_KEY environment variable
+        - GOOGLE_CSE_ID (Custom Search Engine ID) environment variable
 
     Returns:
-        WikipediaQueryRun: Configured Wikipedia search tool
+        Tool: Configured Google Search tool
     """
-    api_wrapper = WikipediaAPIWrapper(
-        top_k_results=2,
-        doc_content_chars_max=3000,
-        load_all_available_meta=True
+    # Initialize Google Search wrapper
+    search_wrapper = GoogleSearchAPIWrapper(
+        google_api_key=os.getenv("GOOGLE_API_KEY"),
+        google_cse_id=os.getenv("GOOGLE_CSE_ID"),
+        k=5  # Number of results to return
     )
 
-    wikipedia_tool = WikipediaQueryRun(
-        api_wrapper=api_wrapper,
-        name="wikipedia",
-        description=(
-            "Search Wikipedia for factual information. "
-            "Input should be a search query string. "
-            "Returns article content with metadata."
-        )
-    )
-
-    # Wrap to return structured results
-    original_run = wikipedia_tool._run
-
-    def enhanced_run(query: str) -> Dict[str, Any]:
-        """Enhanced Wikipedia search with structured output."""
+    def enhanced_search(query: str) -> Dict[str, Any]:
+        """Enhanced Google search with structured output."""
         try:
-            result = original_run(query)
+            # Perform search
+            results = search_wrapper.results(query, num_results=5)
 
-            # Parse Wikipedia output
-            if result and "Page:" in result:
-                # Extract title
-                title_match = re.search(r'Page: (.+)', result)
-                title = title_match.group(1) if title_match else query
-
-                # Extract summary
-                summary_match = re.search(r'Summary: (.+?)(?:\n|$)', result, re.DOTALL)
-                summary = summary_match.group(1) if summary_match else ""
-
+            if not results:
                 return {
-                    "success": True,
+                    "success": False,
                     "query": query,
-                    "title": title.strip(),
-                    "content": result,
-                    "summary": summary.strip(),
-                    "source": f"Wikipedia - {title.strip()}",
-                    "url": f"https://en.wikipedia.org/wiki/{title.strip().replace(' ', '_')}"
+                    "results": [],
+                    "content": "",
+                    "source": "Google Search",
+                    "error": "No results found"
                 }
-            else:
+
+            # Structure the results
+            structured_results = []
+            combined_content = []
+
+            for idx, result in enumerate(results, 1):
+                title = result.get("title", "")
+                snippet = result.get("snippet", "")
+                link = result.get("link", "")
+
+                structured_results.append({
+                    "rank": idx,
+                    "title": title,
+                    "snippet": snippet,
+                    "url": link
+                })
+
+                combined_content.append(f"[Result {idx}] {title}\n{snippet}\nURL: {link}\n")
+
+            return {
+                "success": True,
+                "query": query,
+                "results": structured_results,
+                "content": "\n".join(combined_content),
+                "source": "Google Search",
+                "total_results": len(results),
+                "top_url": results[0].get("link", "") if results else ""
+            }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "query": query,
+                "results": [],
+                "content": "",
+                "source": "Google Search",
+                "error": str(e)
+            }
+
+    # Create the tool
+    google_search_tool = Tool(
+        name="google_search",
+        description=(
+            "Search Google for factual information and current data. "
+            "Input should be a search query string. "
+            "Returns top search results with titles, snippets, and URLs."
+        ),
+        func=enhanced_search
+    )
+
+    return google_search_tool
+
+
+def get_fallback_search_tool():
+    """
+    Creates a fallback search tool that uses DuckDuckGo (no API key required).
+    Useful for development/testing when Google API credentials aren't available.
+
+    Returns:
+        Tool: Configured DuckDuckGo search tool
+    """
+    from langchain_community.tools import DuckDuckGoSearchRun
+    from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+
+    search_wrapper = DuckDuckGoSearchAPIWrapper(
+        max_results=5,
+        region="wt-wt",
+        time="y"  # Past year
+    )
+
+    def enhanced_ddg_search(query: str) -> Dict[str, Any]:
+        """Enhanced DuckDuckGo search with structured output."""
+        try:
+            ddg_search = DuckDuckGoSearchRun(api_wrapper=search_wrapper)
+            result = ddg_search.run(query)
+
+            if not result or result.strip() == "":
                 return {
                     "success": False,
                     "query": query,
                     "content": "",
-                    "source": "Wikipedia",
+                    "source": "DuckDuckGo Search",
                     "error": "No results found"
                 }
+
+            return {
+                "success": True,
+                "query": query,
+                "content": result,
+                "source": "DuckDuckGo Search",
+                "results": [{"snippet": result}]
+            }
 
         except Exception as e:
             return {
                 "success": False,
                 "query": query,
                 "content": "",
-                "source": "Wikipedia",
+                "source": "DuckDuckGo Search",
                 "error": str(e)
             }
 
-    wikipedia_tool._run = enhanced_run
-    return wikipedia_tool
+    fallback_tool = Tool(
+        name="fallback_search",
+        description=(
+            "Fallback search using DuckDuckGo. "
+            "Input should be a search query string."
+        ),
+        func=enhanced_ddg_search
+    )
+
+    return fallback_tool
 
 
 # ============================================================================
@@ -309,10 +384,17 @@ def source_quality_scorer(url: str, content: str, source_name: str) -> Dict[str,
     score = 0.5  # Base score
     reasons = []
 
-    # Wikipedia is generally reliable
-    if "wikipedia.org" in url.lower():
+    # Check for authoritative domains
+    authoritative_domains = [
+        '.edu', '.gov', '.org',
+        'wikipedia.org', 'britannica.com',
+        'nature.com', 'science.org', 'sciencedirect.com',
+        'nytimes.com', 'bbc.com', 'reuters.com'
+    ]
+
+    if any(domain in url.lower() for domain in authoritative_domains):
         score += 0.2
-        reasons.append("Wikipedia source")
+        reasons.append("Authoritative source")
 
     # Content length indicates depth
     content_length = len(content)
@@ -350,7 +432,8 @@ def source_quality_scorer(url: str, content: str, source_name: str) -> Dict[str,
 # ============================================================================
 
 __all__ = [
-    'get_wikipedia_tool',
+    'get_google_search_tool',
+    'get_fallback_search_tool',
     'count_words',
     'word_counter_tool',
     'structure_validator_tool',
