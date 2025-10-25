@@ -120,7 +120,8 @@ with gr.Blocks(css=custom_css) as report_app:
             content, words = drafting_process(preview)
         elif (action == "Generate"):
             content, words = drafting_process(prompt)
-        return content, words, "Report ready! Please review ...", "Revise Draft", ''  # type: ignore
+        return content, words, "Report ready! Please review and comment in prompt area if revision needed...",
+        "Revise Draft", ''
 
     action_button.click(fn=start_draft, inputs=[prompt, action_button, preview], outputs=[preview, word_count,
     status_info, action_button, prompt])

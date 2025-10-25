@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Dict
 
 import dagster as dg
@@ -80,8 +81,12 @@ fraud_ml_raw_data_split: Dict
     features: pd.DataFrame = data["features"]
     targets: pd.DataFrame = data["targets"]
 
-    x_train, x_test, y_train, y_test = train_test_split(features, targets, test_size=0.2, random_state=42,
-    stratify=targets)
+    x_train, x_test, y_train, y_test = train_test_split(
+        features, targets,
+        test_size=0.2,       # 20% test data
+        random_state=42,     # to ensure results can be repeateed
+        stratify=targets          # to a keep targets in the train/test splits
+        )
 
     return dg.MaterializeResult(value={
     "x_train": x_train,
@@ -154,16 +159,15 @@ fraud_ml_train_test_split: Dict
                            )
 
         grid_search.fit(x_train, y_train)
-
         for i, params in enumerate(grid_search.cv_results_['params']):
             with mlflow.start_run(run_name=f"Trial_{i + 1}_with_max_depth_{params['max_depth']}", nested=True):
                 mlflow.log_params(params)
 
                 mean_train_score = grid_search.cv_results_['mean_train_score'][i]
                 mean_test_score = grid_search.cv_results_['mean_test_score'][i]
-
                 mlflow.log_metric("mean_train_score", mean_train_score)
                 mlflow.log_metric("mean_test_score", mean_test_score)
+
                 context.log.info(f'trail {i + 1} {mean_train_score}')
 
     our_best_model = grid_search.best_estimator_
@@ -307,8 +311,7 @@ fraud_ml_train_test_split: Dict
         "recall": test_recall,
         "precision": test_precision,
 
-     }
-
+     },
      )
 
 
@@ -323,6 +326,25 @@ def fraud_ml_slack_message(context: dg.AssetExecutionContext,
 fraud_ml_model_testing: Dict,
 ) -> dg.MaterializeResult:
 
+    data = fraud_ml_model_testing
+    slack: dagster_slack.SlackResource = context.resources.slack_messenger
+
+    test_accuracy = data['accuracy']
+    test_precision = data['precision']
+    test_recall = data['recall']
+
+    slack.get_client().chat_postMessage(
+    channel='aims_course_october2025',
+    text=f"""
+    *🚀 Model Performance Report*
+    _By 👽 Aaron & 🥸 Vicent_
+
+    • 🎯 *Accuracy:* `{test_accuracy:.4f}
+    • 🔍 *Recall:* `{test_recall:.4f}
+    • 🧠 *Precision:* `{test_precision:.4f}
+
+    🕒 *Timestamp:* {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    """)
     return dg.MaterializeResult(value={
     },
     )
