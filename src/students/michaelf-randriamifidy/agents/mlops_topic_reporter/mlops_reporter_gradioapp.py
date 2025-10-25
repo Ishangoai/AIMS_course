@@ -1,6 +1,6 @@
 import gradio as gr
 
-from utils.gem import do_report  # your LLM function
+from utils.agent_tools import do_report  # your LLM function
 
 
 # --- Your chatbot logic ---
@@ -9,7 +9,7 @@ def chat_fn(user_message, history):
     Calls your custom LLM (do_report) and updates the chat history and Markdown.
     """
     # Call your LLM to generate a report
-    response = do_report(user_message)
+    response = do_report(user_message, max_retries=3)
 
     # Extract the final assistant reply from the response object
     report_text = response["review_data"]["final_text"]
@@ -22,6 +22,17 @@ def chat_fn(user_message, history):
 
     # Return both chat history and Markdown text
     return history, markdown_response
+
+
+def download_report(markdown_text):
+    """
+    Convert Markdown text to a file for download.
+    """
+    # Remove the AI title if you want, or keep it
+    file_path = "/tmp/report.md"
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(markdown_text)
+    return file_path
 
 
 # --- Gradio App Layout ---
@@ -81,33 +92,37 @@ textarea, input {
 """
 
 with gr.Blocks(title="ML Reporter",
-               css=css) as llm_chat:
+               css=css) as llm_report:
 
     gr.Markdown("# 🧠 Ask your favorite topic in MLOps, CI/CD, Gradio, or Machine Learning 😄",
                 elem_classes="custom-center")
 
     with gr.Row():
         with gr.Column():
-            chatbot = gr.Chatbot(label="Simple AI Assistant")
+            with gr.Row():
+                chatbot = gr.Chatbot(label="Simple AI Assistant")
+            with gr.Row():
+                topic_prompt = gr.Textbox(
+                    label="Enter your topic here",
+                    placeholder="E.g., Explain MLOps.",
+                    lines=2,
+                )
+            with gr.Row():
+                submit_btn = gr.Button("Generate Report")
 
         with gr.Column():
-            result_display = gr.Markdown("## Your formatted report will appear here ✅✅✅",
+            with gr.Row():
+                result_display = gr.Markdown("## Your formatted report will appear here ✅✅✅",
                                          elem_classes="custom-center")
 
-    with gr.Row():
-        with gr.Column():
-            topic_prompt = gr.Textbox(
-                label="Enter your topic here",
-                placeholder="E.g., Explain MLOps.",
-                lines=2,
-            )
-        with gr.Column():
-            submit_btn = gr.Button("Generate Report")
-            download = gr.DownloadButton(label="Download as .md", elem_classes="custom-center")
-            download.click(
-                fn=lambda md: md,
-                inputs=result_display,
-            )
+            with gr.Row():
+                download = gr.DownloadButton(label="Download as .md", elem_classes="custom-center")
+
+                download.click(
+                    fn=download_report,
+                    inputs=result_display,  # Markdown component is fine
+                    outputs=download        # Must point to the DownloadButton itself
+                )
 
     # --- Connect interactions ---
     submit_btn.click(
@@ -124,4 +139,4 @@ with gr.Blocks(title="ML Reporter",
 
 # --- Run the app ---
 if __name__ == "__main__":
-    llm_chat.launch()
+    llm_report.launch()
