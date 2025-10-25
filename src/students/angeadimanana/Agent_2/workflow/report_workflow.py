@@ -5,15 +5,14 @@ Orchestrates the agentic workflow with feedback loop
 
 from typing import Any, Dict
 
-from agents.editor_agent import editor_agent
-from agents.fact_checker_agent import fact_checker_agent
-from agents.qa_agent import qa_agent
-from agents.research_agent import research_agent
-from agents.writer_agent import writer_agent
-from config import MAX_REVISION_ITERATIONS, QA_THRESHOLD
+from Agent_2.agents.editor_agent import editor_agent
+from Agent_2.agents.fact_checker_agent import fact_checker_agent
+from Agent_2.agents.qa_agent import qa_agent
+from Agent_2.agents.research_agent import research_agent
+from Agent_2.agents.writer_agent import writer_agent
+from Agent_2.config import MAX_REVISION_ITERATIONS, QA_THRESHOLD
+from Agent_2.utils.helpers import count_words, extract_qa_score, is_report_approved
 from langchain_google_genai import ChatGoogleGenerativeAI
-
-from utils.helpers import count_words, extract_qa_score, is_report_approved
 
 
 class ReportWorkflow:
