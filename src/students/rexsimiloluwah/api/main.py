@@ -2,6 +2,7 @@ import os
 import textwrap
 
 import gradio as gr
+from agents.article_writer.ui import demo as article_writer_app
 from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
@@ -20,6 +21,7 @@ app = FastAPI(
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Credit Card Fraud Detection App**](/fraud-detection/)
+    5. [**Article Writer**](/article-writer/)
     -----
     """),
     version="1.0.0",
@@ -131,3 +133,4 @@ gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, fraud_app, path="/fraud-detection")
+gr.mount_gradio_app(app, article_writer_app, path="/article-writer")
