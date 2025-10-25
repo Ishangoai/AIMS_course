@@ -66,7 +66,7 @@ def generate_report(topic: str):
     yield full_log, final_report
 
 
-with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Writer") as demo:
+with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Writer") as essay:
     gr.Markdown(
         "<h1 style='text-align: center; margin-bottom: 0.5em; font-size: 3em;'>Agentic Report Writer</h1>"
     )
@@ -108,4 +108,4 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Writer") as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch()
+    essay.launch()

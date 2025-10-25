@@ -11,7 +11,7 @@ from gradioapp.app import app as demo
 from gradioapp.fraud_app import iface as fraud_app
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.image_assignment import image_app
-from gradioapp.writer import demo
+from gradioapp.writer import essay
 
 app = FastAPI(
     title="AIMS Course API",
@@ -134,4 +134,4 @@ gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, image_app, path="/image-app")
 gr.mount_gradio_app(app, fraud_app, path="/fraud-detection")
-gr.mount_gradio_app(app, demo, path="/writer")
+gr.mount_gradio_app(app, essay, path="/writer")
