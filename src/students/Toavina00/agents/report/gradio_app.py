@@ -191,7 +191,7 @@ with gr.Blocks(css=custom_css) as iface:
             )
             temp_display = gr.HTML(
                 value='<div id="temp-display" class="moderate" style="font-size: 0.85rem;'
-                'padding: 0.5rem; text-align: center;">🌤️ 0.7°</div>'
+                 'padding: 0.5rem; text-align: center;">🌤️ 0.7°</div>'
             )
     with gr.Row():
         with gr.Column():
