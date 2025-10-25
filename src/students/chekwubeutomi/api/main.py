@@ -2,6 +2,7 @@ import os
 import textwrap
 
 import gradio as gr
+from agentic_ai.gradio_ai import article_fetcher
 from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
@@ -9,7 +10,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.heart_disease_app import heart_app
-from gradioapp.text_operator_assignment import app as text_operator
 
 app = FastAPI(
     title="AIMS Course API",
@@ -19,7 +19,7 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
-    4. [**Text Operator Assignment**](/text-operator/)
+    3. [**AIMS COURSES REPORT (AGENTIC AI ASSIGNMENT)**](/article-fetcher/)
     -----
     """),
     version="1.0.0",
@@ -100,9 +100,7 @@ def get_user_details(username: str):
 
 
 @app.delete(
-    "/register/{username}/delete",
-    summary="Delete a user",
-    description="Deletes a user with the given username."
+    "/register/{username}/delete", summary="Delete a user", description="Deletes a user with the given username."
 )
 def delete_user(username: str):
     """
@@ -130,4 +128,4 @@ def update_user_details(username: str, request: UpdateUserRequest):
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
-gr.mount_gradio_app(app, text_operator, path="/text-operator")
+gr.mount_gradio_app(app, article_fetcher, path="/article-fetcher")
