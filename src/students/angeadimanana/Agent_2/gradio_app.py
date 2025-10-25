@@ -6,14 +6,16 @@ import re
 from datetime import datetime
 
 import gradio as gr
-from config import GOOGLE_API_KEY, MODEL_NAME, TEMPERATURE
 from langchain_google_genai import ChatGoogleGenerativeAI
-from workflow.report_workflow import ReportWorkflow
 
+from .config import GOOGLE_API_KEY
+from .workflow.report_workflow import ReportWorkflow
+
+# GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID", "")
 # Initialize LLM globally
 llm = ChatGoogleGenerativeAI(
-    model=MODEL_NAME,
-    temperature=TEMPERATURE,
+    model="gemini-2.0-flash-lite",
+    temperature=0.7,
     google_api_key=GOOGLE_API_KEY
 )
 
@@ -479,10 +481,4 @@ def create_interface():
 
 
 if __name__ == "__main__":
-    app = create_interface()
-    app.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=True,
-        show_error=True
-    )
+    create_interface().launch()

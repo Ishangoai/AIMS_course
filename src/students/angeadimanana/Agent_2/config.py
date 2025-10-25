@@ -3,7 +3,7 @@ Configuration file for the agentic report system
 """
 
 # LLM Configuration
-GOOGLE_API_KEY = "AIzaSyConloRzNoTi14lPOp9fr7G_95VUxu19EA"
+GOOGLE_API_KEY = " AIzaSyAe5Mx8DAKyO2vemkoxBJOy4KgzjZv-63A"
 MODEL_NAME = "gemini-2.0-flash-lite"
 TEMPERATURE = 0.7
 
