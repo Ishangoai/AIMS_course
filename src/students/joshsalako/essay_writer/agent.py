@@ -57,7 +57,6 @@ def create_planner(llm):
     prompt_template = """You are an expert report planner.
     Your job is to create a detailed plan for a report on a given topic.
     Your final plan must produce a report with a total word count of within 950 to 1050 words.
-    Your final plan must produce a report with a total word count of within 950 to 1050 words.
 
     Create a plan with the following sections:
     1. An introduction.
@@ -69,7 +68,6 @@ def create_planner(llm):
     - A brief description of what the section should cover.
     - A specific target word count.
 
-    **Crucially, the word counts for all sections must sum up to a range within 950 to 1050 words.
     **Crucially, the word counts for all sections must sum up to a range within 950 to 1050 words.
     ** Distribute the words logically, with the introduction and conclusion being shorter than the main body sections.
 
@@ -86,7 +84,7 @@ def create_writer(llm):
     tools = [get_wikipedia_tool()]
     prompt_template = """You are an expert technical writer.
     Your task is to write a section of a report based on a provided plan.
-    You have access to a Wikipedia search tool to gather informationx. Use it to find relevant facts and information.
+    You have access to a Wikipedia search tool to gather information. Use it to find relevant facts and information.
     Write the section in a technical and informative style. Do not hallucinate.
 
     You have access to the following tools:
@@ -214,7 +212,6 @@ def writer_node(state: ReportState):
     print("---WRITING---")
     llm = get_llm()
     writer = create_writer(llm)
-    adjuster = create_word_count_adjuster(llm)
     adjuster = create_word_count_adjuster(llm)
     sections = state["plan"]["sections"]
     draft_sections = []
