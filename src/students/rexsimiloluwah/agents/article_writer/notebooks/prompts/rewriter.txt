@@ -1,0 +1,25 @@
+Revise the following article based on the feedback.
+
+Original Article:
+{article}
+
+Feedback:
+{feedback}
+
+Outline:
+{outline}
+
+Instructions:
+- Fix all issues noted in the feedback while preserving the article’s core content and structure.
+- Use markdown headers (#, ##) according to the outline.
+- Keep style professional and engaging.
+- Ensure final length is between {min_words} and {max_words} words.
+- If over {max_words}, tighten language and remove redundancies until it reaches {max_words}.
+- If under {min_words}, expand with more detail, examples, or smoother transitions until it reaches {max_words}.
+- Ensure that it contains an **Introduction** and a **Conclusion** section with **References**
+
+## IMPORTANT: FINAL ARTICLE MUST BE BETWEEN {min_words} AND {max_words}
+
+Task:
+Return only the revised article in markdown format only.
+Output should not include code blocks e.g. "```markdown ```" or any additional text besides the article.
