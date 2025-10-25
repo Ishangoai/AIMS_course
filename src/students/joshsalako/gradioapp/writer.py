@@ -24,11 +24,11 @@ class QueueIO(io.TextIOBase):
 
 def generate_report(topic: str):
     """
-    Runs the agent in a separate thread and streams its stdout logs
-    to the Gradio interface in real-time.
+    Runs the agent in a separate thread, streams its stdout logs,
+    and provides the final report for download.
     """
     if not topic.strip():
-        yield "Please enter a topic to generate a report.", ""
+        yield "Please enter a topic to generate a report.", "", gr.File(visible=False)
         return
 
     log_queue = queue.Queue()
@@ -50,7 +50,7 @@ def generate_report(topic: str):
         try:
             log_line = log_queue.get(timeout=0.1)
             full_log += log_line
-            yield full_log, ""
+            yield full_log, "", gr.File(visible=False)
         except queue.Empty:
             time.sleep(0.1)
 
@@ -59,11 +59,33 @@ def generate_report(topic: str):
     final_result = result_queue.get()
     if isinstance(final_result, Exception):
         full_log += f"\n\nAn error occurred: {final_result}"
-        final_report = ""
-    else:
-        final_report = final_result.get("final_report", "Failed to generate the report.")
+        final_report = "Report generation failed due to an error."
+        yield full_log, final_report, gr.File(visible=False)
+        return
 
-    yield full_log, final_report
+    final_report = final_result.get("final_report", "")
+    if not final_report:
+        full_log += "\n\nFailed to generate the report."
+        final_report = "Report generation failed to produce a result."
+        yield full_log, final_report, gr.File(visible=False)
+        return
+
+    # Create and save the report file
+    reports_dir = "reports"
+    os.makedirs(reports_dir, exist_ok=True)
+
+    sanitized_topic = "".join(c for c in topic.strip() if c.isalnum() or c in (' ', '_')).rstrip()
+    file_name = f"{sanitized_topic.replace(' ', '_').lower()}_report.txt"
+    file_path = os.path.join(reports_dir, file_name)
+
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(final_report)
+        yield full_log, final_report, gr.File(value=file_path, visible=True)
+    except IOError as e:
+        full_log += f"\n\nError saving report file: {e}"
+        final_report += "\n\n(Could not save report to a file)"
+        yield full_log, final_report, gr.File(visible=False)
 
 
 with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Writer") as essay:
@@ -100,11 +122,12 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Writer") as essay:
         )
 
     final_report_display = gr.Markdown(label="Final Report")
+    download_file = gr.File(label="Download Report", visible=False)
 
     generate_button.click(
         fn=generate_report,
         inputs=topic_input,
-        outputs=[thinking_box, final_report_display]
+        outputs=[thinking_box, final_report_display, download_file]
     )
 
 if __name__ == "__main__":
