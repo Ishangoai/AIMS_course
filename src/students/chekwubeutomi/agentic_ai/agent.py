@@ -113,7 +113,7 @@ def get_article(topic, max_iterations=5):
         # Check if within acceptable range
         if 950 <= word_count <= 1050:
             print(f"✅ Article within acceptable range ({word_count} words)")
-            return article, article
+            return article
 
         # Adjust based on length
         if word_count > 1050:

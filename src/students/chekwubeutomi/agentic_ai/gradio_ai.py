@@ -12,6 +12,7 @@ def fetch_article(topic):
         article = get_article(topic)
         if not article:
             return gr.update(value="⚠️ No article found for this topic."), ""
+
         words = article.split()
         word_length = len(words)
         if word_length > 1050:
