@@ -29,7 +29,7 @@ from langgraph.graph import END, StateGraph
 
 load_dotenv()
 
-GOOGLE_API_KEY = "AIzaSyBDQqvlBKGdvEAjSvX5yBdN5ObruaOzwfU"
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY, "")
 GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID", "")
 
 TARGET_WORD_COUNT = 1000
