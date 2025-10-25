@@ -4,6 +4,7 @@ import shutil
 import textwrap
 
 import gradio as gr
+from agents.mlops_topic_reporter.mlops_reporter_agents import llm_report
 
 # from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
@@ -16,7 +17,6 @@ from gradioapp.fraud_app import fraud_detection_app as fraud
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.image_editor_app import image_transformation
 from gradioapp.utils.fraud_detection import is_valid_csv_file, predict_fraud
-from agents.mlops_topic_reporter.mlops_reporter_agents import llm_report    
 
 app = FastAPI(
     title="AIMS Course API",
