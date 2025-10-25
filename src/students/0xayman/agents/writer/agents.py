@@ -479,9 +479,9 @@ def start_generation(topic):
 
         # Status with color-coded word count
         if 950 <= wc <= 1000:
-            status = f"✅ Report generated!"
+            status = "✅ Report generated!"
         else:
-            status = f"⚠️ Report generated."
+            status = "⚠️ Report generated."
 
         # Calculate text stats
         words = str(wc)
