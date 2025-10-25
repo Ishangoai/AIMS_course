@@ -140,7 +140,7 @@ class ReportPlan(BaseModel):
         min_items=3,
         max_items=15  # Increased from 8 to allow more flexibility
     )
-    
+
     @field_validator('primary_research_queries')
     @classmethod
     def limit_queries(cls, v: List[str]) -> List[str]:
@@ -164,7 +164,7 @@ def analyze_content_for_adjustment(draft: str, target_wc: int, current_wc: int,
     Returns strategic recommendations for what to condense/expand.
     """
     import random
-    
+
     deviation = target_wc - current_wc
     action = "condense" if deviation < 0 else "expand"
 
@@ -176,7 +176,7 @@ def analyze_content_for_adjustment(draft: str, target_wc: int, current_wc: int,
         temp = random.uniform(0.2, 0.3)
     else:
         temp = random.uniform(0.3, 0.5)
-    
+
     print(f"    Phase 1 temperature: {temp:.2f} (attempt {attempt})")
 
     # Create adaptive-temperature LLM for analysis
@@ -255,7 +255,7 @@ def rewrite_with_strategy(draft: str, analysis: Dict, base_model_name: str, atte
     The model rewrites the entire draft following the strategic plan.
     """
     import random
-    
+
     # Adaptive temperature: increases with attempts
     # Attempt 0: 0.4-0.5, Attempt 1: 0.5-0.6, Attempt 2+: 0.6-0.75
     if attempt == 0:
@@ -264,7 +264,7 @@ def rewrite_with_strategy(draft: str, analysis: Dict, base_model_name: str, atte
         temp = random.uniform(0.5, 0.6)
     else:
         temp = random.uniform(0.6, 0.75)
-    
+
     print(f"    Phase 2 temperature: {temp:.2f} (attempt {attempt})")
 
     # Create adaptive-temperature LLM for rewriting
@@ -523,10 +523,10 @@ def writer_node(state: ReportState) -> Dict:
     """
     iteration = state.get("iteration_count", 0)
     human_feedback = state.get("human_feedback")
-    
+
     print("\n" + "=" * 70)
     if human_feedback:
-        print(f"✏️  WRITER (Human Feedback): Revising based on feedback...")
+        print("✏️  WRITER (Human Feedback): Revising based on feedback...")
     else:
         print(f"✏️  WRITER (ReAct): {'Writing' if iteration == 0 else 'Revising'} report (Iteration {iteration + 1})...")
     print("=" * 70)
@@ -539,7 +539,7 @@ def writer_node(state: ReportState) -> Dict:
     if human_feedback:
         # ===== HUMAN FEEDBACK REVISION =====
         print("\n  📝 Applying human feedback corrections...")
-        
+
         prompt = ChatPromptTemplate.from_template("""
 You are an expert technical writer revising a report based on human feedback.
 
@@ -713,7 +713,7 @@ Begin! Remember to cite sources and hit the word count target.
         "draft_report": draft,
         "iteration_count": iteration + 1
     }
-    
+
     # Mark human feedback as applied if it was used
     if human_feedback:
         update_dict["human_feedback_applied"] = True
@@ -889,18 +889,18 @@ def human_feedback_gate_node(state: ReportState) -> Dict:
     """
     enable_feedback = state.get("enable_human_feedback", False)
     feedback_applied = state.get("human_feedback_applied", False)
-    
+
     if enable_feedback and not feedback_applied:
         print("\n" + "=" * 70)
         print("👤 HUMAN FEEDBACK: Awaiting human input...")
         print("=" * 70)
         print("\n  Status: Waiting for human to provide feedback")
         print("  Use apply_human_feedback() to continue workflow")
-        
+
         return {
             "awaiting_human_feedback": True
         }
-    
+
     return {
         "awaiting_human_feedback": False
     }
@@ -951,7 +951,7 @@ def finalize_node(state: ReportState) -> Dict:
     print(f"  Iterations: {quality_metrics['iterations_used']}")
     print(f"  Word count adjustments: {quality_metrics['word_count_adjustments']}")
     if quality_metrics['human_feedback_applied']:
-        print(f"  Human feedback: ✓ Applied")
+        print("  Human feedback: ✓ Applied")
 
     return {
         "final_report": final_report,
@@ -1014,7 +1014,7 @@ def route_after_reviewer(state: ReportState) -> Literal["human_feedback_gate", "
     """Routes after reviewer - checks if human feedback is needed."""
     enable_feedback = state.get("enable_human_feedback", False)
     feedback_applied = state.get("human_feedback_applied", False)
-    
+
     if enable_feedback and not feedback_applied:
         return "human_feedback_gate"
     return "finalize"
@@ -1024,7 +1024,7 @@ def route_after_human_gate(state: ReportState) -> Literal["writer", "finalize", 
     """Routes after human feedback gate."""
     awaiting = state.get("awaiting_human_feedback", False)
     has_feedback = state.get("human_feedback") is not None
-    
+
     if awaiting and not has_feedback:
         # Still waiting for feedback - this will pause the workflow
         return "END"
@@ -1122,7 +1122,7 @@ def build_graph():
 # MAIN EXECUTION & HUMAN FEEDBACK FUNCTIONS
 # ============================================================================
 
-def run_agent(topic: str, temperature: float = 0.7, max_iterations: int = 3, 
+def run_agent(topic: str, temperature: float = 0.7, max_iterations: int = 3,
               enable_human_feedback: bool = False) -> Dict:
     """
     Executes the complete report generation workflow.
@@ -1154,10 +1154,10 @@ def apply_human_feedback(current_state: Dict, feedback: str) -> Dict:
     Usage:
         # Initial run with human feedback enabled
         state = run_agent("AI Ethics", enable_human_feedback=True)
-        
+
         # Review the draft
         print(state["draft_report"])
-        
+
         # Provide feedback and regenerate
         feedback = "Add more examples of bias in AI systems and expand the conclusion"
         final_state = apply_human_feedback(state, feedback)
@@ -1172,31 +1172,31 @@ def apply_human_feedback(current_state: Dict, feedback: str) -> Dict:
     if not current_state.get("awaiting_human_feedback"):
         print("⚠️  Warning: State is not awaiting human feedback")
         return current_state
-    
+
     print("\n" + "=" * 70)
     print("👤 APPLYING HUMAN FEEDBACK")
     print("=" * 70)
     print(f"\nFeedback: {feedback}\n")
-    
+
     # Update state with feedback
     current_state["human_feedback"] = feedback
     current_state["awaiting_human_feedback"] = False
-    
+
     # Reset failure counters to give the revision a fresh start
     current_state["writer_failures"] = 0
     current_state["word_count_adjustment_attempts"] = 0
-    
+
     # Continue workflow from human_feedback_gate
     app = build_graph()
-    
+
     # Resume execution with increased recursion limit
     config = {"recursion_limit": 50}  # Increase from default 25
     final_state = app.invoke(current_state, config=config)
-    
+
     return final_state
 
 
-def run_agent_with_interactive_feedback(topic: str, temperature: float = 0.7, 
+def run_agent_with_interactive_feedback(topic: str, temperature: float = 0.7,
                                        max_iterations: int = 3) -> Dict:
     """
     Convenience function that runs the agent and prompts for interactive feedback.
@@ -1219,18 +1219,18 @@ def run_agent_with_interactive_feedback(topic: str, temperature: float = 0.7,
     # Generate initial report
     print("\n🚀 Starting report generation with interactive feedback option...\n")
     state = run_agent(topic, temperature, max_iterations, enable_human_feedback=True)
-    
+
     # Display report
     print("\n" + "=" * 70)
     print("📄 DRAFT REPORT GENERATED")
     print("=" * 70)
     print(state.get("draft_report", "No report generated"))
     print("\n" + "=" * 70)
-    
+
     # Ask for feedback
     print("\nWould you like to provide feedback for revision?")
     response = input("Enter 'yes' to provide feedback, or 'no' to finalize: ").strip().lower()
-    
+
     if response in ['yes', 'y']:
         print("\nPlease provide your feedback (press Enter twice when done):")
         feedback_lines = []
@@ -1239,9 +1239,9 @@ def run_agent_with_interactive_feedback(topic: str, temperature: float = 0.7,
             if line == "" and len(feedback_lines) > 0 and feedback_lines[-1] == "":
                 break
             feedback_lines.append(line)
-        
+
         feedback = "\n".join(feedback_lines).strip()
-        
+
         if feedback:
             final_state = apply_human_feedback(state, feedback)
             return final_state
@@ -1275,14 +1275,14 @@ if __name__ == "__main__":
     print("Example 1: Standard run")
     result = run_agent("Quantum Computing", enable_human_feedback=False)
     print(result["final_report"])
-    
+
     # Example 2: Run with human feedback (programmatic)
     print("\n\nExample 2: Programmatic human feedback")
     state = run_agent("Artificial Intelligence Ethics", enable_human_feedback=True)
     feedback = "Add more concrete examples of AI bias and expand the regulatory section"
     final_result = apply_human_feedback(state, feedback)
     print(final_result["final_report"])
-    
+
     # Example 3: Interactive feedback
     print("\n\nExample 3: Interactive feedback")
     interactive_result = run_agent_with_interactive_feedback("Blockchain Technology")
