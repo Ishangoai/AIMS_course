@@ -1,4 +1,5 @@
 # ruff: noqa
+# Imports
 import sys
 import time
 from io import StringIO
