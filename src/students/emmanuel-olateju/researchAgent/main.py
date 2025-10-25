@@ -26,7 +26,7 @@ def main():
 
     # Generate a report
     result = run_agent(
-        topic="Artificial Intelligence in Mechanical Engineering",
+        topic="Artificial Intelligence in Biology",
         temperature=0.7,
         max_iterations=3
     )

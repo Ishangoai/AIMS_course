@@ -1,11 +1,12 @@
 """
 Enhanced agentic system for automated report generation.
+NOW WITH ANALYTICAL REWRITING: Uses low-temp analysis + strategic rewriting.
 
 Updated Architecture (6-7 Agents):
 1. Planner - Structured outline with research questions (Pydantic)
 2. Research Coordinator - Parallel Wikipedia searches
 3. Research Synthesizer - Organizes findings by section
-4. Writer - ReAct agent with dynamic Wikipedia access (KEY INNOVATION)
+4. Writer - ReAct agent with ANALYTICAL REWRITING (KEY INNOVATION)
 5. Fact Checker - Optional but impressive claim verification
 6. Validator - Python tools for quality checks
 7. Reviewer - Editorial feedback
@@ -76,7 +77,7 @@ class ReportState(TypedDict):
     draft_report: str
     iteration_count: int
     writer_failures: int
-    word_count_adjustment_attempts: int  # NEW: Track word count fix attempts
+    word_count_adjustment_attempts: int
 
     # Fact Checker outputs (optional)
     fact_check_results: Dict
@@ -132,6 +133,158 @@ class ReportPlan(BaseModel):
         min_items=3,
         max_items=8
     )
+
+
+# ============================================================================
+# ANALYTICAL REWRITING HELPERS
+# ============================================================================
+
+def analyze_content_for_adjustment(draft: str, target_wc: int, current_wc: int,
+                                   base_model_name: str) -> Dict:
+    """
+    Phase 1: Analytical scan at very low temperature (0.1) to identify adjustments.
+
+    Returns strategic recommendations for what to condense/expand.
+    """
+    deviation = target_wc - current_wc
+    action = "condense" if deviation < 0 else "expand"
+
+    # Create low-temperature LLM for precise analysis
+    analysis_llm = ChatGoogleGenerativeAI(
+        model=base_model_name,
+        temperature=0.1  # Very low for analytical thinking
+    )
+
+    prompt = ChatPromptTemplate.from_template("""
+You are analyzing a technical report to identify opportunities for word count adjustment.
+
+**Current Draft:**
+{draft}
+
+**Statistics:**
+- Current word count: {current_wc}
+- Target word count: {target_wc}
+- Required adjustment: {action} by {abs_deviation} words
+
+**Task:** Perform a detailed content analysis and identify:
+
+1. **Section Breakdown:** For each section, list:
+   - Section title
+   - Current word count estimate
+   - Content density (verbose/concise/balanced)
+
+2. **Adjustment Strategy:** For each section, recommend:
+   - Priority for adjustment (high/medium/low)
+   - Specific opportunities to {action}:
+     {strategy_guidance}
+   - Estimated word count change possible
+
+3. **Overall Plan:** Provide a clear strategy for achieving exactly {target_wc} words while:
+   - Maintaining technical accuracy
+   - Preserving all citations and key facts
+   - Keeping balanced section proportions
+   - Ensuring smooth flow and transitions
+
+Output your analysis in structured format with specific, actionable recommendations.
+""")
+
+    if action == "condense":
+        strategy_guidance = """- Redundant phrases or repetitive points to remove
+     - Overly verbose explanations that can be tightened
+     - Examples or details that are less critical
+     - Run-on sentences that can be split or shortened"""
+    else:
+        strategy_guidance = """- Key points that deserve more elaboration
+     - Technical concepts that need deeper explanation
+     - Missing examples or real-world applications
+     - Areas where context would improve understanding"""
+
+    response = analysis_llm.invoke(
+        prompt.format(
+            draft=draft,
+            current_wc=current_wc,
+            target_wc=target_wc,
+            action=action,
+            abs_deviation=abs(deviation),
+            strategy_guidance=strategy_guidance
+        )
+    )
+
+    return {
+        "analysis": response.content,
+        "action": action,
+        "deviation": deviation
+    }
+
+
+def rewrite_with_strategy(draft: str, analysis: Dict, base_model_name: str) -> str:
+    """
+    Phase 2: Strategic rewrite at moderate temperature (0.4).
+
+    The model rewrites the entire draft following the strategic plan.
+    """
+    # Create moderate-temperature LLM for controlled rewriting
+    rewrite_llm = ChatGoogleGenerativeAI(
+        model=base_model_name,
+        temperature=0.4  # Moderate for controlled creativity
+    )
+
+    prompt = ChatPromptTemplate.from_template("""
+You are rewriting a technical report following a strategic content adjustment plan.
+
+**Original Draft:**
+{draft}
+
+**Content Analysis & Strategy:**
+{analysis}
+
+**Objective:**
+Rewrite the ENTIRE report to {action} by approximately {abs_deviation} words, following the strategic recommendations above.
+
+**Critical Requirements:**
+1. **Word Count:** Target EXACTLY the adjusted word count through intelligent rewriting
+2. **Preserve:** All citations [Source: ...], technical accuracy, and key facts
+3. **Maintain:** Section structure, professional tone, and logical flow
+4. **Apply Strategy:** Follow the specific recommendations from the analysis
+5. **Quality:** Ensure the rewritten version is coherent and well-integrated
+
+**Rewriting Guidelines:**
+{rewriting_guidelines}
+
+**Output Instructions:**
+- Return ONLY the complete rewritten report
+- Include all section headers (##)
+- Maintain markdown formatting
+- Ensure smooth transitions between adjusted sections
+- Double-check that all citations are preserved
+
+Rewritten report:
+""")  # noqa: E501
+
+    if analysis["action"] == "condense":
+        rewriting_guidelines = """- Remove redundancies identified in the analysis
+- Tighten verbose explanations without losing meaning
+- Combine related points more efficiently
+- Cut less essential details while keeping core content
+- Make every word count - be precise and direct"""
+    else:
+        rewriting_guidelines = """- Expand key points identified in the analysis
+- Add technical depth where recommended
+- Include relevant examples and applications
+- Provide additional context for better understanding
+- Elaborate on implications and significance"""
+
+    response = rewrite_llm.invoke(
+        prompt.format(
+            draft=draft,
+            analysis=analysis["analysis"],
+            action=analysis["action"],
+            abs_deviation=abs(analysis["deviation"]),
+            rewriting_guidelines=rewriting_guidelines
+        )
+    )
+
+    return response.content.strip()
 
 
 # ============================================================================
@@ -199,7 +352,6 @@ def research_coordinator_node(state: ReportState) -> Dict:
     """
     Agent 2: RESEARCH COORDINATOR
     Dispatches PARALLEL Wikipedia searches and scores source quality.
-    This demonstrates sophistication in concurrent operations.
     """
     print("\n" + "=" * 70)
     print("🔍 RESEARCH COORDINATOR: Parallel Wikipedia searches...")
@@ -212,15 +364,12 @@ def research_coordinator_node(state: ReportState) -> Dict:
 
     research_database = []
 
-    # Simulate parallel execution (in production, use ThreadPoolExecutor)
     for i, query in enumerate(primary_queries, 1):
         print(f"    [{i}/{len(primary_queries)}] Searching: {query}")
 
-        # Wikipedia search
         wiki_result = wikipedia_tool._run(query)
 
         if wiki_result["success"]:
-            # Score source quality
             quality = source_quality_scorer(
                 wiki_result.get("url", ""),
                 wiki_result["content"],
@@ -234,7 +383,6 @@ def research_coordinator_node(state: ReportState) -> Dict:
 
     print(f"\n✓ Research complete: {len(research_database)} sources gathered")
 
-    # Filter high-quality sources
     high_quality = [r for r in research_database if r.get("quality_assessment", {}).get("score", 0) >= 0.6]
     print(f"  High-quality sources (≥0.6): {len(high_quality)}")
 
@@ -245,7 +393,6 @@ def research_synthesizer_node(state: ReportState) -> Dict:
     """
     Agent 3: RESEARCH SYNTHESIZER
     Organizes research by section and creates section-specific briefs.
-    Removes redundancy and flags conflicts.
     """
     print("\n" + "=" * 70)
     print("📚 RESEARCH SYNTHESIZER: Organizing research by section...")
@@ -256,7 +403,6 @@ def research_synthesizer_node(state: ReportState) -> Dict:
     sections = state["plan"]["sections"]
     research_db = state["research_database"]
 
-    # Compile all research content
     research_content = "\n\n---\n\n".join([
         f"**Source: {r['source']}**\nQuality: {r.get('quality_assessment', {}).get('score', 'N/A')}\n{r['content'][:1500]}"  # noqa: E501
         for r in research_db if r.get("success")
@@ -320,87 +466,12 @@ def research_synthesizer_node(state: ReportState) -> Dict:
     return {"research_briefs": research_briefs}
 
 
-def adjust_section_word_count(section_content: str, section_title: str,
-                               current_wc: int, target_adjustment: int,
-                               llm, expand: bool = True) -> str:
-    """
-    Helper function to adjust word count of a specific section.
-
-    Args:
-        section_content: Current section text
-        section_title: Section title for context
-        current_wc: Current word count
-        target_adjustment: How many words to add/remove
-        llm: Language model instance
-        expand: True to expand, False to condense
-
-    Returns:
-        Adjusted section content
-    """
-    action = "expand" if expand else "condense"
-    new_target = current_wc + target_adjustment if expand else current_wc - abs(target_adjustment)
-
-    prompt = ChatPromptTemplate.from_template("""
-You are editing a section of a technical report to adjust its word count.
-
-**Section Title:** {section_title}
-
-**Current Content:**
-{section_content}
-
-**Current Word Count:** {current_wc}
-**Target Word Count:** {new_target}
-**Action Required:** {action} by approximately {adjustment} words
-
-**Instructions:**
-{instructions}
-
-**CRITICAL:**
-- Maintain all existing citations [Source: ...]
-- Keep the same technical accuracy and tone
-- Preserve the section structure and main points
-- Output ONLY the revised section content (no headers, no explanations)
-
-Revised content:
-""")
-
-    if expand:
-        instructions = """Add more details by:
-- Expanding on existing points with additional context or examples
-- Including more technical details or statistics
-- Adding relevant real-world applications or case studies
-- Elaborating on implications or significance
-DO NOT add redundant or filler content."""
-    else:
-        instructions = """Make content more concise by:
-- Removing redundant phrases or repetitive points
-- Tightening verbose explanations
-- Combining related sentences
-- Keeping only the most essential information
-DO NOT remove key facts, citations, or important details."""
-
-    response = llm.invoke(
-        prompt.format(
-            section_title=section_title,
-            section_content=section_content,
-            current_wc=current_wc,
-            new_target=new_target,
-            adjustment=abs(target_adjustment),
-            action=action.capitalize(),
-            instructions=instructions
-        )
-    )
-
-    return response.content.strip()
-
-
 def writer_node(state: ReportState) -> Dict:
     """
-    Agent 4: WRITER (ReAct Agent) - KEY INNOVATION
+    Agent 4: WRITER (ReAct Agent with ANALYTICAL REWRITING)
 
-    Uses ReAct pattern with dynamic Wikipedia access.
-    Writes section-by-section with ability to search for additional info.
-    Performs TARGETED word count adjustments instead of full rewrites.
+    Initial draft: Uses ReAct pattern with dynamic Wikipedia access.
+    Revisions: Uses TWO-PHASE analytical rewriting (low-temp analysis + strategic rewrite).
     """
     iteration = state.get("iteration_count", 0)
 
@@ -414,7 +485,7 @@ def writer_node(state: ReportState) -> Dict:
     tools = [get_wikipedia_tool()]
 
     if iteration == 0:
-        # Initial draft - write section by section
+        # ===== INITIAL DRAFT: Section-by-section writing =====
         prompt_template = """You are an expert technical writer with access to Wikipedia for fact-checking and additional research.
 
 Your task is to write ONE section of a technical report based on the provided research brief.
@@ -469,7 +540,7 @@ Begin! Remember to cite sources and hit the word count target.
             brief = state["research_briefs"].get(section["title"], {})
 
             response = agent_executor.invoke({
-                "input": "",  # Empty input, all context in template
+                "input": "",
                 "section_title": section["title"],
                 "section_description": section["description"],
                 "word_count": section["word_count"],
@@ -481,95 +552,57 @@ Begin! Remember to cite sources and hit the word count target.
         draft = "\n\n".join(draft_sections)
 
     else:
-        # Revision based on feedback
+        # ===== REVISION: Analytical rewriting approach =====
         validation = state.get("validation_results", {})
         word_count_attempts = state.get("word_count_adjustment_attempts", 0)
 
-        # Check if we need to adjust word count
         needs_word_count_adjustment = not validation.get("word_count", {}).get("within_range", True)
 
         if needs_word_count_adjustment:
-            print(f"\n  🔧 TARGETED WORD COUNT ADJUSTMENT (Attempt {word_count_attempts + 1}/2)")
+            print(f"\n  🔬 ANALYTICAL REWRITE (Attempt {word_count_attempts + 1}/2)")
 
-            wc_feedback = validation["word_count"]
-            deviation = wc_feedback['deviation']
             current_draft = state["draft_report"]
+            wc_feedback = validation["word_count"]
+            current_wc = wc_feedback['total_words']
+            target_wc = 1000
 
-            print(f"  Current: {wc_feedback['total_words']} words")
-            print("  Target: 1000 ± 50 words")
-            print(f"  Deviation: {deviation:+d} words")
+            print(f"  Current: {current_wc} words")
+            print(f"  Target: {target_wc} words")
+            print(f"  Deviation: {wc_feedback['deviation']:+d} words")
 
-            # Extract all sections from current draft
-            sections_pattern = r'## (.+?)\n\n(.*?)(?=\n## |$)'
-            sections = re.findall(sections_pattern, current_draft, re.DOTALL)
+            # Get base model name from the LLM (handle different attribute names)
+            base_model = getattr(llm, 'model', getattr(llm, 'model_name', 'gemini-2.5-flash-lite'))
 
-            if not sections:
-                print("  ⚠️  Could not parse sections, keeping original draft")
-                draft = current_draft
-            else:
-                # Calculate adjustment per section
-                num_sections = len(sections)
-                adjustment_per_section = abs(deviation) // num_sections
-                remainder = abs(deviation) % num_sections
+            # Phase 1: Low-temperature analysis (0.1)
+            print("\n  📊 Phase 1: Content analysis (temperature=0.1)...")
+            analysis = analyze_content_for_adjustment(
+                draft=current_draft,
+                target_wc=target_wc,
+                current_wc=current_wc,
+                base_model_name=base_model
+            )
+            print(f"  ✓ Strategy: {analysis['action']} by {abs(analysis['deviation'])} words")
 
-                expand = deviation < 0  # Need to expand if negative deviation
-                action_word = "Expanding" if expand else "Condensing"
+            # Phase 2: Moderate-temperature strategic rewrite (0.4)
+            print("\n  ✏️  Phase 2: Strategic rewrite (temperature=0.4)...")
+            draft = rewrite_with_strategy(
+                draft=current_draft,
+                analysis=analysis,
+                base_model_name=base_model
+            )
 
-                print(f"  Strategy: {action_word} {num_sections} sections by ~{adjustment_per_section} words each")
-
-                revised_sections = []
-                total_adjusted_words = 0
-
-                for i, (section_title, section_content) in enumerate(sections):
-                    section_wc = count_words(section_content)
-
-                    # Distribute remainder words to first few sections
-                    extra = 1 if i < remainder else 0
-                    this_adjustment = adjustment_per_section + extra
-
-                    # Only adjust if significant (>15 words)
-                    if this_adjustment > 15:
-                        print(f"    [{i + 1}/{num_sections}] Adjusting '{section_title}': {section_wc} → {section_wc + (this_adjustment if expand else -this_adjustment)} words")  # noqa: E501
-
-                        adjusted_content = adjust_section_word_count(
-                            section_content=section_content,
-                            section_title=section_title,
-                            current_wc=section_wc,
-                            target_adjustment=this_adjustment,
-                            llm=llm,
-                            expand=expand
-                        )
-
-                        adjusted_wc = count_words(adjusted_content)
-                        actual_change = adjusted_wc - section_wc
-                        total_adjusted_words += actual_change
-
-                        print(f"        ✓ Actual change: {actual_change:+d} words")
-
-                        revised_sections.append(f"## {section_title}\n\n{adjusted_content}")
-                    else:
-                        print(f"    [{i + 1}/{num_sections}] Keeping '{section_title}' unchanged ({section_wc} words)")
-                        revised_sections.append(f"## {section_title}\n\n{section_content}")
-
-                draft = "\n\n".join(revised_sections)
-
-                print(f"\n  ✓ Adjustment complete: {total_adjusted_words:+d} words total change")
+            new_wc = count_words(draft)
+            actual_change = new_wc - current_wc
+            print(f"  ✓ Rewrite complete: {new_wc} words ({actual_change:+d} change)")
 
             # Increment word count adjustment attempts
             state["word_count_adjustment_attempts"] = word_count_attempts + 1
 
         else:
-            # No word count issues, handle other revisions if needed
-            fact_check = state.get("fact_check_results", {})
-
-            if not fact_check.get("all_verified", True):
-                # Handle fact-checking issues (keep existing logic if needed)
-                print("\n  ⚠️  Fact-check issues detected, but keeping current draft")
-
+            # No word count issues, keep current draft
             draft = state["draft_report"]
 
     wc = count_words(draft)
-
     print(f"\n✓ {'Draft' if iteration == 0 else 'Revision'} completed: {wc} words")
 
     return {
@@ -580,9 +613,8 @@ Begin! Remember to cite sources and hit the word count target.
 
 def fact_checker_node(state: ReportState) -> Dict:
     """
-    Agent 5: FACT CHECKER (Optional but impressive)
+    Agent 5: FACT CHECKER
     Extracts and verifies factual claims against research database.
-    Adds significant points for sophistication.
     """
     print("\n" + "=" * 70)
     print("🔎 FACT CHECKER: Verifying claims...")
@@ -591,18 +623,16 @@ def fact_checker_node(state: ReportState) -> Dict:
     draft = state["draft_report"]
     research_db = state["research_database"]
 
-    # Extract claims using Python tool
     print("  Extracting factual claims...")
     claims = claim_extractor_tool(draft)
     print(f"  Found {len(claims)} claims to verify")
 
-    # Verify each claim
     verification_results = []
     verified_count = 0
     unverified_claims = []
 
     print("\n  Verifying against research database...")
-    for claim_obj in claims[:20]:  # Limit to top 20 claims for efficiency
+    for claim_obj in claims[:20]:
         claim_text = claim_obj["claim"]
 
         verification = validate_claim_against_sources(claim_text, research_db)
@@ -619,7 +649,7 @@ def fact_checker_node(state: ReportState) -> Dict:
             })
 
     verification_rate = verified_count / len(claims) if claims else 1.0
-    all_verified = verification_rate >= 0.75  # 75% threshold
+    all_verified = verification_rate >= 0.75
 
     print("\n✓ Fact check complete:")
     print(f"  Verified: {verified_count}/{len(claims)} ({verification_rate * 100:.1f}%)")
@@ -641,7 +671,6 @@ def validator_node(state: ReportState) -> Dict:
     """
     Agent 6: VALIDATOR
     Uses Python tools for precise validation.
-    Word count, structure, and citation checks.
     """
     print("\n" + "=" * 70)
     print("✅ VALIDATOR: Running quality checks...")
@@ -650,7 +679,7 @@ def validator_node(state: ReportState) -> Dict:
     report = state.get("draft_report", "")
     word_count_attempts = state.get("word_count_adjustment_attempts", 0)
 
-    # 1. Word count validation (Python tool)
+    # 1. Word count validation
     word_count_result = word_counter_tool(report)
 
     # Override word count check if we've tried twice
@@ -658,12 +687,12 @@ def validator_node(state: ReportState) -> Dict:
         print(f"\n  ⚠️  Word count still off after {word_count_attempts} attempts")
         print(f"  {word_count_result['feedback']}")
         print("  ✓ Overriding check - proceeding anyway")
-        word_count_result["within_range"] = True  # Override to pass
+        word_count_result["within_range"] = True
         word_count_result["feedback"] = f"✓ Word count: {word_count_result['total_words']} (override after {word_count_attempts} attempts)"  # noqa: E501
     else:
         print(f"\n  {word_count_result['feedback']}")
 
-    # 2. Structure validation (Python tool)
+    # 2. Structure validation
     expected_sections = [s["title"] for s in state["plan"]["sections"]]
     structure_result = structure_validator_tool(report, expected_sections)
     print(f"  {structure_result['status']}")
@@ -744,7 +773,6 @@ def finalize_node(state: ReportState) -> Dict:
 
     final_report = state.get("draft_report", "")
 
-    # Calculate quality metrics
     fact_check = state.get("fact_check_results", {})
     validation = state.get("validation_results", {})
 
@@ -790,11 +818,7 @@ def finalize_node(state: ReportState) -> Dict:
 # ============================================================================
 
 def route_after_fact_check(state: ReportState) -> Literal["validator", "writer"]:
-    """
-    Routes after fact-checking:
-    - If verified OR max failures → validator
-    - If unverified and retries available → writer
-    """
+    """Routes after fact-checking."""
     fact_check = state["fact_check_results"]
     failures = state.get("writer_failures", 0)
     max_retries = 2
@@ -810,42 +834,31 @@ def route_after_fact_check(state: ReportState) -> Literal["validator", "writer"]
 
 
 def route_after_validation(state: ReportState) -> Literal["reviewer", "writer"]:
-    """
-    Routes after validation:
-    - If valid → reviewer
-    - If invalid (word count) and attempts < 2 → writer
-    - If max attempts reached or other issues → reviewer (proceed anyway)
-    """
+    """Routes after validation."""
     validation = state["validation_results"]
     iteration = state.get("iteration_count", 0)
     max_iterations = state.get("max_iterations", 3)
     word_count_attempts = state.get("word_count_adjustment_attempts", 0)
 
-    # Check if word count is the only issue
     word_count_issue = not validation.get("word_count", {}).get("within_range", True)
     structure_valid = validation.get("structure", {}).get("valid", True)
     citations_valid = validation.get("citations", {}).get("sufficient", True)
 
-    # If everything is valid, proceed to reviewer
     if validation["valid"]:
         return "reviewer"
 
-    # If word count issue and we haven't tried twice yet, try targeted adjustment
     if word_count_issue and word_count_attempts < 2 and structure_valid:
-        print(f"\n⟳ Word count issue detected. Routing to writer for targeted adjustment (attempt {word_count_attempts + 1}/2)")  # noqa: E501
+        print(f"\n⟳ Word count issue detected. Routing to writer for analytical rewrite (attempt {word_count_attempts + 1}/2)")  # noqa: E501
         return "writer"
 
-    # If max iterations reached or other non-word-count issues, proceed anyway
     if iteration >= max_iterations or word_count_attempts >= 2:
         print("\n⚠️  Max iterations/attempts reached. Proceeding to review...")
         return "reviewer"
 
-    # Other validation issues (structure, citations)
     if not structure_valid or not citations_valid:
         print(f"\n⟳ Validation failed (structure/citations). Routing to writer (iteration {iteration + 1}/{max_iterations})")  # noqa: E501
         return "writer"
 
-    # Default to reviewer
     return "reviewer"
 
 
@@ -855,13 +868,13 @@ def route_after_validation(state: ReportState) -> Literal["reviewer", "writer"]:
 
 def build_graph():
     """
-    Builds the LangGraph workflow per updated architecture.
+    Builds the LangGraph workflow with analytical rewriting.
 
     Flow:
     planner → research_coordinator → research_synthesizer → writer →
     fact_checker → (pass)validator → (pass)reviewer → finalize → END
                     (fail)↓            (fail)↓
-                      writer ←──────────── writer (targeted adjustments)
+                      writer ←──────────── writer (analytical rewriting)
     """
     workflow = StateGraph(ReportState)
 
