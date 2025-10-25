@@ -31,7 +31,7 @@ def get_llm():
     """Initialize and return the Google Gemini LLM."""
     if "GOOGLE_API_KEY" not in os.environ:
         os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google API Key: ")
-    return ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0.4)
+    return ChatGoogleGenerativeAI(model="gemini-2.0-flash-lite", temperature=0.4)
 
 
 # --- Shared State ---
