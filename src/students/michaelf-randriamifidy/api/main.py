@@ -4,7 +4,7 @@ import shutil
 import textwrap
 
 import gradio as gr
-from agents.mlops_topic_reporter.mlops_reporter_agents import llm_report
+from agents.mlops_topic_reporter.mlops_reporter_gradioapp import llm_report
 
 # from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
