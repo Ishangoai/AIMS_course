@@ -1,4 +1,6 @@
 # scripts/utils.py
+import os
+
 import joblib
 import mlflow.sklearn
 import numpy as np
@@ -6,14 +8,21 @@ import numpy as np
 mlflow.set_tracking_uri("http://localhost:5000")
 
 
-base_dir = "/var/autofs/misc/home/eliud/Desktop/AIMS_course"
-model_path = f"{base_dir}/mlruns/1/562ddd67cc6b49619f8e7aea68cd6cfd/artifacts/tuned_random_forest_v1760881924.pkl"
+# base_dir = "/var/autofs/misc/home/eliud/Desktop/AIMS_course"
+# model_path = os.path.join(
+#     base_dir,
+#     "mlruns",
+#     "1",
+#     "562ddd67cc6b49619f8e7aea68cd6cfd",
+#     "artifacts",
+#     "tuned_random_forest_v1760881924.pkl"
+# )
 
-model = joblib.load(model_path)
+# model = joblib.load(model_path)
 
 # # # Load model
-# MODEL_PATH = os.path.join(os.path.dirname(__file__), "fraud_model.pkl")
-# model = joblib.load(MODEL_PATH)
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "fraud_model.pkl")
+model = joblib.load(MODEL_PATH)
 
 
 def predict_fraud_activity(features: list):

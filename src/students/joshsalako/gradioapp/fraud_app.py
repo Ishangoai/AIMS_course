@@ -1,14 +1,24 @@
-import json
+import os
 from datetime import datetime, time
+from typing import Any
 
 import gradio as gr
+import joblib
 import pandas as pd
-import requests
 
 # --- Configuration ---
-MODEL_SERVER_URL = "http://localhost:5001/invocations"
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "utils", "fraud_model.pkl")
 
-# Credit Card Fraud Detection Features (V1-V28, Amount, Time)
+try:
+    _fraud_model: Any = joblib.load(MODEL_PATH)
+    print(f"Model loaded successfully from {MODEL_PATH}")
+except FileNotFoundError:
+    print(f"Error: Model file not found at {MODEL_PATH}. Please ensure the model is in the correct location.")
+    _fraud_model = None
+except Exception as e:
+    print(f"Error loading model from {MODEL_PATH}: {e}")
+    _fraud_model = None
+
 FEATURE_NAMES = [
     "V1",
     "V2",
@@ -42,7 +52,6 @@ FEATURE_NAMES = [
     "Time",
 ]
 
-# The 16 features to send to the backend, and their exact order as expected by backend
 SELECTED_FEATURE_NAMES = [
     "V14",
     "V4",
@@ -107,7 +116,10 @@ def predict_fraud(
     amount,
     tx_time,
 ):
-    """Sends transaction features to the MLflow model server for a fraud prediction."""
+    """Predicts credit card fraud using in-app ML model."""
+    if _fraud_model is None:
+        return ("The prediction service is currently unavailable. "
+        "Please try again later or contact the administrator if the issue persists.")
 
     try:
         # Convert Gradio Time input (datetime.time) to seconds since midnight
@@ -150,16 +162,9 @@ def predict_fraud(
         }
 
         selected_input = {k: input_feature_values[k] for k in SELECTED_FEATURE_NAMES}
-        df_16 = pd.DataFrame([selected_input], columns=SELECTED_FEATURE_NAMES)  # type: ignore[reportArgumentType]
+        df_input = pd.DataFrame([selected_input], columns=SELECTED_FEATURE_NAMES)  # type: ignore[reportArgumentType]
 
-        json_data = json.dumps({"dataframe_split": json.loads(df_16.to_json(orient="split"))})  # type: ignore[reportArgumentType]
-
-        headers = {"Content-Type": "application/json"}
-        response = requests.post(MODEL_SERVER_URL, data=json_data, headers=headers)
-        response.raise_for_status()
-
-        result = response.json()
-        prediction = result["predictions"][0]
+        prediction = _fraud_model.predict(df_input)[0]
 
         result_text = f"""
         **Prediction:** {"🚨 FRAUD DETECTED" if prediction == 1 else "✅ Legitimate Transaction"}
@@ -169,13 +174,10 @@ def predict_fraud(
 
         return result_text
 
-    except requests.exceptions.RequestException as e:
-        return f"Error connecting to model server: {e}. Is the server running?"
     except Exception as e:
-        return f"An unexpected error occurred: {str(e)}"
+        return f"An unexpected error occurred during prediction: {str(e)}"
 
 
-# --- Gradio Interface ---
 with gr.Blocks(title="Credit Card Fraud Detection") as iface:
     gr.Markdown(
         """
@@ -283,10 +285,8 @@ with gr.Blocks(title="Credit Card Fraud Detection") as iface:
         outputs=output,
     )
 
-    # --- Sample Data Functions ---
     def load_legitimate_sample():
         """Load sample data for a legitimate transaction."""
-        # Order: V1, ..., V28, Amount, Time
         return [
             1.0,
             -0.5,
@@ -471,5 +471,4 @@ with gr.Blocks(title="Credit Card Fraud Detection") as iface:
 # --- Launch the App ---
 if __name__ == "__main__":
     print("🚀 Launching Gradio App Client")
-    print(f"📡 Connecting to model server at: {MODEL_SERVER_URL}")
     iface.launch(server_name="0.0.0.0", server_port=7860)
