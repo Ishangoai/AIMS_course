@@ -3,7 +3,6 @@ import os
 import sys
 from typing import Annotated, List, TypedDict
 
-from langchain.tools import tool
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, StateGraph
@@ -34,7 +33,6 @@ class AgenticReportWriter:
             convert_system_message_to_human=True  # Gemini compatibility
         )
         self.graph = self._build_graph()
-
 
     def research_agent(self, state: ReportState) -> ReportState:
         """Agent that conducts research on the topic"""
