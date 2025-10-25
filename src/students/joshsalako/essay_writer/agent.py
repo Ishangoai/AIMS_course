@@ -251,7 +251,6 @@ def writer_node(state: ReportState):
                 section_content = adjusted_response["output"]
             else:
                 print(f"---WARNING: Adjuster failed to return valid output on attempt {attempt + 1}.")
-                break
 
         # Final check and warning
         is_within_variance_after_adjustment, final_word_count = check_word_count(
