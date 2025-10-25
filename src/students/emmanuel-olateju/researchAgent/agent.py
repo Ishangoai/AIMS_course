@@ -1174,7 +1174,7 @@ def run_agent(topic: str, temperature: float = 0.7, max_iterations: int = 3,
         "temperature": temperature,
         "max_iterations": max_iterations,
         "enable_human_feedback": enable_human_feedback
-    }, config=config)
+    }, config=config)  # type: ignore
     return final_state
 
 
@@ -1220,7 +1220,7 @@ def apply_human_feedback(current_state: Dict, feedback: str) -> Dict:
     # Continue workflow from human_feedback_gate
     app = build_graph()
     config = {"recursion_limit": 50}
-    final_state = app.invoke(current_state, config=config)
+    final_state = app.invoke(current_state, config=config)  # type: ignore
 
     return final_state
 
