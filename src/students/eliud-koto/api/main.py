@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.assignment1 import app as assignment1
+from gradioapp.fraud_model_app import fraud_app
 from gradioapp.heart_disease_app import heart_app
 
 app = FastAPI(
@@ -20,6 +21,8 @@ app = FastAPI(
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Assignment 1**](/assignment1/)
+    5. [**fraud_model_app**](/fraud_model_app/)
+
     -----
     """),
     version="1.0.0",
@@ -131,3 +134,4 @@ gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, assignment1, path="/assignment1")
+gr.mount_gradio_app(app, fraud_app, path="/fraud_model_app")

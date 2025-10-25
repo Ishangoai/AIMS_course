@@ -21,7 +21,6 @@ app = FastAPI(
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Fraud Detector**](/fraud-detector/)
-    5. [**Report App**](/report-app/)
     -----
     """),
     version="1.0.0",
