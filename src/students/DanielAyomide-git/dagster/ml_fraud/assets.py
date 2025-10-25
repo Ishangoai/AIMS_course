@@ -6,7 +6,6 @@ import dagster as dg
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
@@ -441,7 +440,6 @@ def evaluate_model(
     # Create confusion matrix plot
     cm = confusion_matrix(y_test, predictions)
     fig, ax = plt.subplots(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
     ax.set_title("Confusion Matrix")
     ax.set_xlabel("Predicted")
     ax.set_ylabel("Actual")
@@ -559,7 +557,7 @@ def promote_fraud_model_to_staging(context: dg.OpExecutionContext, evaluate_mode
         # 🎯 Send Slack message with metrics
         slack_message = (
             f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"*🚀 FINAL MODEL REPORT BY DANIEL AND ABDULRASHEED — To Catch Yahoos (especially xxxsan 🤠 ) 💼*\n"
+            f"*🚀 FINAL MODEL REPORT BY DANIEL AND ABDULRASHEED *\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"📊 *Overall Performance*\n"
             f"> ✅ *Accuracy:* `{test_accuracy:.4f}`\n"
@@ -574,8 +572,6 @@ def promote_fraud_model_to_staging(context: dg.OpExecutionContext, evaluate_mode
             f"> 🧾 *Precision:* `{test_precision_legitimate:.4f}`\n"
             f"> 🕵️ *Recall:* `{test_recall_legitimate:.4f}`\n"
             f"\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🔥 *Great job, model!* Ready to catch fraudsters like a champ 💪🤖\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━"
         )
 
