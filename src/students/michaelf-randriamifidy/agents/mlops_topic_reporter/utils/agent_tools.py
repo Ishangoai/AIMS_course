@@ -1,3 +1,4 @@
+
 import logging
 import os
 import re
@@ -56,7 +57,16 @@ logger = logging.getLogger(__name__)
 @tool
 def count_words(text: str) -> int:
     """
-    Count words in Markdown format string
+    Count the number of words in a Markdown-formatted string.
+
+    This function removes code blocks, inline code, images, links,
+    Markdown symbols, extra whitespace, and punctuation before counting words.
+
+    Args:
+        text (str): The Markdown text to count words from.
+
+    Returns:
+        int: The number of words in the cleaned text.
     """
     text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
     text = re.sub(r'`.*?`', '', text)
@@ -76,7 +86,15 @@ search = GoogleSearchAPIWrapper(google_api_key=GOOGLE_API_KEY, google_cse_id=GOO
 
 @tool
 def search_google(query: str) -> str:
-    """Search Google for latest information on a topic."""
+    """
+    Search Google for the latest information on a topic.
+
+    Args:
+        query (str): The search query.
+
+    Returns:
+        str: The search results as a string. Returns an error message if the search fails.
+    """
     logger.info(f"Searching Google for: {query}")
     return search.run(query)
 
@@ -288,7 +306,6 @@ def do_report(text: str, max_retries: int = 2):
     # ========================
     retries = 0
     while retries <= max_retries:
-        print("reties:", retries)
         word_count = count_words(corrected_report)
         review_result = review_chain.run(
             corrected_text=corrected_report,
