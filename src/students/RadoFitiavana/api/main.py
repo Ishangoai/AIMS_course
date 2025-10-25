@@ -7,7 +7,8 @@ from typing import Any, Dict
 import gradio as gr
 from fastapi import FastAPI, File, Request, Response, UploadFile
 from fastapi.openapi.docs import get_swagger_ui_html
-from gradioapp import image_processor_app as processor  # your Gradio UI
+from gradioapp import image_processor_app as processor
+import .models
 from PIL import Image, ImageEnhance
 
 # -----------------------------------------------------------------------------
@@ -18,10 +19,10 @@ app = FastAPI(
     description=textwrap.dedent("""
     ## Mounted Apps
     ----
-    1. [**General Gradio Demo**](/gradio/)
-    2. [**Heart Disease Prediction App**](/heart-disease/)
-    3. [**Simple LLM Chatbot**](/llm-chat/)
-    4. [**Simple Image editor**](/image-editor/)
+    1. [**Heart Disease Prediction App**](/heart-disease/)
+    2. [**Simple LLM Chatbot**](/llm-chat/)
+    3. [**Simple Image editor**](/image-editor/)
+    4. [**Agentic MLOPs reporter**](/mlops-reporter)
     -----
     """),
     version="1.0.0",
@@ -104,6 +105,30 @@ async def rotate(request: Request, image: UploadFile = File(...)) -> Response:
     rotated = img.rotate(angle, expand=True)
 
     return image_to_response(rotated)
+
+
+# -----------------------------------------------------------------------------
+# AI Agent endpoint
+# -----------------------------------------------------------------------------
+
+MEMORY_STORE = {}
+
+@app.post("/query", response_model=QueryResponse)
+async def query_endpoint(request: QueryRequest):
+    """
+    Main API endpoint to send a query to the MLOps agent.
+    """
+    try:
+
+        memory_obj = create_memory(request.session_id, MEMORY_STORE)
+
+        answer, metadata = execute_graph(request.query, memory_obj)
+
+        return QueryResponse(answer=answer, metadata=metadata)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Agent execution failed: {str(e)}")
+
 
 
 # -----------------------------------------------------------------------------

@@ -1,0 +1,74 @@
+[
+  {
+    "topic": "CI/CD",
+    "definition": "Continuous Integration and Continuous Deployment (CI/CD) automates the process of integrating, testing, and delivering machine learning models into production environments. It ensures consistent and repeatable workflows for ML code, data, and infrastructure.",
+    "use_cases": [
+      "Automating data and model validation in pipelines",
+      "Continuous retraining and redeployment upon new data availability",
+      "Integrating infrastructure provisioning with deployment"
+    ],
+    "examples_of_tools": ["GitHub Actions", "GitLab CI/CD", "Jenkins", "Argo Workflows", "Tekton"]
+  },
+  {
+    "topic": "Data Engineering",
+    "definition": "Data Engineering in MLOps focuses on creating scalable, reliable, and observable data pipelines for machine learning workflows. It involves orchestrating ETL tasks, maintaining data quality, and ensuring availability for downstream training jobs.",
+    "use_cases": [
+      "Orchestrating ETL and feature extraction pipelines using Dagster",
+      "Ensuring data quality with validation and schema enforcement",
+      "Managing dependencies and scheduling across distributed systems"
+    ],
+    "examples_of_tools": ["Dagster", "Apache Airflow", "dbt", "Prefect", "Great Expectations"]
+  },
+  {
+    "topic": "ML Engineering",
+    "definition": "Machine Learning Engineering bridges the gap between research and production. It includes experiment tracking, model reproducibility, packaging, and lifecycle management of ML models in collaboration with orchestration systems.",
+    "use_cases": [
+      "Tracking experiments and parameters using MLflow",
+      "Registering and versioning models in MLflow Model Registry",
+      "Integrating with Dagster to orchestrate training, evaluation, and deployment stages",
+      "Packaging models for reproducible serving environments"
+    ],
+    "examples_of_tools": ["MLflow", "Dagster", "TensorFlow Extended (TFX)", "KubeFlow", "BentoML"]
+  },
+  {
+    "topic": "Model Deployment",
+    "definition": "Model Deployment in MLOps involves automating the process of packaging, provisioning, and serving machine learning models to production environments. Infrastructure-as-Code tools like OpenTofu enable reproducible and maintainable deployment workflows.",
+    "use_cases": [
+      "Defining infrastructure (Cloud Run, Artifact Registry) using OpenTofu configuration",
+      "Automating containerized model deployments via CI/CD pipelines",
+      "Managing secure deployments to GCP Cloud Run from a centralized model registry",
+      "Integrating MLflow model artifacts with Google Artifact Registry for versioned deployments"
+    ],
+    "examples_of_tools": ["OpenTofu", "Terraform", "Google Cloud Run", "Google Artifact Registry", "MLflow"]
+  },
+  {
+    "topic": "Model Monitoring",
+    "definition": "Model Monitoring ensures the performance, fairness, and reliability of ML systems post-deployment. It identifies data drift, model decay, and operational issues to trigger retraining or rollback mechanisms.",
+    "use_cases": [
+      "Tracking model accuracy and latency in production",
+      "Detecting input data drift or concept drift",
+      "Triggering automated retraining pipelines using monitored signals"
+    ],
+    "examples_of_tools": ["Prometheus", "Grafana", "Evidently AI", "WhyLabs", "Arize AI"]
+  },
+  {
+    "topic": "Feature Store",
+    "definition": "A Feature Store serves as a centralized system for storing, managing, and serving machine learning features consistently across training and inference environments.",
+    "use_cases": [
+      "Maintaining offline and online feature consistency",
+      "Providing discoverability and reusability of features",
+      "Versioning and lineage tracking of feature sets"
+    ],
+    "examples_of_tools": ["Feast", "Tecton", "Hopsworks", "SageMaker Feature Store"]
+  },
+  {
+    "topic": "Model Versioning",
+    "definition": "Model Versioning manages the lifecycle of machine learning models by tracking their versions, configurations, and deployment history for reproducibility and compliance.",
+    "use_cases": [
+      "Comparing performance metrics across model versions",
+      "Tracing data, code, and environment dependencies for each version",
+      "Rolling back to previous stable model versions upon failure"
+    ],
+    "examples_of_tools": ["MLflow", "DVC", "Weights & Biases", "Neptune.ai"]
+  }
+]

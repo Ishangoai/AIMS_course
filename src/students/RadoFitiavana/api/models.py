@@ -13,3 +13,13 @@ class UpdateUserRequest(BaseModel):
 class UserRequest(BaseModel):
     username: str
     name: str | None = None
+
+
+class QueryRequest(BaseModel):
+    query: str
+    session_id: str = "default_session"
+
+
+class QueryResponse(BaseModel):
+    answer: str
+    metadata: Dict        
