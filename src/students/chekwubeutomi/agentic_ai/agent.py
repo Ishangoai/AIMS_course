@@ -95,7 +95,7 @@ def count_words(text):
 def get_article(topic, max_iterations=5):
     """
     Generate an article and ensure it's within 950-1050 words.
-    
+
     Args:
         topic: The topic for the article
         max_iterations: Maximum number of editing attempts (default: 5)
