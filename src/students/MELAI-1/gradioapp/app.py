@@ -25,7 +25,7 @@ class TextStyler:
     FONT_FAMILIES = {
         "Arial": "Arial, sans-serif",
         "Times New Roman": "'Times New Roman', serif",
-        "Courier": "'Courier New', monospace"
+        "Courier": "'Courier New', monospace",
     }
 
     @staticmethod
@@ -49,10 +49,7 @@ class TextStyler:
             transform = "none"
 
         style = (
-            f"font-family: {font_family}; "
-            f"font-size: {font_size}; "
-            f"font-weight: {weight}; "
-            f"text-transform: {transform};"
+            f"font-family: {font_family}; font-size: {font_size}; font-weight: {weight}; text-transform: {transform};"
         )
 
         return f'<div style="{style}">{text}</div>'
@@ -75,9 +72,7 @@ def build_interface():  # noqa: C901
 
     with gr.Blocks(css=css) as interface:
         gr.Markdown("# Text Processing App")
-        gr.Markdown(
-            "Refine, convert, analyze and export your text."
-        )
+        gr.Markdown("Refine, convert, analyze and export your text.")
 
         with gr.Tabs():
             # ============== CORRECTION TAB ==============
@@ -114,19 +109,16 @@ def build_interface():  # noqa: C901
                     with gr.Column():
                         corrected = gr.HTML(
                             value="<div style='padding: 15px; min-height: 300px; "
-                                  "border: 1px solid #ddd; border-radius: 8px; "
-                                  "background-color: #f8f9fa;'>"
-                                  "<p style='text-align: center; color: #666;'>"
-                                  "Your corrected and styled text will appear here as you type</p>"
-                                  "</div>",
-                            label="Corrected & Styled Text (Live Preview)"
+                            "border: 1px solid #ddd; border-radius: 8px; "
+                            "background-color: #f8f9fa;'>"
+                            "<p style='text-align: center; color: #666;'>"
+                            "Your corrected and styled text will appear here as you type</p>"
+                            "</div>",
+                            label="Corrected & Styled Text (Live Preview)",
                         )
 
                         # Hidden textbox to store plain corrected text
-                        corrected_plain = gr.Textbox(
-                            visible=False,
-                            value=""
-                        )
+                        corrected_plain = gr.Textbox(visible=False, value="")
 
                 def handle_live_correction(text, font, size, text_type):
                     """Correct text and apply styling in real-time."""
@@ -142,12 +134,7 @@ def build_interface():  # noqa: C901
                         return empty_html, ""
 
                     corrected_text = correct_text(text)
-                    styled = TextStyler.apply_style(
-                        corrected_text,
-                        font,
-                        size,
-                        text_type
-                    )
+                    styled = TextStyler.apply_style(corrected_text, font, size, text_type)
                     # Wrap in a nice container
                     styled_html = (
                         f"<div style='padding: 15px; min-height: 300px; "
@@ -160,7 +147,7 @@ def build_interface():  # noqa: C901
                 input_text.change(
                     handle_live_correction,
                     inputs=[input_text, font_dropdown, size_dropdown, text_type],
-                    outputs=[corrected, corrected_plain]
+                    outputs=[corrected, corrected_plain],
                 )
 
                 # Update style when dropdowns change
@@ -168,7 +155,7 @@ def build_interface():  # noqa: C901
                     dropdown.change(
                         handle_live_correction,
                         inputs=[input_text, font_dropdown, size_dropdown, text_type],
-                        outputs=[corrected, corrected_plain]
+                        outputs=[corrected, corrected_plain],
                     )
 
                 reset_btn.click(
@@ -179,10 +166,10 @@ def build_interface():  # noqa: C901
                         "background-color: #f8f9fa;'>"
                         "<p style='text-align: center; color: #666;'>"
                         "Your corrected and styled text will appear here as you type</p></div>",
-                        ""
+                        "",
                     ),
                     inputs=None,
-                    outputs=[input_text, corrected, corrected_plain]
+                    outputs=[input_text, corrected, corrected_plain],
                 )
 
             # ============== CONVERTER TAB ==============
@@ -194,16 +181,9 @@ def build_interface():  # noqa: C901
                             choices=["Uppercase", "Lowercase", "Title Case"],
                             value="Uppercase",
                         )
-                        conv_btn = gr.Button(
-                            "Convert",
-                            variant="primary",
-                            size="lg"
-                        )
+                        conv_btn = gr.Button("Convert", variant="primary", size="lg")
                     with gr.Column():
-                        conv_output = gr.Textbox(
-                            label="Converted text",
-                            lines=10
-                        )
+                        conv_output = gr.Textbox(label="Converted text", lines=10)
 
                 def handle_conversion(corrected_text, mode):
                     """Handle text conversion."""
@@ -211,11 +191,7 @@ def build_interface():  # noqa: C901
                         return "Please correct text in the Correction tab first."
                     return convert_text(corrected_text, mode)
 
-                conv_btn.click(
-                    handle_conversion,
-                    inputs=[corrected_plain, conv_choice],
-                    outputs=conv_output
-                )
+                conv_btn.click(handle_conversion, inputs=[corrected_plain, conv_choice], outputs=conv_output)
 
             # ============== REVERSER TAB ==============
             with gr.Tab("Reverser"):
@@ -225,18 +201,11 @@ def build_interface():  # noqa: C901
                             label="Reverse Type",
                             choices=["words", "characters"],
                             value="words",
-                            info="Choose how to reverse the text"
+                            info="Choose how to reverse the text",
                         )
-                        rev_btn = gr.Button(
-                            "Reverse",
-                            variant="primary",
-                            size="lg"
-                        )
+                        rev_btn = gr.Button("Reverse", variant="primary", size="lg")
                     with gr.Column():
-                        rev_output = gr.Textbox(
-                            label="Reversed text",
-                            lines=10
-                        )
+                        rev_output = gr.Textbox(label="Reversed text", lines=10)
 
                 def handle_reversal(corrected_text, mode):
                     """Handle text reversal."""
@@ -244,42 +213,27 @@ def build_interface():  # noqa: C901
                         return "Please correct text in the Correction tab first."
                     return reverse_text(corrected_text, mode)
 
-                rev_btn.click(
-                    handle_reversal,
-                    inputs=[corrected_plain, rev_choice],
-                    outputs=rev_output
-                )
+                rev_btn.click(handle_reversal, inputs=[corrected_plain, rev_choice], outputs=rev_output)
 
             # ============== ANALYZER TAB ==============
             with gr.Tab("Analyzer & Word Cloud"):
                 with gr.Row():
                     with gr.Column():
-                        ana_btn = gr.Button(
-                            "Analyze Text",
-                            variant="primary",
-                            size="lg"
-                        )
+                        ana_btn = gr.Button("Analyze Text", variant="primary", size="lg")
                     with gr.Column():
-                        ana_output = gr.Textbox(
-                            label="Analysis Results",
-                            lines=8,
-                            interactive=False
-                        )
+                        ana_output = gr.Textbox(label="Analysis Results", lines=8, interactive=False)
 
                 gr.Markdown("### Word Cloud Visualization")
                 wc_output = gr.HTML(
-                    value="<p style='text-align: center; color: #666;'>"
-                          "Click 'Analyze Text' to generate word cloud</p>",
-                    elem_classes="word-cloud-html"
+                    value="<p style='text-align: center; color: #666;'>Click 'Analyze Text' to generate word cloud</p>",
+                    elem_classes="word-cloud-html",
                 )
 
                 def handle_analysis(corrected_text):
                     """Handle text analysis and word cloud generation."""
                     if not corrected_text:
-                        no_text_msg = "Please correct text in the " \
-                                     "Correction tab first."
-                        no_text_html = "<p style='text-align: center; " \
-                                      "color: #666;'>No text to analyze</p>"
+                        no_text_msg = "Please correct text in the Correction tab first."
+                        no_text_html = "<p style='text-align: center; color: #666;'>No text to analyze</p>"
                         return no_text_msg, no_text_html
 
                     analysis = analyze_text(corrected_text)
@@ -307,19 +261,10 @@ def build_interface():  # noqa: C901
                 gr.Markdown("### Export all your processed text")
 
                 with gr.Row():
-                    format_dropdown = gr.Dropdown(
-                        label="Choose Export Format",
-                        choices=["txt"],
-                        value="txt"
-                    )
-                    download_btn = gr.Button(
-                        "Download File",
-                        variant="primary",
-                        size="lg"
-                    )
+                    format_dropdown = gr.Dropdown(label="Choose Export Format", choices=["txt"], value="txt")
+                    download_btn = gr.Button("Download File", variant="primary", size="lg")
 
-                def handle_download(corrected_text, conv_text, rev_text,
-                                   analysis_text, fmt):
+                def handle_download(corrected_text, conv_text, rev_text, analysis_text, fmt):
                     """Handle file download and return the file directly."""
                     if not corrected_text:
                         # Return a dummy file with error message
@@ -334,9 +279,7 @@ def build_interface():  # noqa: C901
                     reversed_val = rev_text or "Not reversed yet"
                     analysis_val = analysis_text or "Not analyzed yet"
 
-                    timestamp = datetime.datetime.now().strftime(
-                        '%Y-%m-%d %H:%M:%S'
-                    )
+                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                     aggregated = (
                         f"╔{'═' * 68}╗\n"
@@ -376,13 +319,7 @@ def build_interface():  # noqa: C901
 
                 download_btn.click(
                     handle_download,
-                    inputs=[
-                        corrected_plain,
-                        conv_output,
-                        rev_output,
-                        ana_output,
-                        format_dropdown
-                    ],
+                    inputs=[corrected_plain, conv_output, rev_output, ana_output, format_dropdown],
                     outputs=gr.File(label="Download will start automatically"),
                 )
 
