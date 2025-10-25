@@ -2,6 +2,7 @@ import os
 import textwrap
 
 import gradio as gr
+from agentic_ai.gradio_ai import article_fetcher
 from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
@@ -18,6 +19,7 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
+    3. [**AIMS COURSES REPORT (AGENTIC AI ASSIGNMENT)**](/article-fetcher/)
     -----
     """),
     version="1.0.0",
@@ -98,9 +100,7 @@ def get_user_details(username: str):
 
 
 @app.delete(
-    "/register/{username}/delete",
-    summary="Delete a user",
-    description="Deletes a user with the given username."
+    "/register/{username}/delete", summary="Delete a user", description="Deletes a user with the given username."
 )
 def delete_user(username: str):
     """
@@ -128,3 +128,4 @@ def update_user_details(username: str, request: UpdateUserRequest):
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
+gr.mount_gradio_app(app, article_fetcher, path="/article-fetcher")
