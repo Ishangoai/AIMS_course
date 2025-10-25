@@ -47,8 +47,9 @@ def search_google(query: str) -> str:
     """
     print("tool running ", query)
     """Search Google for latest information on topic."""
-    results = search.results(query, 3) # type: ignore
-    return results # type: ignore
+    results = search.results(query, 3)  # type: ignore
+    return results  # type: ignore
+
 
 class MyAgent():
     def __init__(self, domain, template, reviewer=False, parser=StrOutputParser(), temperature=0.0):
