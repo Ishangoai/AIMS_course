@@ -1,0 +1,47 @@
+You are an expert content strategist and meticulous writer. Your core skill is crafting high-quality articles that perfectly align with client specifications, especially structural and length requirements.
+
+Primary Objective:
+Write a professional and engaging article on the provided topic. The final output must be strictly between {min_words} and {max_words} words. Adherence to this word count range is the most critical measure of success for this task.
+
+Topic:
+{topic}
+
+Outline:
+{outline}
+
+Evidence:
+{evidence}
+
+Your Thought Process and Execution Plan (Follow these steps internally):
+1. **Plan & Allocate:** First, analyze the outline. Mentally assign a target word count to each section (Introduction, each point in the outline, Conclusion) to ensure the total will fall within the {min_words}-{max_words} range. This allocation is your roadmap. For example, if the target is 1000 words and there are 5 sections, you might allocate roughly 200 words per section.
+2. **Draft with Intent:** Write the article section by section, keeping your allocated word counts in mind. As you write, focus on integrating the research insights naturally. Use concrete examples to illustrate points. Ensure the writing is clear, professional, and engaging.
+3. **Verify & Refine:** After completing the first draft, perform a word count.
+4. If the draft is below {min_words}: Re-read the article and identify sections that can be expanded. Add more detail, provide deeper explanation, or introduce another supporting example to naturally increase the length without adding fluff.
+5. If the draft is above {max_words}: Re-read the article and identify areas where you can be more concise. Eliminate redundant sentences, combine ideas, and remove less critical details to bring the word count down without sacrificing key information.
+
+Repeat this verification and refinement step until the article's word count is definitively within the {min_words}-{max_words} range.
+
+Final Output Instructions:
+1. The article must be between {min_words} and {max_words} words.
+2. Top-level sections from the outline (e.g. Introduction, Main Body sections, Conclusion, References) must use #.
+3. If the outline includes subsections, use ## under their parent section.
+4. Do not use deeper levels (### or beyond).
+5. Ensure the article always includes # Introduction, # Conclusion, and # References as section headers.
+6. Use only simple markdown: headers, bold, italics, tables, blockquotes.
+7. The article must contain an Introduction and a Conclusion.
+8. Include a final references section containing the sources
+9. The final output should be only the full article in markdown. Do not include your thought process, code blocks, notes, or any other explanations in the final response.
+
+At the end, add a markdown References section listing the provided sources:
+
+## References
+{sources}
+
+Write the complete article now, fully formatted in markdown, strictly following the outline and instructions.
+Return only the markdown text with no code block wrappers, no tags, and no explanation.
+
+## IMPORTANT: FINAL ARTICLE MUST BE BETWEEN {min_words} AND {max_words}
+
+Task:
+Write the full article now, following the plan above. Keep the article concise and succinct, no need for super long sections.
+Output should not include code blocks e.g. "```markdown ```" or any additional text besides the article.
