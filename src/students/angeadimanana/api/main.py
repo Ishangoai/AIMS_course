@@ -2,6 +2,7 @@ import os
 import textwrap
 
 import gradio as gr
+from Agent_2.gradio_app import create_interface
 from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
@@ -22,6 +23,7 @@ app = FastAPI(
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Image Transformation (Ange, Michael Fitiavana**](/image-transformation/)
     5. [**Fraud Detection (Ange, James)**](/fraud-detection/)
+    6. [**Editing Topics reports(Ange, Loick)**](/report-editing/)
     -----
     """),
     version="1.0.0",
@@ -54,7 +56,7 @@ def hello():
     response_description="The result of the evaluated expression.",
 )
 def evaluate(expression: str):
-    """
+    """editing_report_app, path="/report-editing")
     Evaluate the given arguments and return the result.
     """
     try:
@@ -134,3 +136,4 @@ gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, image_transformation, path="/image-transformation")
 gr.mount_gradio_app(app, fraud_detect, path="/fraud-detection")
+gr.mount_gradio_app(app, create_interface(), path="/report-editing")

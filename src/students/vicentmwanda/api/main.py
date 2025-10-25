@@ -18,9 +18,9 @@ app = FastAPI(
     ## Mounted Apps
     ----
     1. [**General Gradio Demo**](/gradio/)
-    2. [**Heart Disease Prediction App**](/heart-disease/)
-    3. [**Simple LLM Chatbot**](/llm-chat/)
-    4. [**Fraud Detector**](/fraud-detector/)
+    2. [**Simple LLM Chatbot**](/llm-chat/)
+    3. [**Fraud Detector**](/fraud-detector/)
+    4. [**Report App**](/report-app/)
     -----
     """),
     version="1.0.0",
