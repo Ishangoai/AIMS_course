@@ -16,6 +16,7 @@ from gradioapp.fraud_app import fraud_detection_app as fraud
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.image_editor_app import image_transformation
 from gradioapp.utils.fraud_detection import is_valid_csv_file, predict_fraud
+from agents.mlops_topic_reporter.mlops_reporter_agents import llm_report    
 
 app = FastAPI(
     title="AIMS Course API",
@@ -27,6 +28,7 @@ app = FastAPI(
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Image Transformation**](/image-transformation/)
     5. [**Fraud Detection Model**](/fraud-detection/)
+    6. [**MLOPS Reporter**](/mlops-reporter/)
     -----
     """),
     version="1.0.0",
@@ -218,3 +220,4 @@ gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 # gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, image_transformation, path="/image-transformation")
 gr.mount_gradio_app(app, fraud_detector, path="/fraud-detection")
+gr.mount_gradio_app(app, llm_report, path="/mlops-reporter")
