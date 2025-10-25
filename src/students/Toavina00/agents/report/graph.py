@@ -35,20 +35,40 @@ def length_checker(report: str) -> int:
     return len(report.split())
 
 
-def compile_graph(temperature: float):
 
+
+def planning(topic: str, temperature):
     llm = init_chat_model(
-        "google_genai:gemini-2.0-flash-lite",
-        temperature=temperature,
+    "google_genai:gemini-2.0-flash-lite",
+    temperature=temperature,
     )
 
-    # -------- Agents ----------
     planning_agent = create_react_agent(
         llm,
         tools=[search_google],
         prompt=PLANNING_PROMPT,
         response_format=PlanSchema
     )
+
+    planning_output = planning_agent.invoke({"messages": [HumanMessage(content=topic)]})
+    outline = parse_json_to_pydantic(planning_output["messages"][-1].content, PlanSchema)
+
+    return outline.content
+
+def compile_graph(temperature: float, llm):
+
+    # llm = init_chat_model(
+    #     "google_genai:gemini-2.0-flash-lite",
+    #     temperature=temperature,
+    # )
+
+    # -------- Agents ----------
+    # planning_agent = create_react_agent(
+    #     llm,
+    #     tools=[search_google],
+    #     prompt=PLANNING_PROMPT,
+    #     response_format=PlanSchema
+    # )
 
     research_agent = create_react_agent(
         llm,
@@ -70,22 +90,22 @@ def compile_graph(temperature: float):
     )
 
     # ------------ Nodes -------------
-    def plan_node(state: ReportState) -> ReportState:
-        logger.info("Executing plan_node")
-        planning_output = planning_agent.invoke({"messages": [HumanMessage(content=state["topic"])]})
-        outline = parse_json_to_pydantic(planning_output["messages"][-1].content, PlanSchema)
+    # def plan_node(state: ReportState) -> ReportState:
+    #     logger.info("Executing plan_node")
+    #     planning_output = planning_agent.invoke({"messages": [HumanMessage(content=state["topic"])]})
+    #     outline = parse_json_to_pydantic(planning_output["messages"][-1].content, PlanSchema)
 
-        if not outline.success:
-            raise ValueError(f"Planning failed: {outline.content}")
+    #     if not outline.success:
+    #         raise ValueError(f"Planning failed: {outline.content}")
 
-        return {
-            "outline": outline,
-            "topic": state["topic"],
-            "search_contents": [],
-            "report": "",
-            "critic_review": None,
-            "iterations": state["iterations"]
-        }
+    #     return {
+    #         "outline": outline,
+    #         "topic": state["topic"],
+    #         "search_contents": [],
+    #         "report": "",
+    #         "critic_review": None,
+    #         "iterations": state["iterations"]
+    #     }
 
     def research_node(state: ReportState) -> ReportState:
         logger.info("Executing research_node")
@@ -180,14 +200,14 @@ def compile_graph(temperature: float):
     # ---------- Graph --------------
     workflow = StateGraph(ReportState)
 
-    workflow.add_node("plan", plan_node)
+    # workflow.add_node("plan", plan_node)
     workflow.add_node("research", research_node)
     workflow.add_node("write", write_node)
     workflow.add_node("critic", critic_node)
 
-    workflow.set_entry_point("plan")
+    workflow.set_entry_point("research")
 
-    workflow.add_edge("plan", "research")
+    # workflow.add_edge("plan", "research")
     workflow.add_edge("research", "write")
     workflow.add_edge("write", "critic")
 
@@ -205,15 +225,21 @@ def compile_graph(temperature: float):
     return app
 
 
-def generate_report(topic: str, temperature: float = 1.0):
+def generate_report(topic: str, temperature: float, outline):
     initial_state = ReportState(
         topic=topic,
-        outline=None,
+        outline=outline,
         search_contents=[],
         report="",
         critic_review=None,
         iterations=0
     )
-    result = compile_graph(temperature).invoke(initial_state)['report']
+
+    llm = init_chat_model(
+        "google_genai:gemini-2.0-flash-lite",
+        temperature=temperature,
+    )
+
+    result = compile_graph(temperature, llm).invoke(initial_state)['report']
 
     return result
