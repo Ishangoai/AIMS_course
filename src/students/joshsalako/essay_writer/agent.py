@@ -166,7 +166,8 @@ def create_word_count_adjuster(llm):
     """
     prompt = ChatPromptTemplate.from_template(prompt_template)
     agent = create_react_agent(llm, tools, prompt)
-    return AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
+    return AgentExecutor(agent=agent, tools=tools, verbose=True,
+    handle_parsing_errors=True, max_iterations=5)
 
 # --- Reviewer Agent ---
 
@@ -228,19 +229,29 @@ def writer_node(state: ReportState):
         response = writer.invoke({"input": input_prompt})
         section_content = response["output"]
 
-        # Check and adjust word count
-        is_within_variance, current_word_count = check_word_count(
-            section_content, section["word_count"]
-        )
-        if not is_within_variance:
+        # Check and adjust word count with a limited number of attempts
+        max_adjustment_attempts = 5
+        for attempt in range(max_adjustment_attempts):
+            is_within_variance, current_word_count = check_word_count(
+                section_content, section["word_count"]
+            )
+            if is_within_variance:
+                break  # Word count is within the desired range
+
             print(
-                f"---ADJUSTING WORD COUNT---"
+                f"---ADJUSTING WORD COUNT (Attempt {attempt + 1}/{max_adjustment_attempts})---"
                 f"\nOriginal count: {current_word_count}, Target: {section['word_count']}"
             )
             adjusted_response = adjuster.invoke(
                 {"text": section_content, "word_count": section["word_count"]}
             )
-            section_content = adjusted_response["output"]
+
+            # Ensure the adjuster returned a valid output before updating
+            if adjusted_response and "output" in adjusted_response and adjusted_response["output"]:
+                section_content = adjusted_response["output"]
+            else:
+                print(f"---WARNING: Adjuster failed to return valid output on attempt {attempt + 1}.")
+                break
 
         # Final check and warning
         is_within_variance_after_adjustment, final_word_count = check_word_count(
