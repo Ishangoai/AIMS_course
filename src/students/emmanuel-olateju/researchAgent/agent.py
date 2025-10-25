@@ -1,10 +1,10 @@
 """
 Enhanced agentic system for automated report generation.
-NOW WITH ANALYTICAL REWRITING AND HUMAN-IN-THE-LOOP FEEDBACK
+NOW WITH GOOGLE SEARCH, ANALYTICAL REWRITING AND HUMAN-IN-THE-LOOP FEEDBACK
 
 Updated Architecture (6-7 Agents + Optional Human Feedback):
 1. Planner - Structured outline with research questions (Pydantic)
-2. Research Coordinator - Parallel Wikipedia searches
+2. Research Coordinator - Parallel Google searches
 3. Research Synthesizer - Organizes findings by section
 4. Writer - ReAct agent with ANALYTICAL REWRITING (KEY INNOVATION)
 5. Fact Checker - Optional but impressive claim verification
@@ -29,7 +29,8 @@ from pydantic import BaseModel, Field, field_validator
 from tools import (
     claim_extractor_tool,
     count_words,
-    get_wikipedia_tool,
+    get_fallback_search_tool,
+    get_google_search_tool,
     source_quality_scorer,
     structure_validator_tool,
     validate_claim_against_sources,
@@ -51,6 +52,23 @@ def get_llm(temperature: float = 0.7):
         model="gemini-2.5-flash-lite",
         temperature=temperature
     )
+
+
+def get_search_tool():
+    """
+    Returns the appropriate search tool based on environment configuration.
+    Tries Google Search first, falls back to DuckDuckGo if credentials unavailable.
+    """
+    try:
+        if os.getenv("GOOGLE_CSE_ID"):
+            print("  Using Google Search")
+            return get_google_search_tool()
+        else:
+            print("  Using DuckDuckGo (fallback - no GOOGLE_CSE_ID found)")
+            return get_fallback_search_tool()
+    except Exception as e:
+        print(f"  Warning: Error initializing Google Search ({e}), using DuckDuckGo fallback")
+        return get_fallback_search_tool()
 
 
 # ============================================================================
@@ -362,8 +380,9 @@ def planner_node(state: ReportState) -> Dict:
     - 2-4 specific research questions to answer
     - 3-5 key technical concepts to cover
 
-    4. Generate 5-10 primary research queries for parallel Wikipedia searches
+    4. Generate 5-10 primary research queries for parallel Google searches
        (Focus on quality over quantity - prioritize the most important queries)
+       (Make queries specific and targeted for better search results)
 
     Make the plan actionable for a technical writer and researcher.
     Focus on practical, real-world aspects with concrete examples.
@@ -398,13 +417,13 @@ def planner_node(state: ReportState) -> Dict:
 def research_coordinator_node(state: ReportState) -> Dict:
     """
     Agent 2: RESEARCH COORDINATOR
-    Dispatches PARALLEL Wikipedia searches and scores source quality.
+    Dispatches PARALLEL Google searches and scores source quality.
     """
     print("\n" + "=" * 70)
-    print("🔍 RESEARCH COORDINATOR: Parallel Wikipedia searches...")
+    print("🔍 RESEARCH COORDINATOR: Parallel Google searches...")
     print("=" * 70)
 
-    wikipedia_tool = get_wikipedia_tool()
+    search_tool = get_search_tool()
     primary_queries = state["plan"]["primary_research_queries"]
 
     print(f"\n  Executing {len(primary_queries)} parallel searches...")
@@ -414,19 +433,33 @@ def research_coordinator_node(state: ReportState) -> Dict:
     for i, query in enumerate(primary_queries, 1):
         print(f"    [{i}/{len(primary_queries)}] Searching: {query}")
 
-        wiki_result = wikipedia_tool._run(query)
+        search_result = search_tool.func(query)
 
-        if wiki_result["success"]:
-            quality = source_quality_scorer(
-                wiki_result.get("url", ""),
-                wiki_result["content"],
-                wiki_result["source"]
-            )
-            wiki_result["quality_assessment"] = quality
-            research_database.append(wiki_result)
-            print(f"        ✓ Quality score: {quality['score']:.2f}")
+        if search_result["success"]:
+            # Process each search result
+            for result_item in search_result.get("results", []):
+                # Create a structured entry for each result
+                entry = {
+                    "success": True,
+                    "query": query,
+                    "title": result_item.get("title", ""),
+                    "content": result_item.get("snippet", ""),
+                    "url": result_item.get("url", ""),
+                    "source": f"Google Search - {result_item.get('title', query)}"
+                }
+
+                # Score quality
+                quality = source_quality_scorer(
+                    entry["url"],
+                    entry["content"],
+                    entry["source"]
+                )
+                entry["quality_assessment"] = quality
+                research_database.append(entry)
+
+            print(f"        ✓ Found {len(search_result.get('results', []))} results")
         else:
-            print("        ✗ No results found")
+            print(f"        ✗ No results found: {search_result.get('error', 'Unknown error')}")
 
     print(f"\n✓ Research complete: {len(research_database)} sources gathered")
 
@@ -451,7 +484,7 @@ def research_synthesizer_node(state: ReportState) -> Dict:
     research_db = state["research_database"]
 
     research_content = "\n\n---\n\n".join([
-        f"**Source: {r['source']}**\nQuality: {r.get('quality_assessment', {}).get('score', 'N/A')}\n{r['content'][:1500]}"  # noqa: E501
+        f"**Source: {r['source']}**\nQuality: {r.get('quality_assessment', {}).get('score', 'N/A')}\nURL: {r.get('url', 'N/A')}\n{r['content'][:1000]}"  # noqa: E501
         for r in research_db if r.get("success")
     ])
 
@@ -474,8 +507,8 @@ def research_synthesizer_node(state: ReportState) -> Dict:
         Task: Create a concise research brief (200-300 words) that:
         1. Answers the research questions using the available sources
         2. Covers the key concepts with specific details
-        3. Includes facts, statistics, and examples
-        4. Notes which sources support which claims
+        3. Includes facts, statistics, and examples from the search results
+        4. Notes which sources support which claims (include URLs when relevant)
         5. Flags any conflicting information found
 
         Output format:
@@ -498,7 +531,7 @@ def research_synthesizer_node(state: ReportState) -> Dict:
                 section_description=section["description"],
                 research_questions=", ".join(section["research_questions"]),
                 key_concepts=", ".join(section["key_concepts"]),
-                research_content=research_content[:6000]
+                research_content=research_content[:8000]  # Increased limit for more context
             )
         )
 
@@ -517,7 +550,7 @@ def writer_node(state: ReportState) -> Dict:
     """
     Agent 4: WRITER (ReAct Agent with ANALYTICAL REWRITING)
 
-    Initial draft: Uses ReAct pattern with dynamic Wikipedia access.
+    Initial draft: Uses ReAct pattern with dynamic Google Search access.
     Revisions: Uses TWO-PHASE analytical rewriting (low-temp analysis + strategic rewrite).
     Human feedback: Applies human corrections with full rewrite.
     """
@@ -533,8 +566,8 @@ def writer_node(state: ReportState) -> Dict:
 
     llm = get_llm(temperature=state.get("temperature", 0.7))
 
-    # Create ReAct agent with Wikipedia tool
-    tools = [get_wikipedia_tool()]
+    # Create ReAct agent with search tool
+    tools = [get_search_tool()]
 
     if human_feedback:
         # ===== HUMAN FEEDBACK REVISION =====
@@ -588,7 +621,7 @@ Output the complete revised report:
 
     elif iteration == 0:
         # ===== INITIAL DRAFT: Section-by-section writing =====
-        prompt_template = """You are an expert technical writer with access to Wikipedia for fact-checking and additional research.
+        prompt_template = """You are an expert technical writer with access to Google Search for fact-checking and additional research.
 
 Your task is to write ONE section of a technical report based on the provided research brief.
 
@@ -598,19 +631,19 @@ You have access to the following tools:
 Use the ReAct pattern:
 Thought: Do I need to search for more information? Yes/No
 Action: the action to take, should be one of [{tool_names}]
-Action Input: the search query
+Action Input: the search query (be specific and targeted)
 Observation: the result of the action
 
 When you have enough information:
 Thought: I now have all the information needed
-Final Answer: [The complete section content with inline citations like [Source: Wikipedia - Topic]]
+Final Answer: [The complete section content with inline citations like [Source: Website Name - URL]]
 
 **CRITICAL REQUIREMENTS:**
 - Write EXACTLY {word_count} words (±10)
-- Include inline citations: [Source: X]
+- Include inline citations: [Source: Website Name] or [Source: Website Name - URL]
 - Use markdown formatting
 - Be technical and informative
-- Use specific examples and facts
+- Use specific examples and facts from search results
 
 SECTION TO WRITE:
 Title: {section_title}
@@ -620,7 +653,7 @@ Target Word Count: {word_count}
 RESEARCH BRIEF:
 {research_brief}
 
-Begin! Remember to cite sources and hit the word count target.
+Begin! Remember to cite sources properly and hit the word count target.
 
 {agent_scratchpad}"""  # noqa: E501
 
@@ -672,7 +705,7 @@ Begin! Remember to cite sources and hit the word count target.
             print(f"  Target: {target_wc} words")
             print(f"  Deviation: {wc_feedback['deviation']:+d} words")
 
-            # Get base model name from the LLM (handle different attribute names)
+            # Get base model name from the LLM
             base_model = getattr(llm, 'model', getattr(llm, 'model_name', 'gemini-2.5-flash-lite'))
 
             # Phase 1: Adaptive-temperature analysis
@@ -682,7 +715,7 @@ Begin! Remember to cite sources and hit the word count target.
                 target_wc=target_wc,
                 current_wc=current_wc,
                 base_model_name=base_model,
-                attempt=word_count_attempts  # Pass attempt number for temperature scaling
+                attempt=word_count_attempts
             )
             print(f"  ✓ Strategy: {analysis['action']} by {abs(analysis['deviation'])} words")
 
@@ -692,7 +725,7 @@ Begin! Remember to cite sources and hit the word count target.
                 draft=current_draft,
                 analysis=analysis,
                 base_model_name=base_model,
-                attempt=word_count_attempts  # Pass attempt number for temperature scaling
+                attempt=word_count_attempts
             )
 
             new_wc = count_words(draft)
@@ -976,8 +1009,6 @@ def route_after_fact_check(state: ReportState) -> Literal["validator", "writer"]
         return "validator"
     else:
         print(f"\n⟳ Routing back to writer for fact-check corrections (attempt {failures + 1}/{max_retries})")
-        # Increment failures in the state dict (not just local variable)
-        # Note: State mutations in conditional edges don't persist automatically
         return "writer"
 
 
@@ -1137,7 +1168,7 @@ def run_agent(topic: str, temperature: float = 0.7, max_iterations: int = 3,
         dict with final_report, quality_metrics, metadata, and intermediate results
     """
     app = build_graph()
-    config = {"recursion_limit": 50}  # Increase from default 25
+    config = {"recursion_limit": 50}
     final_state = app.invoke({
         "topic": topic,
         "temperature": temperature,
@@ -1188,9 +1219,7 @@ def apply_human_feedback(current_state: Dict, feedback: str) -> Dict:
 
     # Continue workflow from human_feedback_gate
     app = build_graph()
-
-    # Resume execution with increased recursion limit
-    config = {"recursion_limit": 50}  # Increase from default 25
+    config = {"recursion_limit": 50}
     final_state = app.invoke(current_state, config=config)
 
     return final_state
@@ -1272,7 +1301,7 @@ def visualize_graph():
 
 if __name__ == "__main__":
     # Example 1: Standard run without human feedback
-    print("Example 1: Standard run")
+    print("Example 1: Standard run with Google Search")
     result = run_agent("Quantum Computing", enable_human_feedback=False)
     print(result["final_report"])
 
