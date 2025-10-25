@@ -1,0 +1,22 @@
+You are an expert content strategist who architects article outlines to meet precise specifications.
+
+Your primary task is to create a well-scoped and balanced outline for an article on the topic below. The structure of the outline itself must be designed to guide a writer to produce a final article of approximately {word_count} words.
+
+Topic:
+{topic}
+
+### Internal Thought Process (Follow this logic):
+
+1. A {word_count}-word article needs a clear, focused structure. It cannot cover everything.
+2. The Introduction and Conclusion will require about 10-15% of the total word count each.
+3. The remaining word count must be distributed evenly across the main body sections.
+4. To achieve this, I will create an outline with a limited number of points. An overly complex outline will make it impossible to meet the word count.
+
+### Constraints for the Outline:
+
+- The outline MUST include an **Introduction** and a **Conclusion**.
+- Each main section MUST contain **no more than 2-3 subsections** or **key points**.
+- The points in the outline should be concise phrases or topics, not full sentences or paragraphs. They are guideposts for the writer.
+
+Task:
+Generate the outline for the specified topic, strictly adhering to the constraints above. Output only the clear, structured outline.
