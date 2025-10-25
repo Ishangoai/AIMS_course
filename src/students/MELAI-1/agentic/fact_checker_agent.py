@@ -2,13 +2,14 @@
 # FILE: fact_checker_agent.py
 # Fact-Checker Agent - Validates claims against research
 # ============================================================================
-from dotenv import load_dotenv
+import json
+import os
+import re
 from typing import Dict, List
+
+from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage  # FIXED: Use HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-import os
-import json
-import re
 
 TARGET_WORD_COUNT = 1000
 WORD_COUNT_MIN = 950
@@ -33,12 +34,7 @@ class FactCheckerAgent:
     """
 
     def __init__(self, api_key: str, model: str = MODEL_NAME):
-        self.llm = ChatGoogleGenerativeAI(
-            model=model,
-            temperature=0.2,
-            max_output_tokens=1500,
-            google_api_key=api_key
-        )
+        self.llm = ChatGoogleGenerativeAI(model=model, temperature=0.2, max_output_tokens=1500, google_api_key=api_key)
 
     def extract_claims(self, report: str, n: int = NUM_FACT_CHECKS) -> List[str]:
         """
@@ -46,14 +42,14 @@ class FactCheckerAgent:
 
         BEST PRACTICE: Use Python tools for extraction, not LLMs.
         """
-        sentences = [s.strip() for s in report.split('.') if len(s.strip()) > 50]
+        sentences = [s.strip() for s in report.split(".") if len(s.strip()) > 50]
 
         # Heuristic scoring for factual claims
         factual_patterns = [
-            r'\b(Agentic AI|agents?|LLM|tool|framework|LangGraph|LangChain)\b',
-            r'\b(enables?|allows?|provides?|implements?|uses?)\b',
-            r'\d+',
-            r'\b(through|via|using|by)\b'
+            r"\b(Agentic AI|agents?|LLM|tool|framework|LangGraph|LangChain)\b",
+            r"\b(enables?|allows?|provides?|implements?|uses?)\b",
+            r"\d+",
+            r"\b(through|via|using|by)\b",
         ]
 
         scored = []
@@ -133,12 +129,14 @@ Generate exactly {len(claims)} fact-checks now."""
 
         except json.JSONDecodeError as e:
             print(f"âš ï¸ JSON parse error: {e}")
-            return [{
-                "claim": "Parse error occurred",
-                "status": "UNSUPPORTED",
-                "explanation": "JSON parsing failed",
-                "confidence": "LOW"
-            }]
+            return [
+                {
+                    "claim": "Parse error occurred",
+                    "status": "UNSUPPORTED",
+                    "explanation": "JSON parsing failed",
+                    "confidence": "LOW",
+                }
+            ]
 
 
 # Create agent (don't test yet)

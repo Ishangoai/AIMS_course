@@ -2,13 +2,13 @@
 # FILE: research_agent.py
 # Research Agent - Gathers comprehensive information on Agentic AI
 # ============================================================================
-from dotenv import load_dotenv
+import json
 import os
 from typing import Dict, List
+
+from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage  # FIXED: Use HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-import json
-import re
 
 TARGET_WORD_COUNT = 1000
 WORD_COUNT_MIN = 950
@@ -32,12 +32,7 @@ class ResearchAgent:
     """
 
     def __init__(self, api_key: str, model: str = MODEL_NAME):
-        self.llm = ChatGoogleGenerativeAI(
-            model=model,
-            temperature=0.5,
-            max_output_tokens=2000,
-            google_api_key=api_key
-        )
+        self.llm = ChatGoogleGenerativeAI(model=model, temperature=0.5, max_output_tokens=2000, google_api_key=api_key)
 
     def gather_research(self, topic: str, num_bullets: int = NUM_RESEARCH_BULLETS) -> List[Dict]:
         """
@@ -113,13 +108,15 @@ Generate exactly {num_bullets} bullets now."""
             print(f"âš ï¸ JSON parse error: {e}")
             print(f"   Raw response (first 200 chars): {response.content[:200]}")
             # Fallback with valid structure
-            return [{
-                "id": 1,
-                "text": f"{topic} systems autonomously use tools and multi-step reasoning to achieve goals with minimal human intervention.",
-                "category": "definition",
-                "technical_depth": "high",
-                "source_type": "academic"
-            }]
+            return [
+                {
+                    "id": 1,
+                    "text": f"{topic} systems autonomously use tools and multi-step reasoning to achieve goals.",  # type: ignore
+                    "category": "definition",
+                    "technical_depth": "high",
+                    "source_type": "academic",
+                }
+            ]
 
 
 # Create agent (don't test yet - will test in workflow)

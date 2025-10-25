@@ -2,13 +2,14 @@
 # FILE: writer_agent.py
 # Writer Agent - Composes structured technical report with citations
 # ============================================================================
-from dotenv import load_dotenv
+import json
 import os
+import re
 from typing import Dict, List
+
+from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-import json
-import re
 
 # --- Configuration ---
 TARGET_WORD_COUNT = 1000
@@ -32,12 +33,7 @@ class WriterAgent:
     """
 
     def __init__(self, api_key: str, model: str = MODEL_NAME):
-        self.llm = ChatGoogleGenerativeAI(
-            model=model,
-            temperature=0.5,
-            max_output_tokens=2500,
-            google_api_key=api_key
-        )
+        self.llm = ChatGoogleGenerativeAI(model=model, temperature=0.5, max_output_tokens=2500, google_api_key=api_key)
 
     def write_report(self, topic: str, research_bullets: List[Dict], target_words: int = None) -> Dict:
         """
@@ -85,7 +81,7 @@ RESEARCH BULLETS FOR CITATION:
 
 CONSTRAINTS:
 - ONLY use information from the research bullets above
-- Target: {word_target} words (strict requirement, must be between {WORD_COUNT_MIN}-{WORD_COUNT_MAX}). This is very important for your generated answer.
+- Target: {word_target} words (strict requirement, must be between {WORD_COUNT_MIN}-{WORD_COUNT_MAX}).
 - Professional academic tone
 - NO placeholders like [TODO] or [EXAMPLE]
 - Write in flowing paragraphs (no bullet lists in main text)
@@ -100,9 +96,9 @@ Generate the complete report now."""
 
         # Validate with Python tools
         word_count = len(draft.split())
-        has_intro = bool(re.search(r'^##?\s+Introduction', draft, re.MULTILINE | re.IGNORECASE))
-        has_body = bool(re.search(r'^##?\s+(Main Body|Main)', draft, re.MULTILINE | re.IGNORECASE))
-        has_conclusion = bool(re.search(r'^##?\s+Conclusion', draft, re.MULTILINE | re.IGNORECASE))
+        has_intro = bool(re.search(r"^##?\s+Introduction", draft, re.MULTILINE | re.IGNORECASE))
+        has_body = bool(re.search(r"^##?\s+(Main Body|Main)", draft, re.MULTILINE | re.IGNORECASE))
+        has_conclusion = bool(re.search(r"^##?\s+Conclusion", draft, re.MULTILINE | re.IGNORECASE))
 
         print(f"âœ… Writer: {word_count} words drafted")
         print(f"   Structure: Intro={has_intro}, Body={has_body}, Conclusion={has_conclusion}")
@@ -111,7 +107,7 @@ Generate the complete report now."""
             "draft": draft,
             "word_count": word_count,
             "within_range": WORD_COUNT_MIN <= word_count <= WORD_COUNT_MAX,
-            "structure_valid": has_intro and has_body and has_conclusion
+            "structure_valid": has_intro and has_body and has_conclusion,
         }
 
 

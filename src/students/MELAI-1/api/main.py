@@ -11,7 +11,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 
 # Import des agents
 from agentic.critic_agent import critic_agent
-from agentic.fact_checker_agent import fact_checker 
+from agentic.fact_checker_agent import fact_checker
 from agentic.research_agent import research_agent
 from agentic.writer_agent import writer_agent
 
@@ -19,9 +19,10 @@ from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
-GOOGLE_API_KEY="AIzaSyBDQqvlBKGdvEAjSvX5yBdN5ObruaOzwfU"
+GOOGLE_API_KEY = "AIzaSyBDQqvlBKGdvEAjSvX5yBdN5ObruaOzwfU"
 GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID", "")
 
 TARGET_WORD_COUNT = 1000
@@ -45,6 +46,7 @@ users = {}
 # ============================================================================
 import re
 
+
 def count_words(text: str) -> int:
     """Efficient Python word count using regex."""
     return len(re.findall(r"\b\w+\b", text))
@@ -55,8 +57,10 @@ def count_words(text: str) -> int:
 # ============================================================================
 from typing import TypedDict, List, Dict
 
+
 class AgentState(TypedDict):
     """Shared state across all agents in the workflow."""
+
     topic: str
     research_bullets: List[Dict]
     report_draft: str
@@ -75,6 +79,7 @@ class AgentState(TypedDict):
 from langgraph.graph import StateGraph, END
 from datetime import datetime
 
+
 def create_workflow():
     """Create LangGraph workflow for multi-agent orchestration."""
 
@@ -89,20 +94,20 @@ def create_workflow():
         """Writer Agent Node"""
         print("\n✏️ WRITER AGENT EXECUTING...")
         result = writer_agent.write_report(state["topic"], state["research_bullets"])
-        
+
         # ✅ VÉRIFICATION IMMÉDIATE après écriture
         word_count = result["word_count"]
         within_range = WORD_COUNT_MIN <= word_count <= WORD_COUNT_MAX
-        
+
         print(f"   📊 Draft: {word_count} words")
         print(f"   ✓ Within range: {within_range}")
-        
+
         return {
             **state,
             "report_draft": result["draft"],
             "word_count": word_count,
             "within_range": within_range,
-            "structure_valid": result["structure_valid"]
+            "structure_valid": result["structure_valid"],
         }
 
     def critic_node(state: AgentState) -> AgentState:
@@ -111,17 +116,17 @@ def create_workflow():
         Cette fonction gère TOUTE la boucle de révision en interne
         """
         print("\n🔍 CRITIC AGENT EXECUTING...")
-        
+
         # ✅ UTILISE revise_until_valid qui s'arrête immédiatement
         result = critic_agent.revise_until_valid(state["report_draft"])
-        
+
         return {
             **state,
             "report_draft": result["draft"],
             "revision_count": result["revision_count"],
             "word_count": result["word_count"],
             "within_range": result["within_range"],
-            "structure_valid": result["structure_valid"]
+            "structure_valid": result["structure_valid"],
         }
 
     def fact_check_node(state: AgentState) -> AgentState:
@@ -129,11 +134,7 @@ def create_workflow():
         print("\n🎯 FACT-CHECKER AGENT EXECUTING...")
         claims = fact_checker.extract_claims(state["report_draft"])
         checks = fact_checker.verify_claims(claims, state["research_bullets"])
-        return {
-            **state,
-            "fact_checks": checks,
-            "final_report": state["report_draft"]
-        }
+        return {**state, "fact_checks": checks, "final_report": state["report_draft"]}
 
     # ✅ ROUTING LOGIC CORRIGÉE - Arrêt immédiat si dans l'intervalle
     def should_revise(state: AgentState) -> str:
@@ -145,23 +146,23 @@ def create_workflow():
         within_range = state["within_range"]
         structure_valid = state["structure_valid"]
         revision_count = state["revision_count"]
-        
+
         print(f"\n🔄 ROUTING DECISION:")
         print(f"   Word count: {word_count} (target: {WORD_COUNT_MIN}-{WORD_COUNT_MAX})")
         print(f"   Within range: {within_range}")
         print(f"   Structure valid: {structure_valid}")
         print(f"   Revisions done: {revision_count}")
-        
+
         # ✅ PREMIÈRE PRIORITÉ: Si dans l'intervalle ET structure valide → ARRÊT
         if within_range and structure_valid:
             print(f"   ✅ → VALIDATION RÉUSSIE - Proceeding to fact-check")
             return "fact_check"
-        
+
         # ✅ DEUXIÈME PRIORITÉ: Si max révisions atteint → ARRÊT forcé
         if revision_count >= MAX_REVISION_ROUNDS:
             print(f"   ⚠️ → Max revisions ({MAX_REVISION_ROUNDS}) reached - Force fact-check")
             return "fact_check"
-        
+
         # ❌ Sinon, besoin de révision
         print(f"   🔄 → Needs revision")
         return "critic"
@@ -179,7 +180,7 @@ def create_workflow():
 
     # ✅ EDGES CONDITIONNELS CORRIGÉS
     workflow.add_conditional_edges("writer", should_revise)
-    
+
     # ✅ IMPORTANT: Après critic, on vérifie TOUJOURS si on doit continuer
     # Car critic_node utilise maintenant revise_until_valid qui peut tout résoudre
     workflow.add_conditional_edges("critic", should_revise)
@@ -194,13 +195,13 @@ def create_workflow():
 # ============================================================================
 def generate_report():
     """Main execution function - runs the complete multi-agent workflow."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🚀 AGENTIC AI REPORT GENERATOR")
-    print("="*70)
+    print("=" * 70)
     print(f"Topic: {REPORT_TOPIC}")
     print(f"Target: {WORD_COUNT_MIN}-{WORD_COUNT_MAX} words")
     print(f"Model: {MODEL_NAME}")
-    print("="*70)
+    print("=" * 70)
 
     app = create_workflow()
 
@@ -214,7 +215,7 @@ def generate_report():
         "revision_count": 0,
         "fact_checks": [],
         "final_report": "",
-        "metadata": {}
+        "metadata": {},
     }
 
     start_time = datetime.now()
@@ -224,9 +225,9 @@ def generate_report():
         execution_time = (datetime.now() - start_time).total_seconds()
 
         # Python-based word count enforcement
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("📊 FINAL WORD COUNT VALIDATION")
-        print("="*70)
+        print("=" * 70)
 
         final_word_count = count_words(final_state["final_report"])
         final_state["word_count"] = final_word_count
@@ -242,8 +243,7 @@ def generate_report():
             print(f"   This should not happen with the new revision system")
 
         # Compile metadata
-        verified = sum(1 for fc in final_state["fact_checks"]
-                      if fc.get("status") in ["VERIFIED", "SUPPORTED"])
+        verified = sum(1 for fc in final_state["fact_checks"] if fc.get("status") in ["VERIFIED", "SUPPORTED"])
 
         metadata = {
             "word_count": final_state["word_count"],
@@ -253,26 +253,27 @@ def generate_report():
             "research_bullets": len(final_state["research_bullets"]),
             "verified_claims": f"{verified}/{len(final_state['fact_checks'])}",
             "execution_time": f"{execution_time:.2f}s",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("✅ GENERATION COMPLETE")
-        print("="*70)
+        print("=" * 70)
         for k, v in metadata.items():
             print(f"   {k.replace('_', ' ').title()}: {v}")
-        print("="*70)
+        print("=" * 70)
 
         return {
             "report": final_state["final_report"],
             "research": final_state["research_bullets"],
             "fact_checks": final_state["fact_checks"],
-            "metadata": metadata
+            "metadata": metadata,
         }
 
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         raise
 
@@ -285,31 +286,31 @@ def generate_report_with_params(topic: str, temperature: float = 0.5):
     Generate report with custom topic and temperature.
     UTILISE LE MÊME SYSTÈME D'ARRÊT IMMÉDIAT
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🚀 CUSTOM REPORT GENERATOR")
-    print("="*70)
+    print("=" * 70)
     print(f"Topic: {topic}")
     print(f"Temperature: {temperature}")
     print(f"Target: {WORD_COUNT_MIN}-{WORD_COUNT_MAX} words")
-    print("="*70)
+    print("=" * 70)
 
     from agentic.research_agent import ResearchAgent
     from agentic.writer_agent import WriterAgent
     from agentic.critic_agent import CriticAgent
     from agentic.fact_checker_agent import FactCheckerAgent
-    
+
     custom_research = ResearchAgent(api_key=GOOGLE_API_KEY, model=MODEL_NAME)
     custom_research.llm.temperature = temperature
-    
+
     custom_writer = WriterAgent(api_key=GOOGLE_API_KEY, model=MODEL_NAME)
     custom_writer.llm.temperature = temperature
-    
+
     custom_critic = CriticAgent(api_key=GOOGLE_API_KEY, model=MODEL_NAME)
     custom_fact_checker = FactCheckerAgent(api_key=GOOGLE_API_KEY, model=MODEL_NAME)
 
     def create_custom_workflow():
         """Create workflow with custom agents and topic."""
-        
+
         def research_node(state: AgentState) -> AgentState:
             print("\n🔬 RESEARCH AGENT EXECUTING...")
             bullets = custom_research.gather_research(topic, NUM_RESEARCH_BULLETS)
@@ -318,44 +319,40 @@ def generate_report_with_params(topic: str, temperature: float = 0.5):
         def writer_node(state: AgentState) -> AgentState:
             print("\n✏️ WRITER AGENT EXECUTING...")
             result = custom_writer.write_report(topic, state["research_bullets"])
-            
+
             word_count = result["word_count"]
             within_range = WORD_COUNT_MIN <= word_count <= WORD_COUNT_MAX
-            
+
             print(f"   📊 Draft: {word_count} words")
             print(f"   ✓ Within range: {within_range}")
-            
+
             return {
                 **state,
                 "report_draft": result["draft"],
                 "word_count": word_count,
                 "within_range": within_range,
-                "structure_valid": result["structure_valid"]
+                "structure_valid": result["structure_valid"],
             }
 
         def critic_node(state: AgentState) -> AgentState:
             """UTILISE revise_until_valid pour arrêt immédiat"""
             print("\n🔍 CRITIC AGENT EXECUTING...")
             result = custom_critic.revise_until_valid(state["report_draft"])
-            
+
             return {
                 **state,
                 "report_draft": result["draft"],
                 "revision_count": result["revision_count"],
                 "word_count": result["word_count"],
                 "within_range": result["within_range"],
-                "structure_valid": result["structure_valid"]
+                "structure_valid": result["structure_valid"],
             }
 
         def fact_check_node(state: AgentState) -> AgentState:
             print("\n🎯 FACT-CHECKER AGENT EXECUTING...")
             claims = custom_fact_checker.extract_claims(state["report_draft"])
             checks = custom_fact_checker.verify_claims(claims, state["research_bullets"])
-            return {
-                **state,
-                "fact_checks": checks,
-                "final_report": state["report_draft"]
-            }
+            return {**state, "fact_checks": checks, "final_report": state["report_draft"]}
 
         def should_revise(state: AgentState) -> str:
             """MÊME LOGIQUE: Arrêt immédiat si dans l'intervalle"""
@@ -363,21 +360,21 @@ def generate_report_with_params(topic: str, temperature: float = 0.5):
             within_range = state["within_range"]
             structure_valid = state["structure_valid"]
             revision_count = state["revision_count"]
-            
+
             print(f"\n🔄 ROUTING DECISION:")
             print(f"   Word count: {word_count}")
             print(f"   Within range: {within_range}")
             print(f"   Structure valid: {structure_valid}")
-            
+
             # ✅ Arrêt immédiat si valide
             if within_range and structure_valid:
                 print(f"   ✅ → VALIDATED - Proceeding to fact-check")
                 return "fact_check"
-            
+
             if revision_count >= MAX_REVISION_ROUNDS:
                 print(f"   ⚠️ → Max revisions reached")
                 return "fact_check"
-            
+
             print(f"   🔄 → Needs revision")
             return "critic"
 
@@ -386,13 +383,13 @@ def generate_report_with_params(topic: str, temperature: float = 0.5):
         workflow.add_node("writer", writer_node)
         workflow.add_node("critic", critic_node)
         workflow.add_node("fact_check", fact_check_node)
-        
+
         workflow.set_entry_point("research")
         workflow.add_edge("research", "writer")
         workflow.add_conditional_edges("writer", should_revise)
         workflow.add_conditional_edges("critic", should_revise)
         workflow.add_edge("fact_check", END)
-        
+
         return workflow.compile()
 
     app = create_custom_workflow()
@@ -407,7 +404,7 @@ def generate_report_with_params(topic: str, temperature: float = 0.5):
         "revision_count": 0,
         "fact_checks": [],
         "final_report": "",
-        "metadata": {}
+        "metadata": {},
     }
 
     start_time = datetime.now()
@@ -416,9 +413,9 @@ def generate_report_with_params(topic: str, temperature: float = 0.5):
         final_state = app.invoke(initial_state)
         execution_time = (datetime.now() - start_time).total_seconds()
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("📊 FINAL VALIDATION")
-        print("="*70)
+        print("=" * 70)
 
         final_word_count = count_words(final_state["final_report"])
         final_state["word_count"] = final_word_count
@@ -428,8 +425,7 @@ def generate_report_with_params(topic: str, temperature: float = 0.5):
         print(f"   Target: {WORD_COUNT_MIN}-{WORD_COUNT_MAX}")
         print(f"   Status: {'✅ OK' if final_state['within_range'] else '⚠️ OUT OF RANGE'}")
 
-        verified = sum(1 for fc in final_state["fact_checks"]
-                      if fc.get("status") in ["VERIFIED", "SUPPORTED"])
+        verified = sum(1 for fc in final_state["fact_checks"] if fc.get("status") in ["VERIFIED", "SUPPORTED"])
 
         metadata = {
             "word_count": final_state["word_count"],
@@ -441,26 +437,27 @@ def generate_report_with_params(topic: str, temperature: float = 0.5):
             "execution_time": f"{execution_time:.2f}s",
             "timestamp": datetime.now().isoformat(),
             "topic": topic,
-            "temperature": temperature
+            "temperature": temperature,
         }
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("✅ GENERATION COMPLETE")
-        print("="*70)
+        print("=" * 70)
         for k, v in metadata.items():
             print(f"   {k.replace('_', ' ').title()}: {v}")
-        print("="*70)
+        print("=" * 70)
 
         return {
             "report": final_state["final_report"],
             "research": final_state["research_bullets"],
             "fact_checks": final_state["fact_checks"],
-            "metadata": metadata
+            "metadata": metadata,
         }
 
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         raise
 
@@ -484,13 +481,16 @@ app = FastAPI(
     redirect_slashes=False,
 )
 
+
 @app.get("/", include_in_schema=False)
 def root():
     return get_swagger_ui_html(openapi_url="/openapi.json", title="AIMS Course API Docs")
 
+
 @app.get("/hello")
 def hello():
     return {"message": f"Hello from {current_user}!"}
+
 
 @app.get("/evaluate")
 def evaluate(expression: str):
@@ -500,6 +500,7 @@ def evaluate(expression: str):
     except Exception as e:
         return {"error": str(e)}
 
+
 @app.post("/register")
 def register_user(request: UserRequest):
     username = request.username
@@ -508,15 +509,18 @@ def register_user(request: UserRequest):
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} registered successfully"}
 
+
 @app.get("/register")
 def get_registered_users():
     return {"users": users}
+
 
 @app.get("/register/{username}")
 def get_user_details(username: str):
     if username not in users:
         raise HTTPException(status_code=404, detail="User not found")
     return {"username": username, "name": users[username]}
+
 
 @app.delete("/register/{username}/delete")
 def delete_user(username: str):
@@ -525,12 +529,14 @@ def delete_user(username: str):
     del users[username]
     return {"message": f"User {username} deleted successfully"}
 
+
 @app.put("/register/{username}")
 def update_user_details(username: str, request: UpdateUserRequest):
     if username not in users:
         raise HTTPException(status_code=404, detail="User not found")
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
+
 
 # Mount Gradio apps
 from gradioapp.agentic_gradio import report
