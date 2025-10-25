@@ -4,7 +4,7 @@ This module contains the tools for the essay writer agent.
 - A word counter utility function
 """
 import requests
-from langchain_core.tools import BaseTool, tool
+from langchain_core.tools import BaseTool
 
 
 class WikipediaSearchTool(BaseTool):
@@ -74,12 +74,8 @@ def get_wikipedia_tool():
     return WikipediaSearchTool()
 
 
-@tool
 def count_words(text: str) -> int:
     """
-    Use this tool to count the number of words in a piece of text.
-    The input should be the text you want to count.
-
     Counts the number of words in a given string.
     """
     return len(text.split())

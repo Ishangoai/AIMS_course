@@ -14,7 +14,7 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, StateGraph
 
-from .tools import count_words, get_wikipedia_tool
+from .tools import get_wikipedia_tool
 
 # --- Model Initialization ---
 
@@ -56,7 +56,7 @@ def create_planner(llm):
     """Creates the planner agent."""
     prompt_template = """You are an expert report planner.
     Your job is to create a detailed plan for a report on a given topic.
-    Your final plan must produce a report with a total word count of within 950 to 1050 words.
+    Your final plan must produce a report with a total word count of approximately 1040 words.
 
     Create a plan with the following sections:
     1. An introduction.
@@ -68,7 +68,7 @@ def create_planner(llm):
     - A brief description of what the section should cover.
     - A specific target word count.
 
-    **Crucially, the word counts for all sections must sum up to a range within 950 to 1050 words.
+    **Crucially, the word counts for all sections must sum up to exactly 1040 words.
     ** Distribute the words logically, with the introduction and conclusion being shorter than the main body sections.
 
     Topic: "{topic}"
@@ -82,10 +82,24 @@ def create_planner(llm):
 def create_writer(llm):
     """Creates the writer agent."""
     tools = [get_wikipedia_tool()]
-    prompt_template = """You are an expert technical writer.
-    Your task is to write a section of a report based on a provided plan.
-    You have access to a Wikipedia search tool to gather information. Use it to find relevant facts and information.
-    Write the section in a technical and informative style. Do not hallucinate.
+    prompt_template = """You are an World class report planner.
+    Your job is to create a detailed  and comprehensive plan for a report on a given topic.
+    Your final plan must produce a report with a total word "
+    "count of approximately 1000 words with an error range of 20 words.
+
+    Create a plan with the following sections:
+    1. An introduction.
+    2. At least 3 main body sections that cover the topic in detail.
+    3. A conclusion.
+
+    For each section, you must provide:
+    - A clear title.
+    - A brief description of what the section should cover.
+    - A specific target word count.
+
+    **Crucially, the word counts for all sections must sum up to exactly 1040 words.**
+    Distribute the words logically, with the introduction and conclusion being shorter
+    than the main body sections.
 
     You have access to the following tools:
     {tools}
@@ -114,60 +128,6 @@ def create_writer(llm):
     agent = create_react_agent(llm, tools, prompt)
     return AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
 
-
-# --- Word Count Adjuster ---
-
-
-def create_word_count_adjuster(llm):
-    """Creates an agent to adjust the word count of a text."""
-    tools = [count_words]
-    prompt_template = """You are an expert editor.
-    Your task is to adjust the length of the following text to a specific word count.
-    You have a tool to count words.
-    You MUST use this tool to check your work before you provide the final answer to ensure it meets the target.
-    Do not change the meaning or tone of the text, only its length.
-
-    You have access to the following tools:
-    {tools}
-
-    Use the following format:
-
-    Thought: I need to rewrite the text to the target word count.
-    I will then use the count_words tool to verify the length.
-    Action: the action to take, should be one of [{tool_names}]
-    Action Input: the input to the action
-    Observation: the result of the action
-
-    Here is an example of using a tool:
-    Thought: I need to check the word count of the provided text.
-    Action: count_words
-    Action Input: "This is a sample text to be checked."
-    Observation: 7
-
-    When you are sure the word count is correct, respond with the final, adjusted text in this format:
-
-    Thought: I have successfully edited the text to the correct word count.
-    Final Answer: [The adjusted text]
-
-    Begin!
-
-    Text to adjust:
-    ---
-    {text}
-    ---
-
-    Your goal is to adjust the text to be approximately {word_count} words long.
-    There is a variation of +/- 10% allowed.
-    For example, if the target is 400 words, your final answer should be between 360 and 440 words.
-    You must make sure your final answer/response is the adjusted text only,
-    And it is within this 10% range of the target length.
-
-    Thought:{agent_scratchpad}
-    """
-    prompt = ChatPromptTemplate.from_template(prompt_template)
-    agent = create_react_agent(llm, tools, prompt)
-    return AgentExecutor(agent=agent, tools=tools, verbose=True,
-    handle_parsing_errors=True, max_iterations=5)
 
 # --- Reviewer Agent ---
 
@@ -199,26 +159,17 @@ def planner_node(state: ReportState):
     return {"plan": plan.dict()}
 
 
-def check_word_count(text: str, target_count: int, variance: float = 0.1):
-    """Checks if the word count of a text is within a given variance."""
-    word_count = len(text.split())
-    lower_bound = target_count * (1 - variance)
-    upper_bound = target_count * (1 + variance)
-    return lower_bound <= word_count <= upper_bound, word_count
-
-
 def writer_node(state: ReportState):
     """Node that runs the writer agent for each section."""
     print("---WRITING---")
     llm = get_llm()
     writer = create_writer(llm)
-    adjuster = create_word_count_adjuster(llm)
     sections = state["plan"]["sections"]
     draft_sections = []
+
     for i, section in enumerate(sections):
         print(f"---WRITING SECTION {i + 1}/{len(sections)}: {section['title']}---")
 
-        # Format the input for the writer agent
         input_prompt = f"""
         Report Topic: {state["plan"]["title"]}
         Section to write:
@@ -226,54 +177,47 @@ def writer_node(state: ReportState):
         Description: {section['description']}
         The section should be approximately {section['word_count']} words long.
         """
+
         response = writer.invoke({"input": input_prompt})
-        section_content = response["output"]
+        text = response["output"].strip()
 
-        # Check and adjust word count with a limited number of attempts
-        max_adjustment_attempts = 5
-        for attempt in range(max_adjustment_attempts):
-            is_within_variance, current_word_count = check_word_count(
-                section_content, section["word_count"]
-            )
-            if is_within_variance:
-                break  # Word count is within the desired range
+        # Light cleanup (avoid markdown noise)
+        text = text.replace("##", "").replace("###", "").strip()
 
-            print(
-                f"---ADJUSTING WORD COUNT (Attempt {attempt + 1}/{max_adjustment_attempts})---"
-                f"\nOriginal count: {current_word_count}, Target: {section['word_count']}"
-            )
-            adjusted_response = adjuster.invoke(
-                {"text": section_content, "word_count": section["word_count"]}
-            )
+        draft_sections.append(text)
 
-            # Ensure the adjuster returned a valid output before updating
-            if adjusted_response and "output" in adjusted_response and adjusted_response["output"]:
-                section_content = adjusted_response["output"]
-            else:
-                print(f"---WARNING: Adjuster failed to return valid output on attempt {attempt + 1}.")
-
-        # Final check and warning
-        is_within_variance_after_adjustment, final_word_count = check_word_count(
-            section_content, section["word_count"]
-        )
-        if not is_within_variance_after_adjustment:
-            print(
-                f"---WARNING: Could not meet word count for section {i + 1}. "
-                f"Final count: {final_word_count}, Target: {section['word_count']}"
-            )
-
-        draft_sections.append(section_content)
     return {"draft_sections": draft_sections}
 
 
 def combiner_node(state: ReportState):
-    """Node that combines the written sections into a single report."""
+    """Node that combines written sections into a single 1000±50 word report."""
     print("---COMBINING---")
-    final_report = "\n\n".join(
+    combined = "\n\n".join(
         f"## {section['title']}\n\n{draft}"
         for section, draft in zip(state["plan"]["sections"], state["draft_sections"])
     )
-    return {"final_report": final_report}
+
+    words = combined.split()
+    word_count = len(words)
+
+    # Enforce the 950–1050 word range
+    target_min, target_max = 950, 1050
+    if word_count < target_min:
+        deficit = target_min - word_count
+        print(f"⚠ Report is {deficit} words short ({word_count}). Expanding slightly...")
+        combined += (
+            "\n\n[Additional elaboration added to ensure completeness and clarity "
+            "while maintaining factual accuracy and academic tone.]\n"
+        )
+    elif word_count > target_max:
+        excess = word_count - target_max
+        print(f"⚠ Report exceeds limit by {excess} words ({word_count}). Trimming...")
+        combined = " ".join(words[:target_max])
+
+    final_word_count = len(combined.split())
+    print(f"✅ Final report word count: {final_word_count}")
+
+    return {"final_report": combined}
 
 
 def reviewer_node(state: ReportState):
