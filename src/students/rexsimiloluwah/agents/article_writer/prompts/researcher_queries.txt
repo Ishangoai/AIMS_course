@@ -1,0 +1,6 @@
+Extract 3-5 specific research queries from this topic and outline.
+
+TOPIC: {topic}
+OUTLINE: {outline}
+
+Output only the queries, one per line.
