@@ -26,7 +26,7 @@ class QueueIO(io.TextIOBase):
 # ========== REPORT GENERATION ==========
 def generate_report(topic: str):
     if not topic.strip():
-        yield "⚠ Please enter a topic.", "", None
+        yield "⚠ Please enter a topic.", "", None, "", ""
         return
 
     log_queue = queue.Queue()
@@ -48,7 +48,7 @@ def generate_report(topic: str):
         try:
             line = log_queue.get(timeout=0.1)
             logs += line
-            yield logs, "", None
+            yield logs, "", None, "", ""
         except queue.Empty:
             time.sleep(0.1)
 
@@ -59,8 +59,13 @@ def generate_report(topic: str):
         logs += f"\n❌ Error: {result}"
         report_text = ""
         txt_file = None
+        word_count = ""
+        editable_text = ""
     else:
-        report_text = result.get("final_report", "No report generated.")
+        report_text = result.get("final_report", "No report to display.")
+        report_text = report_text.replace("*", "\\*")
+        editable_text = report_text
+        word_count = f"📝 Word Count: {len(report_text.split())}" if report_text else ""
 
         # Save TXT
         if report_text:
@@ -71,7 +76,18 @@ def generate_report(topic: str):
         else:
             txt_file = None
 
-    yield logs, report_text, txt_file
+    yield logs, report_text, txt_file, word_count, editable_text
+
+
+# ========== SAVE EDITED REPORT ==========
+def save_edited_report(edited_text: str):
+    if not edited_text.strip():
+        return None, "⚠ Nothing to save."
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".txt", prefix="Edited_Report_")
+    tmp_file.write(edited_text.encode("utf-8"))
+    tmp_file.close()
+    word_count = f"📝 Word Count: {len(edited_text.split())}"
+    return tmp_file.name, word_count
 
 
 # ========== UI ==========
@@ -99,10 +115,6 @@ with gr.Blocks(
             letter-spacing: 1px;
             margin-bottom: 0.3em;
         }
-        p.subtitle {
-            font-size: 1.2em;
-            color: #c9c9c9;
-        }
         .gr-button {
             background-color: #00d4ff !important;
             color: #0f1116 !important;
@@ -115,9 +127,6 @@ with gr.Blocks(
             border-radius: 10px;
             padding: 1em;
         }
-        .gr-textbox textarea {
-            font-size: 0.95em;
-        }
     """
 ) as essay:
 
@@ -127,6 +136,7 @@ with gr.Blocks(
             """
             <div style='text-align:center'>
                 <h1 class='title-text'>Welcome to Deep Research</h1>
+                <p class='subtitle'>Generate, review, and edit structured research reports with live word count.</p>
             </div>
             """
         )
@@ -140,11 +150,11 @@ with gr.Blocks(
             scale=4,
             autofocus=True,
         )
-        generate_button = gr.Button("🚀 Generate Report", variant="primary", scale=0)
+        generate_button = gr.Button("🚀 Generate Report", variant="primary")
 
         gr.Markdown("<div style='height: 1em'></div>")
 
-        # Agent logs
+        # Logs
         with gr.Accordion("Click to view logs", open=True):
             thinking_box = gr.Textbox(
                 label="Thinking...",
@@ -154,22 +164,54 @@ with gr.Blocks(
                 autoscroll=True,
             )
 
-        # Final report
-        final_report_display = gr.Markdown(
-            label="Final Report",
+        # Final report (read-only preview - text )
+        final_report_display = gr.Textbox(
+            label="Final Report (Preview)",
+            lines=25,
+            interactive=False,
+            show_copy_button=True,
+            autoscroll=True,
             elem_classes=["final-output-markdown"]
         )
 
-        # TXT download
-        txt_download = gr.File(
-            label="Download TXT",
-            file_count="single",
-            type="filepath"
+        # Editable text area
+        edited_textbox = gr.Textbox(
+            label="✏️ Edit Your Report (optional)",
+            lines=20,
+            interactive=True,
+            visible=True,
+            show_copy_button=True
         )
 
-        # Button click
+        # Word count
+        word_count_display = gr.Markdown(label="Word Count", value="")
+
+        # TXT download buttons
+        txt_download = gr.File(label="Download Original TXT", file_count="single", type="filepath")
+        edited_download = gr.File(label="Download Edited TXT", file_count="single", type="filepath")
+
+        # Save button
+        save_button = gr.Button("💾 Save Edited Report")
+
+        # Bind functions
         generate_button.click(
             fn=generate_report,
             inputs=topic_input,
-            outputs=[thinking_box, final_report_display, txt_download]
+            outputs=[
+                thinking_box,
+                final_report_display,
+                txt_download,
+                word_count_display,
+                edited_textbox,
+            ],
         )
+
+        save_button.click(
+            fn=save_edited_report,
+            inputs=edited_textbox,
+            outputs=[edited_download, word_count_display],
+        )
+
+
+if __name__ == "__main__":
+    essay.launch()
