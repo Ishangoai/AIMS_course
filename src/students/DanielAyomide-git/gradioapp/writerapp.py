@@ -62,7 +62,8 @@ def generate_report(topic: str):
         word_count = ""
         editable_text = ""
     else:
-        report_text = result.get("final_report", "No report generated.")
+        report_text = result.get("final_report", "No report to display.")
+        report_text = report_text.replace("*", "\\*")
         editable_text = report_text
         word_count = f"📝 Word Count: {len(report_text.split())}" if report_text else ""
 
@@ -163,9 +164,13 @@ with gr.Blocks(
                 autoscroll=True,
             )
 
-        # Final report (read-only preview)
-        final_report_display = gr.Markdown(
+        # Final report (read-only preview - text )
+        final_report_display = gr.Textbox(
             label="Final Report (Preview)",
+            lines=25,
+            interactive=False,
+            show_copy_button=True,
+            autoscroll=True,
             elem_classes=["final-output-markdown"]
         )
 
