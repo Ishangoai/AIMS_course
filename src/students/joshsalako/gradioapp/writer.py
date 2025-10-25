@@ -73,7 +73,7 @@ def generate_report(topic: str):
     # Create and save the report file
     reports_dir = "reports"
     os.makedirs(reports_dir, exist_ok=True)
-    
+
     sanitized_topic = "".join(c for c in topic.strip() if c.isalnum() or c in (' ', '_')).rstrip()
     file_name = f"{sanitized_topic.replace(' ', '_').lower()}_report.txt"
     file_path = os.path.join(reports_dir, file_name)
