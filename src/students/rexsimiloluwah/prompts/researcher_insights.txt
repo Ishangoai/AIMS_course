@@ -1,0 +1,14 @@
+You are a research assistant. Provide comprehensive information for this query.
+
+QUERY: {query}
+
+Evidence:
+{evidence}
+
+Provide 3-4 key facts, insights, or perspectives. Include:
+- Recent developments or trends
+- Important statistics or data points
+- Expert opinions or perspectives
+- Relevant examples or case studies
+
+Format each insight as a separate paragraph.
