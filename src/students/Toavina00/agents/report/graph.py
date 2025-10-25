@@ -35,8 +35,6 @@ def length_checker(report: str) -> int:
     return len(report.split())
 
 
-
-
 def planning(topic: str, temperature):
     llm = init_chat_model(
     "google_genai:gemini-2.0-flash-lite",
@@ -54,6 +52,7 @@ def planning(topic: str, temperature):
     outline = parse_json_to_pydantic(planning_output["messages"][-1].content, PlanSchema)
 
     return outline.content
+
 
 def compile_graph(temperature: float, llm):
 

@@ -1,9 +1,11 @@
 import gradio as gr
-from agents.report.graph import generate_report as gen_report, planning
+from agents.report.graph import generate_report as gen_report
+from agents.report.graph import planning
 
 
 def llm_call(topic: str, temperature: float, outline):
     return gen_report(topic, temperature, outline)
+
 
 # Enhanced custom CSS with improved colors and polish
 custom_css = """
@@ -165,7 +167,7 @@ button.copy:hover {
 with gr.Blocks(css=custom_css) as iface:
     gr.Markdown("# 📊 Report Writer")
     gr.Markdown("## Write a report about an MLOps related topic")
-    
+
     with gr.Row():
         with gr.Column(scale=3):
             topic = gr.Text(
@@ -188,7 +190,8 @@ with gr.Blocks(css=custom_css) as iface:
                 elem_classes="generate-btn"
             )
             temp_display = gr.HTML(
-                value='<div id="temp-display" class="moderate" style="font-size: 0.85rem; padding: 0.5rem; text-align: center;">🌤️ 0.7°</div>'
+                value='<div id="temp-display" class="moderate" style="font-size: 0.85rem;'
+                'padding: 0.5rem; text-align: center;">🌤️ 0.7°</div>'
             )
     with gr.Row():
         with gr.Column():
@@ -211,7 +214,7 @@ with gr.Blocks(css=custom_css) as iface:
                     scale=1,
                     variant="secondary"
                 )
-            
+
         with gr.Column():
             result1 = gr.Textbox(
                 lines=20,
@@ -224,7 +227,7 @@ with gr.Blocks(css=custom_css) as iface:
                 scale=1,
                 variant="secondary"
             )
-    
+
     # Event handlers - Fixed to follow proper Gradio patterns
     def update_temp_display(temp_value):
         """Update temperature display with color based on value"""
@@ -243,38 +246,39 @@ with gr.Blocks(css=custom_css) as iface:
         else:
             css_class = "hot"
             emoji = "🌋"
-        
-        return f'<div id="temp-display" class="{css_class}" style="font-size: 0.85rem; padding: 0.5rem; text-align: center;">{emoji} {temp_value:.1f}°</div>'
-    
+
+        return f'<div id="temp-display" class="{css_class}" style="font-size: 0.85rem; padding: 0.5rem;'
+        f'text-align: center;">{emoji} {temp_value:.1f}°</div>'
+
     temperature.change(
         fn=update_temp_display,
         inputs=temperature,
         outputs=temp_display
     )
-    
+
     def generate_and_enable_edit(topic, temp):
         """Generate outline and make it editable"""
         outline = planning(topic, temp)
         return gr.update(value=outline, interactive=True)
-    
+
     generate.click(
         fn=generate_and_enable_edit,
         inputs=[topic, temperature],
         outputs=result
     )
-    
+
     regenerate_outline.click(
         fn=generate_and_enable_edit,
         inputs=[topic, temperature],
         outputs=result
     )
-    
+
     generate_report.click(
         fn=llm_call,
         inputs=[topic, temperature, result],
         outputs=result1
     )
-    
+
     regenerate_report.click(
         fn=llm_call,
         inputs=topic,
