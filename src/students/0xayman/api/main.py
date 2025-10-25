@@ -7,8 +7,11 @@ from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse
 from gradioapp.app import app as demo
+from gradioapp.gradio_app import fraud_detection_app
 from gradioapp.heart_disease_app import heart_app
+from gradioapp.image_manipulation import app as img_app
 
 app = FastAPI(
     title="AIMS Course API",
@@ -18,6 +21,8 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
+    4. [**Image Manipulation App**](/image-manipulation/)
+    4. [**ML Fraud Detection App**](/ml_fraud/)
     -----
     """),
     version="1.0.0",
@@ -98,9 +103,7 @@ def get_user_details(username: str):
 
 
 @app.delete(
-    "/register/{username}/delete",
-    summary="Delete a user",
-    description="Deletes a user with the given username."
+    "/register/{username}/delete", summary="Delete a user", description="Deletes a user with the given username."
 )
 def delete_user(username: str):
     """
@@ -125,6 +128,62 @@ def update_user_details(username: str, request: UpdateUserRequest):
     return {"message": f"User {username} updated successfully"}
 
 
+@app.get("/ui")
+def ui():
+    """
+    Return a custom HTML page with Hello World message.
+    """
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Hello World Page</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+            }
+            .container {
+                text-align: center;
+                background: white;
+                padding: 50px;
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            }
+            h1 {
+                color: #333;
+                font-size: 3em;
+                margin: 0;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            p {
+                color: #666;
+                font-size: 1.2em;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Hello World</h1>
+            <p>Welcome to the AIMS Course API UI!</p>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content, status_code=200)
+
+
 gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
+gr.mount_gradio_app(app, img_app, path="/image-manipulation")
+gr.mount_gradio_app(app, fraud_detection_app, path="/ml_fraud")
