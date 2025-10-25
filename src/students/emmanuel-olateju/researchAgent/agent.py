@@ -1282,7 +1282,7 @@ def run_agent_with_interactive_feedback(topic: str, temperature: float = 0.7,
         # Finalize without feedback
         state["enable_human_feedback"] = False
         app = build_graph()
-        final_state = app.invoke(state)
+        final_state = app.invoke(state)  # pyright: ignore[reportArgumentType]
         return final_state
 
 
