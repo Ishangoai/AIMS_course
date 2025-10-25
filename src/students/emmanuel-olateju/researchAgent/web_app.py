@@ -129,7 +129,7 @@ def simple_mode_generate(dropdown_topic, custom_topic, temperature, max_iteratio
     def agent_thread():
         """Run agent in separate thread with stdout capture."""
         try:
-            with contextlib.redirect_stdout(QueueIO(log_queue)): # type: ignore
+            with contextlib.redirect_stdout(QueueIO(log_queue)):  # pyright: ignore[reportArgumentType]
                 result = run_agent(topic, temperature, max_iterations, enable_human_feedback=False)
                 result_queue.put(result)
         except Exception as e:
@@ -321,7 +321,7 @@ def hitl_revise_with_feedback(dropdown_topic, custom_topic, temperature, max_ite
         print(f"   Feedback: {feedback[:100]}...")
 
         # Use the actual apply_human_feedback function from agent.py
-        revised_result = apply_human_feedback(draft_state, feedback) # type: ignore
+        revised_result = apply_human_feedback(draft_state, feedback)  # pyright: ignore[reportOptionalCall]
 
         report = revised_result.get("final_report", revised_result.get("draft_report", ""))
         metadata = revised_result.get("metadata", {})
