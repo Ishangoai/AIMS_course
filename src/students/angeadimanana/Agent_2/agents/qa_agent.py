@@ -3,12 +3,11 @@ QA Agent Module
 Final quality check of the report with scoring
 """
 
+from Agent_2.utils.helpers import count_words
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import HumanMessage, SystemMessage
 from langchain.schema.output_parser import StrOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
-
-from utils.helpers import count_words
 
 
 def qa_agent(
