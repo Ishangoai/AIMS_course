@@ -288,7 +288,6 @@ def do_report(text: str, max_retries: int = 2):
     # ========================
     retries = 0
     while retries <= max_retries:
-        print("reties:", retries)
         word_count = count_words(corrected_report)
         review_result = review_chain.run(
             corrected_text=corrected_report,
