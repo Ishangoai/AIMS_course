@@ -1,0 +1,278 @@
+body, .gradio-container, .gradio-app {
+    background-color: #eee !important; 
+    font-size:16px!important;
+    color:black!important;
+}
+
+
+.app_title {
+  display: flex !important;
+  justify-content: center !important; /* center horizontally */
+  align-items: center !important;     /* center vertically */
+  padding: 15px 0 !important;
+  gap: 10px !important;
+}
+.app_title span p::before{
+content:'⭐⭐⭐';
+color:#fff!important;
+ background: red;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: red;
+   font-size: 2rem !important;
+}
+.app_title span p::after{
+content:'⭐⭐⭐';
+color:#fff!important;
+ background: red;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: red;
+   font-size: 2rem !important;
+}
+.app_title span p {
+  font-family: 'Poppins', 'Inter', sans-serif !important; /* modern font */
+  font-weight: 700 !important;
+  font-size: 2.2rem !important;
+  background: linear-gradient(90deg, #35afe8, #5fd3f3); /* subtle gradient */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 1px !important;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.15) !important;
+  margin: 0 !important;
+}
+
+
+/* Button styling */
+.action-button{
+    border: none!important;
+    border-radius: 24px!important; 
+    padding: 10px 20px!important;
+    font-size: 20px!important;
+    font-weight: 500!important;
+    max-width:250px!important;
+    color: white!important; 
+    background: linear-gradient(135deg, #6a9ee8, #85c1f2)!important; 
+    cursor: pointer!important;
+    transition: all 0.3s ease!important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1)!important;
+    
+}
+
+/* Hover effect */
+.action-button:hover {
+    background: linear-gradient(135deg, #85c1f2, #6a9ee8)!important;
+    transform: translateY(-2px)!important;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15)!important;
+}
+.top_row{
+display:flex!important;
+flex-direction:row!important;
+justify-items:left!important;
+margin-bottom: 4px !important; /* reduce space between rows */
+gap:10px!important;
+max-width:100%!important;
+}
+.prompt_area{
+max-width:100%!important;
+}
+.prompt_area, .prompt_area textarea{
+background:none!important;
+border:none!important;
+font-size:20px!important;
+color:#333!important;
+}
+.prompt_area textarea {
+border-bottom:1px solid #aaa!important;
+max-width:100%!important;
+}
+.prompt_area textarea::placeholder {
+font-size:20px!important;
+color:#777!important;
+}
+.pcheck_box label{
+color:#333!important;
+font-size:18px!important;
+}
+/* Hide default checkbox and style custom one */
+.pcheck_box input[type="checkbox"] {
+    appearance: none; /* remove default checkbox look */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    border: 2px solid #aaa !important;
+    border-radius: 50% !important; /* make it round */
+    background: none !important;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+/* When checked */
+.pcheck_box input[type="checkbox"]:checked {
+    background: #fff!important;
+    border: 1.5px solid #f5810c!important;
+}
+
+/* Tick mark */
+.pcheck_box input{
+scale:1.3!important;
+margin-left:10px!important;
+}
+.pcheck_box input[type="checkbox"]:checked::after {
+    content: "✓";
+    font-size: 18px!important;
+    color: #f5810c!important;
+    font-weight: bold;
+    position:absolute!important;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+}
+
+.pheading span p {
+  font-weight: bold !important;
+  font-size: 1.5rem !important;
+  color: #333 !important;
+  border-bottom: 1px solid #ccc !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.15); /* light subtle shadow */
+}
+.cheading span p{
+font-weight:bold!important;
+font-size:1.5rem!important;
+color:#333!important;
+}
+.paction-button{
+    border: none!important;
+    border-radius: 8px!important; 
+    padding: 10px 20px!important;
+    font-size: 20px!important;
+    font-weight: 500!important;
+    max-width:250px!important;
+    color: white!important; 
+    background: linear-gradient(to bottom, #97c4f4, #93c2f3)!important; /* Dark bluish top-down gradient */
+    cursor: pointer!important;
+    transition: all 0.3s ease!important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2)!important;
+}
+
+/* Hover effect */ddfdfdfdfdfd
+.paction-button:hover {
+    background: linear-gradient(to bottom, #448edd, #4ea4e1)!important; /* Reverse gradient on hover for effect */
+    transform: translateY(-2px)!important;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3)!important;
+}
+
+.paction-button-green{
+    border: none!important;
+    border-radius: 8px!important; 
+    padding: 10px 20px!important;
+    font-size: 20px!important;
+    font-weight: 500!important;
+    max-width:250px!important;
+    color: white!important; 
+    background: linear-gradient(to bottom, #79c7aa, #77c7a8)!important; /* Dark bluish top-down gradient */
+    cursor: pointer!important;
+    transition: all 0.3s ease!important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2)!important;
+}
+
+/* Hover effect */
+.paction-button-green:hover {
+    background: linear-gradient(to bottom, #58a676, #53b578)!important; /* Reverse gradient on hover for effect */
+    transform: translateY(-2px)!important;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3)!important;
+}
+
+
+.column-shadow {
+  box-shadow: 0 0 15px 2px rgba(0, 0, 0, 0.15) !important; /* even, soft shadow */
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 50px !important;
+  width: fit-content !important;
+  min-height: 800px !important;
+  background: #fff !important;
+}
+.pcolumn-shadow{
+max-width:300px!important;
+}
+.prcolumn {
+max-width:750px!important;
+padding: 30px!important;
+border:none!important;
+}
+.preview textarea {
+background:#fff!important;
+color:black!important;
+cursor: pointer;
+min-height:600px!important;
+border:0.1px dashed #aaa!important;
+border-radius:0px!important;
+font-size:18px!important;
+height: 600px!important;
+overflow-y:scroll!important;
+overflow-x:scroll!important;
+}
+.main_column{
+display:flex!important;
+flex-direction:column!important;
+justify-content:center!important;
+align-items:center!important;
+width:fit-content!important;
+max-width:900px!important;
+box-shadow: 0 0 15px 2px rgba(0, 0, 0, 0.15) !important; /* even, soft shadow */
+border-radius:8px !important;
+padding:25px!important;
+background:#fff!important;
+}
+.main_row{
+display:flex!important;
+flex-direction:row!important;
+justify-content:center!important;
+}
+.progress{
+width: 100%; 
+background: #eee; 
+border-radius: 10px; 
+overflow: hidden;
+
+}
+.progress-bar{
+width: 70%; 
+background: #f5810c; 
+height: 5px; 
+text-align: center; 
+color: white; 
+font-size: 16px; 
+line-height: 5px;
+}
+.props span p::before{
+content:'Word count';
+}
+.props span p{
+font-size:16px!important;
+}
+.stat_info span p::before{
+content:'🔔';
+color:#f5810c!important;
+font-size:16px!important;
+}
+.stat_info span p{
+display: inline-block;
+padding: 8px 16px;
+border-radius: 20px;
+background: #eee;
+margin-left:5px!important;
+color: #f5810c;
+font-family: sans-serif;
+font-size:16px!important;
+margin-bottom:100px!important;
+opacity:0.8;
+}
+.pcredits span p{
+font-size:20px!important;
+font-style:italic!important;
+width: 100%!important;
+display: flex!important;
+flex-direction: row!important;
+justify-content: center!important;
+justify-items: center!important;
+color:#4e9ac7;
+}
