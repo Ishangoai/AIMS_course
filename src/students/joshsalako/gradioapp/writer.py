@@ -110,12 +110,10 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Agentic Report Writer") as essay:
     gr.Markdown("<div style='height: 0.7em'></div>")
     generate_button = gr.Button("Generate Report", variant="primary", scale=0)
 
-    gr.Markdown("<div style='height: 1.0em'></div>")
-
-    with gr.Accordion("Agent's Live Workstream", open=False):
+    with gr.Accordion("Click to view agent's live workstream...", open=False):
         thinking_box = gr.Textbox(
-            label="Thinking...",
-            lines=15,
+            label="Working...",
+            lines=10,
             show_copy_button=True,
             interactive=False,
             autoscroll=True,
