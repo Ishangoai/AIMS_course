@@ -15,7 +15,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, StateGraph
 
 from .tools import count_words, get_wikipedia_tool
-from .tools import count_words, get_wikipedia_tool
 
 # --- Model Initialization ---
 
@@ -200,14 +199,6 @@ def planner_node(state: ReportState):
     planner = create_planner(llm)
     plan = planner.invoke({"topic": state["topic"]})
     return {"plan": plan.dict()}
-
-
-def check_word_count(text: str, target_count: int, variance: float = 0.1):
-    """Checks if the word count of a text is within a given variance."""
-    word_count = len(text.split())
-    lower_bound = target_count * (1 - variance)
-    upper_bound = target_count * (1 + variance)
-    return lower_bound <= word_count <= upper_bound, word_count
 
 
 def check_word_count(text: str, target_count: int, variance: float = 0.1):
