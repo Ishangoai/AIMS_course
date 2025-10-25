@@ -164,7 +164,7 @@ with gr.Blocks(
                 autoscroll=True,
             )
 
-        # Final report (read-only preview - plain text)
+        # Final report (read-only preview - text )
         final_report_display = gr.Textbox(
             label="Final Report (Preview)",
             lines=25,
