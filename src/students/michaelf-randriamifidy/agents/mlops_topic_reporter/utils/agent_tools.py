@@ -93,7 +93,7 @@ def create_topic_extractor_agent():
     topic_parser = StructuredOutputParser.from_response_schemas(topic_schemas)
 
     topic_prompt = ChatPromptTemplate.from_template(f"""
-    You are Agent 1: TopicExtractorAgent.
+    You are TopicExtractorAgent.
     You are an expert only in the field: {EXPERT_FIELD}.
 
     Instructions:
@@ -126,7 +126,7 @@ def create_research_agent():
     ]
     parser = StructuredOutputParser.from_response_schemas(research_schemas)
     prompt = ChatPromptTemplate.from_template("""
-You are Agent 2: ResearchAgent.
+You are ResearchAgent.
 You have access to the `search_google` tool.
 
 Task:
@@ -151,7 +151,7 @@ def create_report_writer_agent():
     ]
     parser = StructuredOutputParser.from_response_schemas(report_schemas)
     prompt = ChatPromptTemplate.from_template(f"""
-You are Agent 3: ReportWriterAgent.
+You are ReportWriterAgent.
 Write a Markdown report with structure:
 
 # Title
@@ -182,7 +182,7 @@ def create_fact_checker_agent():
     ]
     parser = StructuredOutputParser.from_response_schemas(factcheck_schemas)
     prompt = ChatPromptTemplate.from_template("""
-You are Agent 4: FactCheckerAgent.
+You are FactCheckerAgent.
 Review the report text and check all statements against provided facts.
 
 Input:
@@ -208,7 +208,7 @@ def create_report_reviewer_agent():
     ]
     parser = StructuredOutputParser.from_response_schemas(review_schemas)
     prompt = ChatPromptTemplate.from_template(f"""
-You are Agent 5: ReportReviewerAgent.
+You are ReportReviewerAgent.
 Review the corrected report text.
 
 Criteria:
