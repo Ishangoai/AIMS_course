@@ -1,6 +1,8 @@
 import langgraph.graph as graph
+
 from . import actors as models
 from .ChatState import ChatState
+
 
 def build_graph():
     g = graph.StateGraph(ChatState)

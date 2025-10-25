@@ -1,6 +1,6 @@
-from typing import Dict, Tuple
 
 from agents.chatReporter.ChatState import ChatState
+
 
 def execute_graph(query: str, compiled_graph, memory_obj):
     """
@@ -29,4 +29,3 @@ def execute_graph(query: str, compiled_graph, memory_obj):
             print(f"[Warning] Memory update failed: {e}")
 
     return answer, metadata
-

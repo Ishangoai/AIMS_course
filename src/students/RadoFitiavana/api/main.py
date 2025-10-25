@@ -5,14 +5,15 @@ import textwrap
 from typing import Any, Dict
 
 import gradio as gr
-from fastapi import FastAPI, File, Request, Response, UploadFile, HTTPException
-from fastapi.openapi.docs import get_swagger_ui_html
-from gradioapp import image_processor_app as processor
-from .models import QueryRequest, QueryResponse
-from PIL import Image, ImageEnhance
 from agents.chatReporter import graph
 from agents.chatReporter.utils import memory
+from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
+from fastapi.openapi.docs import get_swagger_ui_html
+from gradioapp import image_processor_app as processor
+from PIL import Image, ImageEnhance
+
 from .agent_graph import execute_graph
+from .models import QueryRequest, QueryResponse
 
 # -----------------------------------------------------------------------------
 # FastAPI app definition
@@ -118,6 +119,7 @@ MEMORY_STORE = {}
 
 compiled_graph = graph.build_graph()
 
+
 @app.post("/query", response_model=QueryResponse)
 async def query_endpoint(request: QueryRequest):
     """
@@ -133,7 +135,6 @@ async def query_endpoint(request: QueryRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent execution failed: {str(e)}")
-
 
 
 # -----------------------------------------------------------------------------

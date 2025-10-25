@@ -1,9 +1,12 @@
 import json
 from pathlib import Path
+
 import langchain.prompts as prompts
 import langchain.schema.runnable as runnable
-from .utils import model_router as router, tools
+
 from .ChatState import ChatState
+from .utils import model_router as router
+from .utils import tools
 
 # Load topics once
 HERE = Path(__file__).parent
@@ -80,7 +83,7 @@ def make_generator() -> runnable.RunnableLambda:
     llm = router.get_model("generator")
 
     prompt = prompts.ChatPromptTemplate.from_template("""
-You are an expert MLOps assistant. Write a professional, coherent, and logically structured report 
+You are an expert MLOps assistant. Write a professional, coherent, and logically structured report
 of approximately 800 words. Aim for 800–900 words.
 
 Instructions:
@@ -125,7 +128,6 @@ PREVIOUS_REPORT:
     return runnable.RunnableLambda(generate)
 
 
-
 def make_checker() -> runnable.RunnableLambda:
     """
     Checks the generated report for logic, coherence, and word count.
@@ -160,11 +162,11 @@ Report:
 
         wc = tools.count_words(answer_text)
         print(f"Word count: {wc}")
-        
+
         if "PASS" in state.feedback.upper():
             state.ok = True
             state.answer = state.last_generator_answer
-            return state    
+            return state
 
         return state
 

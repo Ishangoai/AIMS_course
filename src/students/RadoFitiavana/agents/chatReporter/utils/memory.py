@@ -1,7 +1,9 @@
+from typing import Dict
+
 import langchain.memory as memory
+
 from . import model_router as router
 
-from typing import Dict
 
 def create_memory(session_id: str, memory_store: Dict):
     """
@@ -9,7 +11,7 @@ def create_memory(session_id: str, memory_store: Dict):
     If conversation grows too large, auto-summarize it.
     """
     if session_id in memory_store:
-        return memory_store[session_id] 
+        return memory_store[session_id]
 
     summarizer = router.get_model("summarizer")
     _memory = memory.ConversationSummaryBufferMemory(

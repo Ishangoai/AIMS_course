@@ -1,5 +1,7 @@
-from pydantic import BaseModel
 from typing import Dict
+
+from pydantic import BaseModel
+
 
 class EvaluateRequest(BaseModel):
     expression: str
@@ -22,4 +24,4 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
-    metadata: Dict        
+    metadata: Dict
