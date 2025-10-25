@@ -5,11 +5,14 @@ import textwrap
 from typing import Any, Dict
 
 import gradio as gr
-from fastapi import FastAPI, File, Request, Response, UploadFile
+from fastapi import FastAPI, File, Request, Response, UploadFile, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp import image_processor_app as processor
-import .models
+from .models import QueryRequest, QueryResponse
 from PIL import Image, ImageEnhance
+from agents.chatReporter import graph
+from agents.chatReporter.utils import memory
+from .agent_graph import execute_graph
 
 # -----------------------------------------------------------------------------
 # FastAPI app definition
@@ -113,6 +116,8 @@ async def rotate(request: Request, image: UploadFile = File(...)) -> Response:
 
 MEMORY_STORE = {}
 
+compiled_graph = graph.build_graph()
+
 @app.post("/query", response_model=QueryResponse)
 async def query_endpoint(request: QueryRequest):
     """
@@ -120,9 +125,9 @@ async def query_endpoint(request: QueryRequest):
     """
     try:
 
-        memory_obj = create_memory(request.session_id, MEMORY_STORE)
+        memory_obj = memory.create_memory(request.session_id, MEMORY_STORE)
 
-        answer, metadata = execute_graph(request.query, memory_obj)
+        answer, metadata = execute_graph(request.query, compiled_graph, memory_obj)
 
         return QueryResponse(answer=answer, metadata=metadata)
 

@@ -1,5 +1,5 @@
 import langchain.memory as memory
-import .model_router as router
+from . import model_router as router
 
 from typing import Dict
 

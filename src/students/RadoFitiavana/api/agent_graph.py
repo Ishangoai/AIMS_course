@@ -1,23 +1,32 @@
 from typing import Dict, Tuple
 
+from agents.chatReporter.ChatState import ChatState
+
 def execute_graph(query: str, compiled_graph, memory_obj):
     """
-    Run the LangGraph agent with memory and looping checker.
-    Returns the final generator answer and metadata.
+    Run the LangGraph agent end-to-end.
+    Returns the final generator answer and structured metadata.
     """
-    inputs = {"query": query, "memory": memory_obj}
+    state = ChatState(query=query)
 
-    state = compiled_graph.invoke(inputs)
+    result_state = compiled_graph.invoke(state)
 
-    answer = state.get("answer", "No response.")
+    answer = result_state.get("last_generator_answer", "No response generated.")
+    topic_doc = result_state.get("topic_doc", None)
+    topic_name = topic_doc.get("topic") if topic_doc else "General"
+    ok_status = result_state.get("ok", False)
 
     metadata = {
-        "topic": state.get("topic_doc", {}).get("topic", "Unknown"),
-        "ok": state.get("ok", False),
-        "feedback": state.get("feedback", None)
+        "topic": topic_name,
+        "ok": ok_status,
+        "feedback": result_state.get("feedback", None)
     }
 
     if hasattr(memory_obj, "update"):
-        memory_obj.update({"query": query, "answer": answer})
+        try:
+            memory_obj.update({"query": query, "answer": answer})
+        except Exception as e:
+            print(f"[Warning] Memory update failed: {e}")
 
     return answer, metadata
+

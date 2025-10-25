@@ -1,8 +1,9 @@
 import langgraph.graph as graph
-import .actors as models
+from . import actors as models
+from .ChatState import ChatState
 
 def build_graph():
-    g = graph.StateGraph()
+    g = graph.StateGraph(ChatState)
 
     classifier = models.make_classifier()
     retriever = models.make_retriever()
@@ -18,11 +19,22 @@ def build_graph():
     g.add_edge("retriever", "generator")
     g.add_edge("generator", "checker")
 
-    def loop_condition(state):
-        return graph.END if state.get("ok", False) else "generator"
+    def loop_condition(state: ChatState):
+
+        if state.ok:
+            state.answer = state.last_generator_answer
+            print(state.last_generator_answer)
+            return graph.END
+
+        if state.iteration_count >= 4:
+            state.answer = state.last_generator_answer
+            return graph.END
+
+        return "generator"
 
     g.add_conditional_edges("checker", loop_condition)
+
+    # Entry point
     g.set_entry_point("classifier")
 
-    visualize_graph()
     return g.compile()
