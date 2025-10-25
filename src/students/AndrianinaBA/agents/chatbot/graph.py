@@ -28,7 +28,7 @@ def search_google(query: str) -> str:
     return search.run(f"{query} ")
 
 
-graph_instance = create_react_agent(
+graph = create_react_agent(
     gemini_model,
     tools=[search_google],
     prompt="You are a helpful assistant. Always answer in a funny way",

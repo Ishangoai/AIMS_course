@@ -1,5 +1,5 @@
 import gradio as gr
-from graph import graph_instance
+from agents.chatbot.graph import graph
 
 
 def chat_with_graph(message, history):
@@ -9,7 +9,7 @@ def chat_with_graph(message, history):
     messages.append({"role": "user", "content": message})
 
     # Invoke the graph with the messages and get the response
-    response = graph_instance.invoke({"messages": messages})
+    response = graph.invoke({"messages": messages})
 
     # Extract the assistant's reply from the response
     return response["messages"][-1].content
