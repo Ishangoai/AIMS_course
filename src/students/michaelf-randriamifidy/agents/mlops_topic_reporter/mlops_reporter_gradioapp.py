@@ -1,6 +1,6 @@
 import gradio as gr
 
-# from utils.agent_tools import do_report  # your LLM function
+from utils.gem import do_report  # your LLM function
 
 
 # --- Your chatbot logic ---
@@ -12,7 +12,7 @@ def chat_fn(user_message, history):
     response = do_report(user_message)
 
     # Extract the final assistant reply from the response object
-    report_text = response["messages"][-1].content
+    report_text = response["review_data"]["final_text"]
 
     # Format nicely for Markdown
     markdown_response = f"### 🤖 AI Report on: {user_message}\n\n{report_text}"
