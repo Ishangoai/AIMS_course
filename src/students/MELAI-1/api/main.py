@@ -3,22 +3,29 @@
 # MODIFICATION CRITIQUE: should_revise() et critic_node() pour arrêt immédiat
 # ============================================================================
 
+# Mount Gradio apps
 import os
+import re
 import textwrap
+from datetime import datetime
+from typing import Dict, List, TypedDict
+
 import gradio as gr
-from fastapi import FastAPI, HTTPException
-from fastapi.openapi.docs import get_swagger_ui_html
 
 # Import des agents
 from agentic.critic_agent import critic_agent
 from agentic.fact_checker_agent import fact_checker
 from agentic.research_agent import research_agent
 from agentic.writer_agent import writer_agent
-
+from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
-
 from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.openapi.docs import get_swagger_ui_html
+from gradioapp.agentic_gradio import report
+from gradioapp.heart_disease_app import heart_app
+from langgraph.graph import END, StateGraph
 
 load_dotenv()
 
@@ -44,7 +51,6 @@ users = {}
 # ============================================================================
 # WORD COUNT ENFORCEMENT TOOL
 # ============================================================================
-import re
 
 
 def count_words(text: str) -> int:
@@ -55,7 +61,6 @@ def count_words(text: str) -> int:
 # ============================================================================
 # STATE DEFINITION
 # ============================================================================
-from typing import TypedDict, List, Dict
 
 
 class AgentState(TypedDict):
@@ -76,8 +81,6 @@ class AgentState(TypedDict):
 # ============================================================================
 # WORKFLOW CREATION - AVEC CORRECTION CRITIQUE
 # ============================================================================
-from langgraph.graph import StateGraph, END
-from datetime import datetime
 
 
 def create_workflow():
@@ -147,7 +150,7 @@ def create_workflow():
         structure_valid = state["structure_valid"]
         revision_count = state["revision_count"]
 
-        print(f"\n🔄 ROUTING DECISION:")
+        print("\n🔄 ROUTING DECISION:")
         print(f"   Word count: {word_count} (target: {WORD_COUNT_MIN}-{WORD_COUNT_MAX})")
         print(f"   Within range: {within_range}")
         print(f"   Structure valid: {structure_valid}")
@@ -155,7 +158,7 @@ def create_workflow():
 
         # ✅ PREMIÈRE PRIORITÉ: Si dans l'intervalle ET structure valide → ARRÊT
         if within_range and structure_valid:
-            print(f"   ✅ → VALIDATION RÉUSSIE - Proceeding to fact-check")
+            print("   ✅ → VALIDATION RÉUSSIE - Proceeding to fact-check")
             return "fact_check"
 
         # ✅ DEUXIÈME PRIORITÉ: Si max révisions atteint → ARRÊT forcé
@@ -164,7 +167,7 @@ def create_workflow():
             return "fact_check"
 
         # ❌ Sinon, besoin de révision
-        print(f"   🔄 → Needs revision")
+        print("   🔄 → Needs revision")
         return "critic"
 
     # Build Workflow
@@ -239,8 +242,8 @@ def generate_report():
 
         # ✅ Cette partie ne devrait PAS être nécessaire avec le nouveau système
         if not final_state["within_range"]:
-            print(f"\n⚠️ WARNING: Final report still out of range after all revisions")
-            print(f"   This should not happen with the new revision system")
+            print("\n⚠️ WARNING: Final report still out of range after all revisions")
+            print("   This should not happen with the new revision system")
 
         # Compile metadata
         verified = sum(1 for fc in final_state["fact_checks"] if fc.get("status") in ["VERIFIED", "SUPPORTED"])
@@ -281,7 +284,7 @@ def generate_report():
 # ============================================================================
 # CUSTOM REPORT GENERATION WITH PARAMETERS
 # ============================================================================
-def generate_report_with_params(topic: str, temperature: float = 0.5):
+def generate_report_with_params(topic: str, temperature: float = 0.5):  # noqa: C901
     """
     Generate report with custom topic and temperature.
     UTILISE LE MÊME SYSTÈME D'ARRÊT IMMÉDIAT
@@ -294,10 +297,10 @@ def generate_report_with_params(topic: str, temperature: float = 0.5):
     print(f"Target: {WORD_COUNT_MIN}-{WORD_COUNT_MAX} words")
     print("=" * 70)
 
-    from agentic.research_agent import ResearchAgent
-    from agentic.writer_agent import WriterAgent
     from agentic.critic_agent import CriticAgent
     from agentic.fact_checker_agent import FactCheckerAgent
+    from agentic.research_agent import ResearchAgent
+    from agentic.writer_agent import WriterAgent
 
     custom_research = ResearchAgent(api_key=GOOGLE_API_KEY, model=MODEL_NAME)
     custom_research.llm.temperature = temperature
@@ -361,21 +364,21 @@ def generate_report_with_params(topic: str, temperature: float = 0.5):
             structure_valid = state["structure_valid"]
             revision_count = state["revision_count"]
 
-            print(f"\n🔄 ROUTING DECISION:")
+            print("\n🔄 ROUTING DECISION:")
             print(f"   Word count: {word_count}")
             print(f"   Within range: {within_range}")
             print(f"   Structure valid: {structure_valid}")
 
             # ✅ Arrêt immédiat si valide
             if within_range and structure_valid:
-                print(f"   ✅ → VALIDATED - Proceeding to fact-check")
+                print("   ✅ → VALIDATED - Proceeding to fact-check")
                 return "fact_check"
 
             if revision_count >= MAX_REVISION_ROUNDS:
-                print(f"   ⚠️ → Max revisions reached")
+                print("   ⚠️ → Max revisions reached")
                 return "fact_check"
 
-            print(f"   🔄 → Needs revision")
+            print("   🔄 → Needs revision")
             return "critic"
 
         workflow = StateGraph(AgentState)
@@ -473,7 +476,7 @@ app = FastAPI(
     1. [**Heart Disease Prediction App**](/heart-disease/)
     2. [**Simple LLM Chatbot**](/llm-chat/)
     3. [**Report Generator**](/report/)
-   
+
     -----
     """),
     version="1.0.0",
@@ -537,11 +540,6 @@ def update_user_details(username: str, request: UpdateUserRequest):
     users[username] = request.model_dump().get("name", None)
     return {"message": f"User {username} updated successfully"}
 
-
-# Mount Gradio apps
-from gradioapp.agentic_gradio import report
-from gradioapp.heart_disease_app import heart_app
-from agents.chatbot.llm_gradio import llm_chat
 
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
