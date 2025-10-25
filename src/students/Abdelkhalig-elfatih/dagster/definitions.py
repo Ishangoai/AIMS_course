@@ -8,10 +8,13 @@ from .ml.resources import (
     TuningConfig,
 )
 
+# from .ml_fraud import assets as ml_fraud_assets
+
 all_de_assets = dg.load_assets_from_modules([de_assets])
 all_de_checks = dg.load_asset_checks_from_modules([de_assets])
 all_ml_assets = dg.load_assets_from_modules([ml_assets])
 all_ml_checks = dg.load_asset_checks_from_modules([ml_assets])
+# all_ml_fraud_assets = dg.load_assets_from_modules([ml_fraud_assets])
 
 
 @dg.failure_hook(required_resource_keys={"mlflow_tracking"})
@@ -56,7 +59,7 @@ era5_daily_schedule = dg.ScheduleDefinition(
 
 # Define all assets and resources for Dagster to discover
 defs = dg.Definitions(
-    assets=[*all_ml_assets, *all_de_assets],
+    assets=[*all_ml_assets, *all_de_assets],  # *all_ml_fraud_assets
     resources={
         "io_manager": dg.FilesystemIOManager(base_dir="./tmp_dg_storage"),
     },
