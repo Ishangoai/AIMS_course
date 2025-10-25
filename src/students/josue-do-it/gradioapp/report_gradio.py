@@ -65,7 +65,10 @@ def markdown_to_html(text):  # noqa: C901
             processed_line = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'<em>\1</em>', processed_line)
 
             if not in_paragraph:
-                html_content.append('<p style="color: #34495e; line-height: 1.8; margin: 12px 0; text-align: justify;">')
+                html_content.append(
+                '<p style="color: #34495e; line-height: 1.8; '
+                'margin: 12px 0; text-align: justify;">'
+            )
                 in_paragraph = True
             html_content.append(processed_line)
 
@@ -159,7 +162,7 @@ def generate_report_ui(topic, custom_topic, temperature):
 
 
 # Build Gradio Interface
-with gr.Blocks(theme=gr.themes.Ocean()) as llm_report:
+with gr.Blocks(theme=gr.themes.Ocean()) as llm_report:  # type: ignore
 
     gr.HTML("""
     <div style="text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
