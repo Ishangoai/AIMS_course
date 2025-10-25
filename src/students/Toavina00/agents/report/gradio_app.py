@@ -1,11 +1,9 @@
 import gradio as gr
+from graph import generate_report
 
-from graph import agent
 
 def llm_call(topic: str):
-    messages = {"role": "user", "content": topic}
-    response = agent.invoke({"messages": messages})
-    return response["messages"][-1].content
+    return generate_report(topic)
 
 
 with gr.Blocks(css=".gradio-container {width: 70%; margin: auto}") as iface:
