@@ -10,6 +10,8 @@ from agents.article_writer.searcher import WikipediaSearcher
 # Global variable to capture logs
 log_buffer = StringIO()
 logs_list = []
+current_system = None
+current_state = None
 
 
 class LogCapture:
@@ -21,7 +23,8 @@ class LogCapture:
         self.original_stdout.write(text)
         self.original_stdout.flush()
         global logs_list
-        if text.strip():
+        # Filter out progress bar messages
+        if text.strip() and not text.startswith('Progress:'):
             logs_list.append(text)
 
     def flush(self):
@@ -30,27 +33,24 @@ class LogCapture:
 
 def run_article_generation(topic, model_name, writer_temp, rewriter_temp, validator_temp,
                            target_words, tolerance, max_revisions,
-                           writer_max_tokens, rewriter_max_tokens, validator_max_tokens,
-                           progress=gr.Progress()):
+                           writer_max_tokens, rewriter_max_tokens, validator_max_tokens):
     """
     Runs the article generation and returns outputs for the UI
     """
     start_time = time.time()
 
-    global logs_list
+    global logs_list, current_system, current_state
     logs_list = []  # Reset logs
+    current_system = None
+    current_state = None
 
     # Capture stdout
     original_stdout = sys.stdout
     sys.stdout = LogCapture(original_stdout)
 
     try:
-        progress(0, desc="Initializing...")
-
         # Initialize searcher
         searcher = WikipediaSearcher()
-
-        progress(0.1, desc="Starting article generation...")
 
         # Run the generator
         response = run_article_writer(
@@ -69,7 +69,35 @@ def run_article_generation(topic, model_name, writer_temp, rewriter_temp, valida
             save_files=False
         )
 
-        progress(0.9, desc="Finalizing results...")
+        # Store system and state for human feedback regeneration
+        result = response.get("result", {})
+        details = result.get("details", {})
+        
+        current_state = {
+            "topic": topic,
+            "article_draft": result.get("final_article_llm", ""),
+            "outline": details.get("outline", ""),
+            "research_sources": details.get("sources", []),
+            "validation_feedback": details.get("validation_feedback", ""),
+            "is_valid": result.get("was_valid", False),
+            "revision_count": details.get("revisions_used", 0),
+            "word_count": details.get("word_count", 0),
+            "target_words": int(target_words),
+            "tolerance": int(tolerance),
+            "min_words": details.get("limits", {}).get("min_words", 0),
+            "max_words": details.get("limits", {}).get("max_words", 0),
+            "max_revisions": int(max_revisions),
+        }
+        
+        current_system = {
+            "model_name": model_name,
+            "writer_temperature": writer_temp,
+            "rewriter_temperature": rewriter_temp,
+            "validator_temperature": validator_temp,
+            "writer_max_tokens": int(writer_max_tokens) if writer_max_tokens else None,
+            "rewriter_max_tokens": int(rewriter_max_tokens) if rewriter_max_tokens else None,
+            "validator_max_tokens": int(validator_max_tokens) if validator_max_tokens else None,
+        }
 
         # Calculate generation time
         end_time = time.time()
@@ -83,15 +111,10 @@ def run_article_generation(topic, model_name, writer_temp, rewriter_temp, valida
             time_str = f"{seconds} sec"
 
         # Extract results
-        result = response.get("result", {})
         metadata = response.get("metadata", {})
-        details = result.get("details", {})
 
         # Safeguarded article (final output)
         safeguarded_article = result.get("safeguarded_article", "⚠️ No safeguarded article generated.")
-
-        # Original LLM article
-        # article_draft = result.get("final_article_llm", "⚠️ No article draft generated.")
 
         # Outline
         outline = details.get("outline", "⚠️ No outline generated.")
@@ -164,7 +187,6 @@ def run_article_generation(topic, model_name, writer_temp, rewriter_temp, valida
         # Get logs
         logs_output = "\n".join(logs_list) if logs_list else "No logs captured."
 
-        progress(1.0, desc="Complete!")
         sys.stdout = original_stdout
 
         # Success message with time
@@ -178,7 +200,8 @@ def run_article_generation(topic, model_name, writer_temp, rewriter_temp, valida
             logs_output,
             gr.update(visible=True),  # Show action buttons row
             gr.update(visible=False),  # Hide loading indicator
-            success_msg  # Success notification
+            success_msg,  # Success notification
+            gr.update(visible=True),  # Show human feedback accordion
         )
 
     except Exception as e:
@@ -205,7 +228,123 @@ def run_article_generation(topic, model_name, writer_temp, rewriter_temp, valida
             logs_output,
             gr.update(visible=False),  # Hide action buttons on error
             gr.update(visible=False),  # Hide loading indicator
-            f"❌ Generation failed after {time_str}"  # Error notification
+            f"❌ Generation failed after {time_str}",  # Error notification
+            gr.update(visible=False),  # Hide human feedback accordion
+        )
+
+
+def regenerate_with_feedback(human_feedback):
+    """Regenerate article based on human feedback"""
+    from agents.article_writer.nodes import rewriter_node
+    from agents.article_writer.prompt_manager import PromptManager
+    from agents.article_writer.config import Config
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    
+    global logs_list, current_state, current_system
+    
+    if not current_state or not current_system:
+        return (
+            gr.update(),
+            gr.update(),
+            "",
+            "⚠️ No article to regenerate. Please generate an article first.",
+        )
+    
+    if not human_feedback or not human_feedback.strip():
+        return (
+            gr.update(),
+            gr.update(),
+            "",
+            "⚠️ Please provide feedback before regenerating.",
+        )
+    
+    logs_list = []
+    original_stdout = sys.stdout
+    sys.stdout = LogCapture(original_stdout)
+    
+    start_time = time.time()
+    
+    try:
+        print(f"\n🔄 HUMAN FEEDBACK: Regenerating based on user input")
+        print(f"Feedback: {human_feedback[:100]}...")
+        
+        # Update state with human feedback
+        current_state["validation_feedback"] = f"HUMAN FEEDBACK:\n{human_feedback}"
+        current_state["is_valid"] = False
+        
+        # Recreate the LLM for rewriter
+        llm_rewriter = ChatGoogleGenerativeAI(
+            model=current_system["model_name"],
+            temperature=current_system["rewriter_temperature"],
+            google_api_key=Config.get_api_key(),
+            max_tokens=current_system["rewriter_max_tokens"]
+        )
+        
+        # Recreate prompt manager
+        prompt_manager = PromptManager(prompts_path=Config.PROMPTS_PATH)
+        
+        # Run rewriter node
+        updated_state = rewriter_node(
+            current_state, # type: ignore 
+            llm_rewriter,
+            prompt_manager
+        ) 
+        
+        # Update global state
+        current_state = updated_state
+        
+        # Calculate time
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        minutes = int(elapsed_time // 60)
+        seconds = int(elapsed_time % 60)
+        time_str = f"{minutes} min {seconds} sec" if minutes > 0 else f"{seconds} sec"
+        
+        # Get updated article
+        new_article = updated_state["article_draft"]
+        new_word_count = len(new_article.split())
+        
+        # Update metadata
+        metadata_text = f"""## Generation Statistics
+
+### ⏱️ Regeneration Time
+**Time:** {time_str}
+
+### Article Metrics
+
+| Metric | Value |
+|--------|-------|
+| **Topic** | {current_state['topic']} |
+| **Word Count** | {new_word_count} words |
+| **Revisions Used** | {updated_state['revision_count']} |
+| **Target Range** | {current_state['min_words']}-{current_state['max_words']} words |
+
+### Applied Feedback
+{human_feedback}
+
+---
+
+*Article regenerated based on your feedback*
+"""
+        
+        sys.stdout = original_stdout
+        
+        return (
+            new_article,
+            metadata_text,
+            "",
+            f"✅ Article regenerated in {time_str} based on your feedback!",
+        )
+        
+    except Exception as e:
+        sys.stdout = original_stdout
+        import traceback
+        traceback.print_exc()
+        return (
+            gr.update(),
+            gr.update(),
+            "",
+            f"❌ Regeneration failed: {str(e)}",
         )
 
 
@@ -215,6 +354,12 @@ def check_topic_input(topic):
         return gr.update(interactive=True)
     else:
         return gr.update(interactive=False)
+
+
+def get_current_logs():
+    """Get current logs for live updates"""
+    return "\n".join(logs_list) if logs_list else "No logs available yet."
+
 
 custom_css = """
 /* Import modern fonts */
@@ -518,6 +663,17 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="green"), css=custom_css) as dem
                     loading_indicator = gr.Markdown("", visible=False)
                     # Success notification area
                     success_notification = gr.Markdown("", visible=False, elem_classes="success-notification")
+                    
+                    # Human-in-the-loop feedback section (accordion)
+                    with gr.Accordion("💬 Provide Feedback to Improve Article", open=False, visible=False) as human_feedback_accordion:
+                        gr.Markdown("Share your thoughts on how the article could be improved. The AI will regenerate it based on your feedback.")
+                        human_feedback_input = gr.Textbox(
+                            label="Your Feedback",
+                            placeholder="e.g., 'Add more examples', 'Make it shorter', 'Focus more on practical applications'...",
+                            lines=3
+                        )
+                        regenerate_btn = gr.Button("🔄 Regenerate with Feedback", size="lg", variant="primary")
+                    
                     safeguarded_box = gr.Markdown(label="Safeguarded Final Result", value="")
 
                     # Action buttons container
@@ -621,7 +777,6 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="green"), css=custom_css) as dem
                     ### 📊 Output Tabs
                     
                     - **Final Result**: Safeguarded, production-ready article
-                    - **Article Draft**: Original LLM output before safeguarding
                     - **Outline**: Planned structure and sections
                     - **Sources**: Research materials with links
                     - **Metadata**: Detailed generation statistics
@@ -666,12 +821,13 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="green"), css=custom_css) as dem
             gr.update(value="## 🔄 Generating your article...\n\nPlease wait while our AI agents research, write, and validate your content. This may take 1-2 minutes.", visible=True),
             gr.update(visible=False),  # Hide action buttons during generation
             gr.update(visible=False),  # Hide success notification
+            gr.update(visible=False),  # Hide human feedback accordion
         )
 
     generate_btn.click(
         fn=show_loading,
         inputs=None,
-        outputs=[loading_indicator, action_buttons_row, success_notification],
+        outputs=[loading_indicator, action_buttons_row, success_notification, human_feedback_accordion],
         queue=False
     ).then(
         fn=run_article_generation,
@@ -689,9 +845,25 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="green"), css=custom_css) as dem
             logs_box,
             action_buttons_row,
             loading_indicator,
+            success_notification,
+            human_feedback_accordion
+        ]
+    ).then(
+        fn=lambda msg: gr.update(value=msg, visible=True),
+        inputs=[success_notification],
+        outputs=[success_notification]
+    )
+
+    # Human feedback regeneration
+    regenerate_btn.click(
+        fn=regenerate_with_feedback,
+        inputs=[human_feedback_input],
+        outputs=[
+            safeguarded_box,
+            metadata_box,
+            human_feedback_input,
             success_notification
-        ],
-        show_progress=True  # type: ignore
+        ]
     ).then(
         fn=lambda msg: gr.update(value=msg, visible=True),
         inputs=[success_notification],
@@ -700,6 +872,9 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="green"), css=custom_css) as dem
 
     # Clear button action
     def clear_all():
+        global current_system, current_state
+        current_system = None
+        current_state = None
         return (
             "",  # topic
             "",  # safeguarded_box
@@ -710,6 +885,7 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="green"), css=custom_css) as dem
             gr.update(visible=False),  # Hide action buttons
             gr.update(visible=False),  # Hide loading indicator
             gr.update(visible=False),  # Hide success notification
+            gr.update(visible=False),  # Hide human feedback accordion
             gr.update(interactive=False)  # Disable generate button
         )
 
@@ -726,6 +902,7 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="green"), css=custom_css) as dem
             action_buttons_row,
             loading_indicator,
             success_notification,
+            human_feedback_accordion,
             generate_btn
         ]
     )
@@ -787,9 +964,6 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="green"), css=custom_css) as dem
     )
 
     # Refresh logs
-    def get_current_logs():
-        return "\n".join(logs_list) if logs_list else "No logs available yet."
-
     refresh_logs_btn.click(
         fn=get_current_logs,
         inputs=None,
