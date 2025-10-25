@@ -12,6 +12,7 @@ from gradioapp.app import app as demo
 from gradioapp.gradio_app import fraud_detection_app
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.image_manipulation import app as img_app
+from gradioapp.writer import writer_app
 
 app = FastAPI(
     title="AIMS Course API",
@@ -22,7 +23,8 @@ app = FastAPI(
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Image Manipulation App**](/image-manipulation/)
-    4. [**ML Fraud Detection App**](/ml_fraud/)
+    5. [**ML Fraud Detection App**](/ml_fraud/)
+    6. [**LangGraph Report Writer**](/writer/)
     -----
     """),
     version="1.0.0",
@@ -187,3 +189,4 @@ gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, img_app, path="/image-manipulation")
 gr.mount_gradio_app(app, fraud_detection_app, path="/ml_fraud")
+gr.mount_gradio_app(app, writer_app, path="/writer")
