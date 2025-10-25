@@ -14,7 +14,7 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, StateGraph
 
-from .tools import get_wikipedia_tool
+from .tools import count_words, get_wikipedia_tool
 
 # --- Model Initialization ---
 
@@ -56,7 +56,7 @@ def create_planner(llm):
     """Creates the planner agent."""
     prompt_template = """You are an expert report planner.
     Your job is to create a detailed plan for a report on a given topic.
-    Your final plan must produce a report with a total word count of approximately 1040 words.
+    Your final plan must produce a report with a total word count of within 950 to 1050 words.
 
     Create a plan with the following sections:
     1. An introduction.
@@ -68,7 +68,7 @@ def create_planner(llm):
     - A brief description of what the section should cover.
     - A specific target word count.
 
-    **Crucially, the word counts for all sections must sum up to exactly 1040 words.
+    **Crucially, the word counts for all sections must sum up to a range within 950 to 1050 words.
     ** Distribute the words logically, with the introduction and conclusion being shorter than the main body sections.
 
     Topic: "{topic}"
@@ -115,6 +115,59 @@ def create_writer(llm):
     return AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
 
 
+# --- Word Count Adjuster ---
+
+
+def create_word_count_adjuster(llm):
+    """Creates an agent to adjust the word count of a text."""
+    tools = [count_words]
+    prompt_template = """You are an expert editor.
+    Your task is to adjust the length of the following text to a specific word count.
+    You have a tool to count words.
+    You MUST use this tool to check your work before you provide the final answer to ensure it meets the target.
+    Do not change the meaning or tone of the text, only its length.
+
+    You have access to the following tools:
+    {tools}
+
+    Use the following format:
+
+    Thought: I need to rewrite the text to the target word count.
+    I will then use the count_words tool to verify the length.
+    Action: the action to take, should be one of [{tool_names}]
+    Action Input: the input to the action
+    Observation: the result of the action
+
+    Here is an example of using a tool:
+    Thought: I need to check the word count of the provided text.
+    Action: count_words
+    Action Input: "This is a sample text to be checked."
+    Observation: 7
+
+    When you are sure the word count is correct, respond with the final, adjusted text in this format:
+
+    Thought: I have successfully edited the text to the correct word count.
+    Final Answer: [The adjusted text]
+
+    Begin!
+
+    Text to adjust:
+    ---
+    {text}
+    ---
+
+    Your goal is to adjust the text to be approximately {word_count} words long.
+    There is a variation of +/- 10% allowed.
+    For example, if the target is 400 words, your final answer should be between 360 and 440 words.
+    You must make sure your final answer/response is the adjusted text only,
+    And it is within this 10% range of the target length.
+
+    Thought:{agent_scratchpad}
+    """
+    prompt = ChatPromptTemplate.from_template(prompt_template)
+    agent = create_react_agent(llm, tools, prompt)
+    return AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
+
 # --- Reviewer Agent ---
 
 
@@ -145,11 +198,20 @@ def planner_node(state: ReportState):
     return {"plan": plan.dict()}
 
 
+def check_word_count(text: str, target_count: int, variance: float = 0.1):
+    """Checks if the word count of a text is within a given variance."""
+    word_count = len(text.split())
+    lower_bound = target_count * (1 - variance)
+    upper_bound = target_count * (1 + variance)
+    return lower_bound <= word_count <= upper_bound, word_count
+
+
 def writer_node(state: ReportState):
     """Node that runs the writer agent for each section."""
     print("---WRITING---")
     llm = get_llm()
     writer = create_writer(llm)
+    adjuster = create_word_count_adjuster(llm)
     sections = state["plan"]["sections"]
     draft_sections = []
     for i, section in enumerate(sections):
@@ -164,7 +226,33 @@ def writer_node(state: ReportState):
         The section should be approximately {section['word_count']} words long.
         """
         response = writer.invoke({"input": input_prompt})
-        draft_sections.append(response["output"])
+        section_content = response["output"]
+
+        # Check and adjust word count
+        is_within_variance, current_word_count = check_word_count(
+            section_content, section["word_count"]
+        )
+        if not is_within_variance:
+            print(
+                f"---ADJUSTING WORD COUNT---"
+                f"\nOriginal count: {current_word_count}, Target: {section['word_count']}"
+            )
+            adjusted_response = adjuster.invoke(
+                {"text": section_content, "word_count": section["word_count"]}
+            )
+            section_content = adjusted_response["output"]
+
+        # Final check and warning
+        is_within_variance_after_adjustment, final_word_count = check_word_count(
+            section_content, section["word_count"]
+        )
+        if not is_within_variance_after_adjustment:
+            print(
+                f"---WARNING: Could not meet word count for section {i + 1}. "
+                f"Final count: {final_word_count}, Target: {section['word_count']}"
+            )
+
+        draft_sections.append(section_content)
     return {"draft_sections": draft_sections}
 
 
