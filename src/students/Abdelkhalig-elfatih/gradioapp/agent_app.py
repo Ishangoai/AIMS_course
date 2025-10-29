@@ -8,7 +8,7 @@ from datetime import datetime
 from io import BytesIO
 
 import gradio as gr
-from agent import AgenticReportWriter
+from .agent import AgenticReportWriter
 from dotenv import load_dotenv
 from PIL import Image
 

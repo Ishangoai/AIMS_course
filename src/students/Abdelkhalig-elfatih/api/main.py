@@ -19,7 +19,7 @@ app = FastAPI(
     1. [**General Gradio Demo**](/gradio/)
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
-    4. [**Agentic Writer App**](/Agentic-Writer/)
+    4. [**Agentic Writer App**](/agent_app/)
     -----
     """),
     version="1.0.0",
