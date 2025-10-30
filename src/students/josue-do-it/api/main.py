@@ -3,13 +3,17 @@ import textwrap
 
 import gradio as gr
 from agents.chatbot.llm_gradio import llm_chat
+
+# from agents.report.report_gradio import llm_report
 from api.models import UpdateUserRequest, UserRequest
 from api.safe_eval import safe_eval
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.fraud_detection_app import fraud_app
-from gradioapp.heart_disease_app import heart_app
+from gradioapp.heart_disease_app import heart_app  # noqa
+from gradioapp.report_gradio import llm_report
+from gradioapp.textfy import app as textfy_app
 
 app = FastAPI(
     title="AIMS Course API",
@@ -20,6 +24,8 @@ app = FastAPI(
     2. [**Heart Disease Prediction App**](/heart-disease/)
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Fraud detection APP**](/fraud-detection/)
+    5. [**Textfy**](/textfy_app/)
+    6. [**Report Topic APP**](/llm-report/)
     -----
     """),
     version="1.0.0",
@@ -131,3 +137,5 @@ gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, fraud_app, path="/fraud-detection")
+gr.mount_gradio_app(app, textfy_app, path="/textfy_app")
+gr.mount_gradio_app(app, llm_report, path="/llm-report")

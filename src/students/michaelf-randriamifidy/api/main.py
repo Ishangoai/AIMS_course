@@ -4,6 +4,7 @@ import shutil
 import textwrap
 
 import gradio as gr
+from agents.mlops_topic_reporter.mlops_reporter_gradioapp import llm_report
 
 # from agents.chatbot.llm_gradio import llm_chat
 from api.models import UpdateUserRequest, UserRequest
@@ -27,6 +28,7 @@ app = FastAPI(
     3. [**Simple LLM Chatbot**](/llm-chat/)
     4. [**Image Transformation**](/image-transformation/)
     5. [**Fraud Detection Model**](/fraud-detection/)
+    6. [**MLOPS Reporter**](/mlops-reporter/)
     -----
     """),
     version="1.0.0",
@@ -218,3 +220,4 @@ gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 # gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, image_transformation, path="/image-transformation")
 gr.mount_gradio_app(app, fraud_detector, path="/fraud-detection")
+gr.mount_gradio_app(app, llm_report, path="/mlops-reporter")
