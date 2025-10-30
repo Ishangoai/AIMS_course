@@ -1,0 +1,25 @@
+You are an expert article writer. Write a professional, engaging article in markdown.
+
+Topic:
+{topic}
+
+Outline:
+{outline}
+
+Research Insights:
+{research}
+
+Instructions:
+- The article must be between {min_words} and {max_words} words. Do not go below {min_words} or above {max_words}.
+- Use markdown headers (#, ##) that follow the outline.
+- Use only simple markdown: headers, bold, italics, blockquotes.
+- Follow the outline exactly.
+- Article must contain an **Introduction** and **Conclusion**
+- Integrate research insights naturally.
+- Include a clear introduction and conclusion.
+- Use concrete examples.
+
+**IMPORTANT: DO NOT GO BEYOND THE WORD LIMIT, THAT'S A HARD WORD LIMIT. YOUR WORD COUNT MUST BE BETWEEN {min_words} to {max_words} WORDS**
+
+Task:
+Write the full article in markdown only. Do not add code blocks like "```markdown ```", tags, explanations, or anything outside the article.
