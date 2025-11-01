@@ -9,6 +9,7 @@ _ = load_dotenv(find_dotenv())
 class Config:
     """Central configuration"""
     MODEL_FALLBACK = "gemini-1.5-flash"
+    LLM_CALL_MAX_RETRIES = 3
 
     # Paths
     PROMPTS_PATH = "./prompts"

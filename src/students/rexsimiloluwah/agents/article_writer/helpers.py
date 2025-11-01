@@ -5,6 +5,8 @@ from typing import List, Optional, Tuple
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from .config import Config
+
 
 def enforce_word_limit(
     text,
@@ -30,7 +32,7 @@ def enforce_word_limit(
 
 
 # Helper functions
-def safe_llm_invoke(llm: ChatGoogleGenerativeAI, prompt: str, max_retries: int = 3) -> str:
+def safe_llm_invoke(llm: ChatGoogleGenerativeAI, prompt: str, max_retries: int = Config.LLM_CALL_MAX_RETRIES) -> str:
     """Safely invoke LLM with retry logic"""
     for attempt in range(1, max_retries + 1):
         try:
