@@ -1,0 +1,6 @@
+# resources.py
+#slack_resource = dagster_slack.SlackResource(
+#  token=EnvVar("SLACK_AIMS_COURSE_BOT_TOKEN")
+#)
+import dagster_slack
+from dagster import EnvVar
