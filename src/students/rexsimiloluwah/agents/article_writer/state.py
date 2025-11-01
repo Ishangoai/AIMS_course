@@ -5,13 +5,29 @@ from typing import Dict, List, TypedDict
 class ArticleState(TypedDict):
     """State object tracking the article generation workflow."""
     topic: str
+
+    # Planning
     outline: str
+
+    # Research
     research_sources: List[Dict[str, str]]
+
+    # Writing
     article_draft: str
-    validation_feedback: str
-    is_valid: bool
     revision_count: int
     word_count: int
+
+    # Validation - Word Counter
+    word_count_valid: bool
+    word_count_feedback: str
+
+    # Validation - Quality
+    quality_valid: bool
+    quality_feedback: str
+
+    # Validation - combined
+    validation_feedback: str
+    is_valid: bool
 
     # runtime article word count limits
     target_words: int

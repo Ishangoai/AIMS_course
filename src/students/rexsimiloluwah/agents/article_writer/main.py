@@ -11,7 +11,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, StateGraph
 
 from .config import Config, RuntimeConfig, merge_runtime
-from .nodes import planner_node, rewriter_node, validator_node, writer_node
+from .nodes import planner_node, quality_validator_node, researcher_node, rewriter_node, word_counter_node, writer_node
 from .state import ArticleState
 
 
@@ -63,26 +63,34 @@ def create_workflow(
 
     # Add nodes
     workflow.add_node("planner",
-                     lambda s: planner_node(s, llm_writer, prompt_manager))  # type: ignore
+                    lambda s: planner_node(s, llm_writer, prompt_manager))  # type: ignore
+    workflow.add_node("researcher",
+                    lambda s: researcher_node(s, searcher))  # type: ignore
     workflow.add_node("writer",
-                     lambda s: writer_node(s, llm_writer, prompt_manager, searcher))  # type: ignore
-    workflow.add_node("validator",
-                     lambda s: validator_node(s, llm_validator, prompt_manager))  # type: ignore
+                    lambda s: writer_node(s, llm_writer, prompt_manager))  # type: ignore
+    workflow.add_node("word_counter",
+                    lambda s: word_counter_node(s))  # type: ignore
+    workflow.add_node("quality_validator",
+                    lambda s: quality_validator_node(s, llm_validator, prompt_manager))  # type: ignore
     workflow.add_node("rewriter",
-                     lambda s: rewriter_node(s, llm_rewriter, prompt_manager))  # type: ignore
+                    lambda s: rewriter_node(s, llm_rewriter, prompt_manager))  # type: ignore
 
     # Define flow
     workflow.set_entry_point("planner")
-    workflow.add_edge("planner", "writer")
-    workflow.add_edge("writer", "validator")
+    workflow.add_edge("planner", "researcher")
+    workflow.add_edge("researcher", "writer")
+    workflow.add_edge("writer", "word_counter")
+    workflow.add_edge("word_counter", "quality_validator")
 
-    # Conditional routing
+    # Conditional routing after quality validator
     workflow.add_conditional_edges(
-        "validator",
+        "quality_validator",
         route_validator,
         {"revise": "rewriter", "end": END}
     )
-    workflow.add_edge("rewriter", "validator")
+
+    # After rewrite, go back through both validators
+    workflow.add_edge("rewriter", "word_counter")
 
     return workflow.compile()  # Workflow builder  # type: ignore
 

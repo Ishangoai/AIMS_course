@@ -7,7 +7,7 @@ Check:
 1. Factual accuracy and consistency
 2. Logical flow and coherence
 3. Grammar and style
-4. Contains an **Introduction** and **Conclusion**
+4. Contains an # Introduction, # Conclusion, and # References as section headers
 4. Word count (target: {min_words}-{max_words} words, current: {word_count})
 
 If acceptable, respond "VALID".
