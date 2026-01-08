@@ -11,6 +11,7 @@ from gradioapp.app import app as demo
 from gradioapp.fraud_detector_assignment import app as app_fraud
 from gradioapp.heart_disease_app import heart_app
 from gradioapp.main_gradio import app_scale
+
 app = FastAPI(
     title="AIMS Course API",
     description=textwrap.dedent("""
