@@ -1404,5 +1404,3 @@ with gr.Blocks(
         <p>📊 Data: MovieLens | 🖼️ Images: TMDB API | 💾 Ratings saved locally in SQLite</p>
     </div>
     """)
-if __name__ == "__main__":
-    app_scale.launch()
