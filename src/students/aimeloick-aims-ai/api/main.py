@@ -10,6 +10,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from gradioapp.app import app as demo
 from gradioapp.fraud_detector_assignment import app as app_fraud
 from gradioapp.heart_disease_app import heart_app
+from gradioapp.main_gradio import app_scale
 
 app = FastAPI(
     title="AIMS Course API",
@@ -132,3 +133,4 @@ gr.mount_gradio_app(app, demo, path="/gradio")
 gr.mount_gradio_app(app, heart_app, path="/heart-disease")
 gr.mount_gradio_app(app, llm_chat, path="/llm-chat")
 gr.mount_gradio_app(app, app_fraud, path="/app_fraud")
+gr.mount_gradio_app(app, app_scale, path="/app_scale")
