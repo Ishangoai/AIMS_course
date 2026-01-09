@@ -243,7 +243,7 @@ def load_movielens_data(data_dir=DATA_DIR):
     print("Loading ratings in chunks...")
     ratings_chunks = []
     ratings_iter = pd.read_csv(
-        os.path.join(data_dir, "ratings_part_aa.csv"),
+        os.path.join(data_dir, "ratings.csv"),
         chunksize=1_000_000,
         encoding="utf-8",
     )
@@ -259,7 +259,7 @@ def load_movielens_data(data_dir=DATA_DIR):
         print("Loading tags in chunks...")
         tags_chunks = []
         tags_iter = pd.read_csv(
-            os.path.join(data_dir, "tags_part_aa.csv"),
+            os.path.join(data_dir, "tags.csv"),
             chunksize=1_000_000,
             encoding="utf-8",
         )
