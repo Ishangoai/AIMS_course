@@ -18,7 +18,7 @@ from user_ratings_manager import UserRatingsManager
 
 DATASET_URL = "https://files.grouplens.org/datasets/movielens/ml-32m.zip"
 DATA_DIR = "./ml-32m"
-REQUIRED_FILES = ["movies.csv", "ratings_part_aa.csv", "links.csv"]
+REQUIRED_FILES = ["movies.csv", "ratings.csv", "links.csv"]
 
 
 def download_and_extract_dataset():
@@ -243,7 +243,7 @@ def load_movielens_data(data_dir=DATA_DIR):
     print("Loading ratings in chunks...")
     ratings_chunks = []
     ratings_iter = pd.read_csv(
-        os.path.join(data_dir, "ratings_part_aa.csv"),
+        os.path.join(data_dir, "ratings.csv"),
         chunksize=1_000_000,
         encoding="utf-8",
     )
@@ -259,7 +259,7 @@ def load_movielens_data(data_dir=DATA_DIR):
         print("Loading tags in chunks...")
         tags_chunks = []
         tags_iter = pd.read_csv(
-            os.path.join(data_dir, "tags_part_aa.csv"),
+            os.path.join(data_dir, "tags.csv"),
             chunksize=1_000_000,
             encoding="utf-8",
         )
@@ -1404,5 +1404,3 @@ with gr.Blocks(
         <p>📊 Data: MovieLens | 🖼️ Images: TMDB API | 💾 Ratings saved locally in SQLite</p>
     </div>
     """)
-if __name__ == "__main__":
-    app_scale.launch()
