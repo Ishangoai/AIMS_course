@@ -1,8 +1,6 @@
 import json
 import os
 import pickle
-import zipfile
-from pathlib import Path
 
 import gradio as gr
 import numpy as np
@@ -13,81 +11,13 @@ from prediction.recommend import compute_dummy_user
 from user_ratings_manager import UserRatingsManager
 
 # ============================================================================
-# DATASET DOWNLOAD AND SETUP
+# CONFIGURATION
 # ============================================================================
 
-DATASET_URL = "https://files.grouplens.org/datasets/movielens/ml-32m.zip"
+# Dataset directory - assumes files are already present
 DATA_DIR = "./ml-32m"
-REQUIRED_FILES = ["movies.csv", "ratings.csv", "links.csv"]
 
-
-def download_and_extract_dataset():
-    """Download and extract MovieLens dataset if not present."""
-    data_path = Path(DATA_DIR)
-    zip_path = Path("ml-32m.zip")
-
-    # Check if required files exist
-    missing_files = [
-        f for f in REQUIRED_FILES if not (data_path / f).exists()
-    ]
-
-    if not missing_files:
-        print("✅ All required dataset files found")
-        return True
-
-    print(f"⚠️ Missing files: {', '.join(missing_files)}")
-    print("📥 Downloading MovieLens 32M dataset...")
-
-    try:
-        # Download dataset
-        response = requests.get(DATASET_URL, stream=True, timeout=30)
-        response.raise_for_status()
-
-        total_size = int(response.headers.get("content-length", 0))
-        block_size = 8192
-        downloaded = 0
-
-        with open(zip_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=block_size):
-                if chunk:
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    if total_size:
-                        progress = (downloaded / total_size) * 100
-                        print(f"  Progress: {progress:.1f}%", end="\r")
-
-        print("\n✅ Download complete")
-
-        # Extract dataset
-        print("📦 Extracting dataset...")
-        with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            zip_ref.extractall(".")
-
-        print("✅ Extraction complete")
-
-        # Clean up zip file
-        zip_path.unlink()
-        print("🗑️ Cleaned up zip file")
-
-        return True
-
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Download failed: {e}")
-        return False
-    except zipfile.BadZipFile as e:
-        print(f"❌ Extraction failed: {e}")
-        if zip_path.exists():
-            zip_path.unlink()
-        return False
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}")
-        return False
-
-
-# ============================================================================
-# CONFIGURATION TMDB
-# ============================================================================
-
+# TMDB Configuration
 TMDB_API_KEY = "42a652236ac00d61b4fa5639e900a765"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 TMDB_SEARCH_URL = "https://api.themoviedb.org/3/search/movie"
@@ -98,7 +28,10 @@ DESCRIPTIONS_CACHE_FILE = "movie_descriptions_cache.json"
 IMAGE_CACHE = {}
 DESCRIPTIONS_CACHE = {}
 
-# Load ALS model
+# ============================================================================
+# LOAD ALS MODEL
+# ============================================================================
+
 try:
     with open("als_model.pkl", "rb") as f:
         loaded_model = pickle.load(f)
@@ -115,6 +48,10 @@ except Exception as e:
     user_factors = item_factors = user_biases = item_biases = None
     movieid_to_idx = idx_to_movie = {}
 
+
+# ============================================================================
+# CACHE FUNCTIONS
+# ============================================================================
 
 def load_image_cache():
     """Load image cache from JSON file."""
@@ -219,31 +156,39 @@ def get_tmdb_image(title, movie_id):
 
 
 # ============================================================================
-# DATA LOADING
+# DATA LOADING - SIMPLIFIED (NO DOWNLOAD)
 # ============================================================================
 
-
 def load_movielens_data(data_dir=DATA_DIR):
-    """Load MovieLens data from CSV files."""
+    """Load MovieLens data from CSV files (assumes files are already present)."""
     print("\n" + "=" * 60)
     print("📁 LOADING MOVIELENS DATA")
     print("=" * 60)
 
-    # Ensure dataset is available
-    if not download_and_extract_dataset():
-        msg = "Failed to download or extract dataset"
-        raise RuntimeError(msg)
+    # Check if directory exists
+    if not os.path.exists(data_dir):
+        raise FileNotFoundError(
+            f"❌ Data directory '{data_dir}' not found!\n"
+            f"Please ensure the MovieLens dataset is extracted to '{data_dir}'"
+        )
 
-    movies_df = pd.read_csv(
-        os.path.join(data_dir, "movies.csv"), encoding="utf-8"
-    )
+    # Load movies
+    movies_path = os.path.join(data_dir, "movies.csv")
+    if not os.path.exists(movies_path):
+        raise FileNotFoundError(f"❌ File not found: {movies_path}")
+
+    movies_df = pd.read_csv(movies_path, encoding="utf-8")
     print(f"✓ {len(movies_df)} movies loaded")
 
-    # Load ratings in chunks and concatenate
+    # Load ratings
+    ratings_path = os.path.join(data_dir, "ratings.csv")
+    if not os.path.exists(ratings_path):
+        raise FileNotFoundError(f"❌ File not found: {ratings_path}")
+
     print("Loading ratings in chunks...")
     ratings_chunks = []
     ratings_iter = pd.read_csv(
-        os.path.join(data_dir, "ratings.csv"),
+        ratings_path,
         chunksize=1_000_000,
         encoding="utf-8",
     )
@@ -255,42 +200,74 @@ def load_movielens_data(data_dir=DATA_DIR):
     ratings_df = pd.concat(ratings_chunks, ignore_index=True)
     print(f"✓ {len(ratings_df)} total ratings loaded")
 
+    # Load tags (optional)
     try:
-        print("Loading tags in chunks...")
-        tags_chunks = []
-        tags_iter = pd.read_csv(
-            os.path.join(data_dir, "tags.csv"),
-            chunksize=1_000_000,
-            encoding="utf-8",
-        )
-
-        for i, chunk in enumerate(tags_iter):
-            tags_chunks.append(chunk)
-            print(f"  Tag chunk {i + 1} loaded: {len(chunk)} rows")
-
-        tags_df = pd.concat(tags_chunks, ignore_index=True)
-        print(f"✓ {len(tags_df)} total tags loaded")
+        print("Loading tags...")
+        tags_path = os.path.join(data_dir, "tags.csv")
+        if os.path.exists(tags_path):
+            tags_chunks = []
+            tags_iter = pd.read_csv(
+                tags_path,
+                chunksize=1_000_000,
+                encoding="utf-8",
+            )
+            for i, chunk in enumerate(tags_iter):
+                tags_chunks.append(chunk)
+                print(f"  Tag chunk {i + 1} loaded: {len(chunk)} rows")
+            tags_df = pd.concat(tags_chunks, ignore_index=True)
+            print(f"✓ {len(tags_df)} total tags loaded")
+        else:
+            tags_df = pd.DataFrame()
+            print("⚠️ tags.csv not found (optional)")
     except Exception as e:
         tags_df = pd.DataFrame()
-        print(f"⚠️ No tags file found or error: {e}")
+        print(f"⚠️ No tags file or error: {e}")
 
+    # Load links (optional)
     try:
-        links_df = pd.read_csv(
-            os.path.join(data_dir, "links.csv"), encoding="utf-8"
-        )
-        print(f"✓ {len(links_df)} links loaded")
+        links_path = os.path.join(data_dir, "links.csv")
+        if os.path.exists(links_path):
+            links_df = pd.read_csv(links_path, encoding="utf-8")
+            print(f"✓ {len(links_df)} links loaded")
+        else:
+            links_df = pd.DataFrame()
+            print("⚠️ links.csv not found (optional)")
     except Exception as e:
         links_df = pd.DataFrame()
-        print(f"⚠️ No links file found or error: {e}")
+        print(f"⚠️ No links file or error: {e}")
 
     print("=" * 60 + "\n")
     return movies_df, ratings_df, tags_df, links_df
 
 
-# Initialize
+# ============================================================================
+# INITIALIZE DATA
+# ============================================================================
+
+print("🎬 Initializing MOVIEFLIX...")
 load_image_cache()
 load_descriptions_cache()
-MOVIES_DF, RATINGS_DF, TAGS_DF, LINKS_DF = load_movielens_data()
+
+try:
+    MOVIES_DF, RATINGS_DF, TAGS_DF, LINKS_DF = load_movielens_data()
+except FileNotFoundError as e:
+    print(f"\n{e}")
+    print("\n" + "=" * 60)
+    print("⚠️  SETUP INSTRUCTIONS")
+    print("=" * 60)
+    print("1. Download MovieLens dataset from:")
+    print("   https://files.grouplens.org/datasets/movielens/ml-32m.zip")
+    print("   OR")
+    print("   https://files.grouplens.org/datasets/movielens/ml-latest.zip")
+    print("\n2. Extract the ZIP file to the current directory")
+    print("   You should have a folder: ./ml-32m/ or ./ml-latest/")
+    print("\n3. The folder should contain:")
+    print("   - movies.csv (required)")
+    print("   - ratings.csv (required)")
+    print("   - links.csv (optional)")
+    print("   - tags.csv (optional)")
+    print("=" * 60 + "\n")
+    raise
 
 AVG_RATINGS = RATINGS_DF.groupby("movieId")["rating"].mean().to_dict()
 RATING_COUNTS = RATINGS_DF.groupby("movieId")["rating"].count().to_dict()
@@ -310,11 +287,12 @@ RATINGS_MANAGER = UserRatingsManager(
 )
 CURRENT_USER = "default_user"
 
+print("✅ Data loaded successfully!")
+
 
 # ============================================================================
 # DATA FUNCTIONS
 # ============================================================================
-
 
 def search_movies(query):
     """Search movies by title."""
@@ -392,11 +370,9 @@ def get_recommendations_for_user(username=CURRENT_USER, top_n=18):
     """Get recommendations based on user ratings."""
     user_ratings = RATINGS_MANAGER.get_user_ratings(username)
 
-    # If no ratings, return empty list
     if len(user_ratings) == 0:
         return []
 
-    # Check if ALS model is available
     if item_factors is None or user_factors is None:
         return []
 
@@ -411,7 +387,7 @@ def get_recommendations_for_user(username=CURRENT_USER, top_n=18):
     if len(dummy_ratings) == 0:
         return []
 
-    dummy_user_factors, dummy_user_bias = compute_dummy_user(  # noqa: F841
+    dummy_user_factors, _ = compute_dummy_user(
         item_factors,
         item_biases,
         dummy_ratings,
@@ -438,7 +414,7 @@ def get_recommendations_for_user(username=CURRENT_USER, top_n=18):
     predictions.sort(key=lambda x: x[1], reverse=True)
 
     recommended_movies = []
-    for item_idx, score in predictions[:top_n]:  # noqa: F841
+    for item_idx, score in predictions[:top_n]:
         movie_id = idx_to_movie[item_idx]
         if movie_id and movie_id in MOVIES_DF["movieId"].values:
             movie = MOVIES_DF[MOVIES_DF["movieId"] == movie_id].iloc[0]
@@ -471,7 +447,6 @@ def get_why_recommended(movie_id, username=CURRENT_USER, top_n=3):
 
         item_idx = movieid_to_idx[movie_id]
 
-        # Get user ratings
         user_ratings = RATINGS_MANAGER.get_user_ratings(username)
         dummy_ratings = []
         for mid, rating, _, _ in user_ratings:
@@ -482,7 +457,6 @@ def get_why_recommended(movie_id, username=CURRENT_USER, top_n=3):
         if len(dummy_ratings) == 0:
             return None
 
-        # Calculate contributions
         contribs = top_historical_contributions(
             item_idx=item_idx,
             V=item_factors,
@@ -491,9 +465,8 @@ def get_why_recommended(movie_id, username=CURRENT_USER, top_n=3):
             tau=1.9,
         )
 
-        # Get top contributing movies
         top_movies = []
-        for j, contrib in contribs[:top_n]:  # noqa: F841
+        for j, contrib in contribs[:top_n]:
             if j in idx_to_movie:
                 contrib_movie_id = idx_to_movie[j]
                 if contrib_movie_id in MOVIES_DF["movieId"].values:
@@ -544,10 +517,7 @@ def get_rated_movies(username=CURRENT_USER):
 # HTML GENERATION
 # ============================================================================
 
-
-def create_movie_grid_html(
-    movies, page_type="popular", show_user_rating=False  # noqa: ARG001
-):
+def create_movie_grid_html(movies, page_type="popular", show_user_rating=False):
     """Returns HTML and list of movie cards components."""
     if page_type == "recommendations" and not movies:
         empty_state_html = """
@@ -589,17 +559,13 @@ def create_movie_grid_html(
     return html, movies
 
 
-def create_movie_card_html(
-    movie, page_type="popular", show_user_rating=False
-):
+def create_movie_card_html(movie, page_type="popular", show_user_rating=False):
     """Create individual movie card with rating badge."""
-    # Only show rating count for popular and recommendations
     rating_display = ""
     if page_type in ["popular", "recommendations"]:
         num_ratings = RATING_COUNTS.get(movie["movieId"], 0)
-        rating_display = f'<div style="color: #999; font-size: 12px; margin-top: 5px;">⭐ {num_ratings} ratings</div>'  # noqa: E501
+        rating_display = f'<div style="color: #999; font-size: 12px; margin-top: 5px;">⭐ {num_ratings} ratings</div>'
 
-    # Show user rating badge only for "rated" page and "recommendations" page
     user_rating_badge = ""
     if show_user_rating and "user_rating" in movie:
         user_stars = "⭐" * int(movie["user_rating"]) + "☆" * (
@@ -617,7 +583,6 @@ def create_movie_card_html(
             {user_stars} {movie['user_rating']}/5
         </div>
         '''
-    # For recommendations page, also show user ratings
     elif page_type == "recommendations":
         user_rating = get_user_rating_for_movie(movie["movieId"])
         if user_rating > 0:
@@ -692,7 +657,6 @@ def create_detail_html(movie_id):
 
     is_recommended = is_movie_recommended(movie_id)
 
-    # "Why For You" section - only for recommended movies
     why_for_you_section = ""
     if is_recommended:
         why_movies = get_why_recommended(movie_id)
@@ -724,7 +688,6 @@ def create_detail_html(movie_id):
             </div>
             """  # noqa: E501
 
-    # Only show recommendation info if user has rated this movie
     recommendation_section = ""
     if is_recommended:
         recommendation_section = f"""
@@ -787,7 +750,7 @@ def create_detail_html(movie_id):
 
         {recommendation_section}
     </div>
-    """  # noqa: E501
+    """
 
 
 def update_stats_html():
@@ -1057,22 +1020,19 @@ with gr.Blocks(
                     btn = gr.Button(genre, elem_classes="genre-button")
                     genre_buttons.append((genre, btn))
 
-            # Get initial movies BEFORE creating the grid
             initial_movies = get_movies_by_genre(limit=18)
 
-            # Header for the movie grid
             initial_header, _ = create_movie_grid_html(
                 initial_movies, "popular"
             )
             content_header = gr.HTML(value=initial_header)
 
-            # Movie grid with buttons - max 18 movies
             movie_grid_rows = []
             movie_index = 0
-            for i in range(3):  # 3 rows
+            for i in range(3):
                 with gr.Row():
                     row_columns = []
-                    for j in range(6):  # 6 columns per row
+                    for j in range(6):
                         with gr.Column(scale=1, min_width=180):
                             if movie_index < len(initial_movies):
                                 movie = initial_movies[movie_index]
@@ -1098,14 +1058,12 @@ with gr.Blocks(
                             movie_index += 1
                     movie_grid_rows.append(row_columns)
 
-    # States
     current_view = gr.State("popular")
     current_page = gr.State("popular")
     current_movie_id = gr.State(None)
     current_genre = gr.State("All Genres")
     selected_movie_from_search = gr.State(None)
 
-    # Create states for each movie button to store movie IDs
     movie_id_states = []
     for i in range(18):
         if i < len(initial_movies):
@@ -1157,7 +1115,6 @@ with gr.Blocks(
         )
         header_html, _ = create_movie_grid_html(movies, "popular")
 
-        # Prepare updates for all 18 movie slots
         updates = [update_stats_html(), header_html]
         for i in range(18):
             if i < len(movies):
@@ -1167,11 +1124,11 @@ with gr.Blocks(
                 )
                 updates.append(card_html)
                 updates.append(gr.update(visible=True))
-                updates.append(movie["movieId"])  # Update the state
+                updates.append(movie["movieId"])
             else:
                 updates.append("")
                 updates.append(gr.update(visible=False))
-                updates.append(None)  # Clear the state
+                updates.append(None)
 
         updates.extend([
             "popular",
@@ -1189,7 +1146,6 @@ with gr.Blocks(
         movies = get_recommendations_for_user(CURRENT_USER, top_n=18)
         header_html, _ = create_movie_grid_html(movies, "recommendations")
 
-        # Prepare updates for all 18 movie slots
         updates = [update_stats_html(), header_html]
         for i in range(18):
             if i < len(movies):
@@ -1199,11 +1155,11 @@ with gr.Blocks(
                 )
                 updates.append(card_html)
                 updates.append(gr.update(visible=True))
-                updates.append(movie["movieId"])  # Update the state
+                updates.append(movie["movieId"])
             else:
                 updates.append("")
                 updates.append(gr.update(visible=False))
-                updates.append(None)  # Clear the state
+                updates.append(None)
 
         updates.extend([
             "recommendations",
@@ -1223,7 +1179,6 @@ with gr.Blocks(
             movies, "rated", show_user_rating=True
         )
 
-        # Prepare updates for all 18 movie slots
         updates = [update_stats_html(), header_html]
         for i in range(18):
             if i < len(movies):
@@ -1233,11 +1188,11 @@ with gr.Blocks(
                 )
                 updates.append(card_html)
                 updates.append(gr.update(visible=True))
-                updates.append(movie["movieId"])  # Update the state
+                updates.append(movie["movieId"])
             else:
                 updates.append("")
                 updates.append(gr.update(visible=False))
-                updates.append(None)  # Clear the state
+                updates.append(None)
 
         updates.extend([
             "rated",
@@ -1258,12 +1213,11 @@ with gr.Blocks(
         user_rating = get_user_rating_for_movie(movie_id)
         detail_html = create_detail_html(movie_id)
 
-        # Prepare updates - clear all movie slots and show detail
         updates = [update_stats_html(), detail_html]
         for i in range(18):
             updates.append("")
             updates.append(gr.update(visible=False))
-            updates.append(None)  # Clear the state
+            updates.append(None)
 
         updates.extend([
             current_page_state,
@@ -1289,10 +1243,8 @@ with gr.Blocks(
                 f"✅ Rating saved: {rating_value}/5 for {movie['title']}"
             )
 
-            # After rating, show the updated detail page
             return show_movie_detail(movie_id, current_page_state, genre)
 
-        # If no movie/rating, just return to popular
         return show_popular(genre)
 
     def handle_delete_rating(movie_id, current_page_state, genre):
@@ -1307,7 +1259,6 @@ with gr.Blocks(
             return show_movie_detail(movie_id, current_page_state, genre)
         return show_popular(genre)
 
-    # Create list of all movie card outputs
     all_movie_outputs = [stats_html, content_header]
     movie_buttons = []
     for i, row in enumerate(movie_grid_rows):
@@ -1316,7 +1267,7 @@ with gr.Blocks(
             all_movie_outputs.append(movie_btn)
             all_movie_outputs.append(
                 movie_id_states[i * 6 + j]
-            )  # Add the state
+            )
             movie_buttons.append((movie_btn, movie_id_states[i * 6 + j]))
 
     all_movie_outputs.extend([
@@ -1329,7 +1280,6 @@ with gr.Blocks(
         delete_rating_button,
     ])
 
-    # Connect navigation buttons
     popular_button.click(
         fn=lambda g: show_popular(g),
         inputs=[current_genre],
@@ -1344,7 +1294,6 @@ with gr.Blocks(
         fn=show_rated_movies, outputs=all_movie_outputs
     )
 
-    # Connect genre buttons
     for genre_name, genre_btn in genre_buttons:
 
         def make_genre_click_handler(g):
@@ -1355,7 +1304,6 @@ with gr.Blocks(
             outputs=all_movie_outputs,
         )
 
-    # Connect all movie detail buttons
     for i, (movie_btn, movie_id_state) in enumerate(movie_buttons):
         movie_btn.click(
             fn=show_movie_detail,
@@ -1363,7 +1311,6 @@ with gr.Blocks(
             outputs=all_movie_outputs,
         )
 
-    # Connect movie search
     movie_search.change(
         fn=update_search_results,
         inputs=[movie_search],
@@ -1404,3 +1351,8 @@ with gr.Blocks(
         <p>📊 Data: MovieLens | 🖼️ Images: TMDB API | 💾 Ratings saved locally in SQLite</p>
     </div>
     """)
+
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    app_scale.launch(server_name="0.0.0.0", server_port=port)
