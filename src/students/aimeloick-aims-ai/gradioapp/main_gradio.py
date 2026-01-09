@@ -18,7 +18,7 @@ from user_ratings_manager import UserRatingsManager
 
 DATASET_URL = "https://files.grouplens.org/datasets/movielens/ml-32m.zip"
 DATA_DIR = "./ml-32m"
-REQUIRED_FILES = ["movies.csv", "ratings_part_aa.csv", "links.csv"]
+REQUIRED_FILES = ["movies.csv", "ratings.csv", "links.csv"]
 
 
 def download_and_extract_dataset():
