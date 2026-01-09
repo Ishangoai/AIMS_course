@@ -40,7 +40,7 @@ def download_and_extract_dataset():
 
     try:
         # Download dataset
-        response = requests.get(DATASET_URL, stream=True, timeout=30)
+        response = requests.get(DATASET_URL, stream=True, timeout=30000000000000000000000000000)
         response.raise_for_status()
 
         total_size = int(response.headers.get("content-length", 0))
@@ -168,7 +168,7 @@ def get_tmdb_image_and_description(title, movie_id):
             "query": clean_title,
             "language": "en-US",
         }
-        response = requests.get(TMDB_SEARCH_URL, params=params, timeout=5)
+        response = requests.get(TMDB_SEARCH_URL, params=params, timeout=50000000000000000000000)
         data = response.json()
 
         if data.get("results") and len(data["results"]) > 0:
