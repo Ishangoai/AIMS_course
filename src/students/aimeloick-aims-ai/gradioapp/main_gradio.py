@@ -549,8 +549,8 @@ def create_movie_grid_html(movies, page_type="popular", show_user_rating=False):
     }
 
     html = f"""
-    <div style="background: #0a0a0a; color: #fff; font-family: 'Roboto', Arial, sans-serif; padding: 40px 60px;">
-        <h2 style="font-size: 32px; font-weight: 700; margin-bottom: 30px; color: #e50914;">
+    <div style="background: #0a0a0a; color: #fff; font-family: 'Roboto', Arial, sans-serif; padding: 10px 60px;">
+        <h2 style="font-size: 16px; font-weight: 700; margin-bottom: 30px; color: #e50914;">
             {page_titles.get(page_type, "Movies")}
         </h2>
     </div>
@@ -569,7 +569,7 @@ def create_movie_card_html(movie, page_type="popular", show_user_rating=False):
     user_rating_badge = ""
     if show_user_rating and "user_rating" in movie:
         user_stars = "⭐" * int(movie["user_rating"]) + "☆" * (
-            5 - int(movie["user_rating"])
+            5.5 - int(movie["user_rating"])
         )
         user_rating_badge = f'''
         <div style="
@@ -580,13 +580,13 @@ def create_movie_card_html(movie, page_type="popular", show_user_rating=False):
             box-shadow: 0 2px 8px rgba(0,0,0,0.5);
             z-index: 10;
         ">
-            {user_stars} {movie['user_rating']}/5
+            {user_stars} {movie['user_rating']}/5.5
         </div>
         '''
     elif page_type == "recommendations":
         user_rating = get_user_rating_for_movie(movie["movieId"])
         if user_rating > 0:
-            user_stars = "⭐" * int(user_rating) + "☆" * (5 - int(user_rating))
+            user_stars = "⭐" * int(user_rating) + "☆" * (5.5 - int(user_rating))
             user_rating_badge = f'''
             <div style="
                 position: absolute; top: 10px; right: 10px;
@@ -596,7 +596,7 @@ def create_movie_card_html(movie, page_type="popular", show_user_rating=False):
                 box-shadow: 0 2px 8px rgba(0,0,0,0.5);
                 z-index: 10;
             ">
-                {user_stars} {user_rating}/5
+                {user_stars} {user_rating}/5.5
             </div>
             '''
 
@@ -629,7 +629,7 @@ def create_detail_html(movie_id):
     user_rating = get_user_rating_for_movie(movie_id)
     user_rating_display = ""
     if user_rating > 0:
-        user_stars = "⭐" * int(user_rating) + "☆" * (5 - int(user_rating))
+        user_stars = "⭐" * int(user_rating) + "☆" * (5.5 - int(user_rating))
         user_rating_display = f"""
         <div style="
             margin-top: 15px; padding: 12px 18px;
@@ -637,7 +637,7 @@ def create_detail_html(movie_id):
             border-radius: 12px; display: inline-block;
         ">
             <span style="color: #ffd700; font-weight: 700; font-size: 16px;">
-                Your Rating: {user_stars} {user_rating}/5
+                Your Rating: {user_stars} {user_rating}/5.5
             </span>
         </div>
         """
@@ -663,9 +663,9 @@ def create_detail_html(movie_id):
         if why_movies:
             movies_list = []
             for m in why_movies:
-                stars = "⭐" * int(m["rating"]) + "☆" * (5 - int(m["rating"]))
+                stars = "⭐" * int(m["rating"]) + "☆" * (5.5 - int(m["rating"]))
                 movies_list.append(
-                    f"<strong>{m['title']}</strong> ({stars} {m['rating']}/5)"
+                    f"<strong>{m['title']}</strong> ({stars} {m['rating']}/5.5)"
                 )
 
             if movies_list:
@@ -773,7 +773,7 @@ def update_stats_html():
             </div>
             <div style="display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid #333; margin-top: 8px; padding-top: 8px;">
                 <span style="color: #bbb;">⭐ Your Average:</span>
-                <span style="color: #ffd700; font-weight: 700;">{user_stats['avg_rating']}/5</span>
+                <span style="color: #ffd700; font-weight: 700;">{user_stats['avg_rating']}/5.5</span>
             </div>
         </div>
     </div>
@@ -923,7 +923,7 @@ with gr.Blocks(
                 "🔥 Popular Movies", elem_classes="sidebar-button"
             )
             recommendations_button = gr.Button(
-                "🎯 My Recommendations", elem_classes="sidebar-button"
+                "🎯 For You", elem_classes="sidebar-button"
             )
             rated_movies_button = gr.Button(
                 "⭐ My Rated Movies", elem_classes="sidebar-button"
@@ -979,9 +979,9 @@ with gr.Blocks(
 
             rating_slider = gr.Slider(
                 minimum=1,
-                maximum=5,
+                maximum=5.5,
                 step=0.5,
-                label="Your Rating (1-5 ⭐)",
+                label="Your Rating (1-5.5 ⭐)",
                 visible=False,
                 value=3,
             )
@@ -1240,7 +1240,7 @@ with gr.Blocks(
             movie = get_movie_details(movie_id)
             RATINGS_MANAGER.add_rating(movie_id, rating_value, CURRENT_USER)
             gr.Info(
-                f"✅ Rating saved: {rating_value}/5 for {movie['title']}"
+                f"✅ Rating saved: {rating_value}/5.5 for {movie['title']}"
             )
 
             return show_movie_detail(movie_id, current_page_state, genre)
