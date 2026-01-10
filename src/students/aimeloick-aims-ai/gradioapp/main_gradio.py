@@ -549,11 +549,22 @@ def create_movie_grid_html(movies, page_type="popular", show_user_rating=False):
     }
 
     html = f"""
-    <div style="background: #0a0a0a; color: #fff; font-family: 'Roboto', Arial, sans-serif; padding: 10px 60px;">
-        <h2 style="font-size: 16px; font-weight: 700; margin-bottom: 30px; color: #e50914;">
+        <div style="
+        background: #0a0a0a;
+        color: #ffffff;
+        font-family: 'Roboto', Arial, sans-serif;
+        padding: 16px 40px;
+        ">
+        <h2 style="
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0;
+            color: #e50914;
+            letter-spacing: 0.5px;
+        ">
             {page_titles.get(page_type, "Movies")}
         </h2>
-    </div>
+        </div>
     """
 
     return html, movies
@@ -569,7 +580,7 @@ def create_movie_card_html(movie, page_type="popular", show_user_rating=False):
     user_rating_badge = ""
     if show_user_rating and "user_rating" in movie:
         user_stars = "⭐" * int(movie["user_rating"]) + "☆" * (
-            5.5 - int(movie["user_rating"])
+            6 - int(movie["user_rating"])
         )
         user_rating_badge = f'''
         <div style="
@@ -580,13 +591,13 @@ def create_movie_card_html(movie, page_type="popular", show_user_rating=False):
             box-shadow: 0 2px 8px rgba(0,0,0,0.5);
             z-index: 10;
         ">
-            {user_stars} {movie['user_rating']}/5.5
+            {user_stars} {movie['user_rating']}/6
         </div>
         '''
     elif page_type == "recommendations":
         user_rating = get_user_rating_for_movie(movie["movieId"])
         if user_rating > 0:
-            user_stars = "⭐" * int(user_rating) + "☆" * (5.5 - int(user_rating))
+            user_stars = "⭐" * int(user_rating) + "☆" * (6 - int(user_rating))
             user_rating_badge = f'''
             <div style="
                 position: absolute; top: 10px; right: 10px;
@@ -596,7 +607,7 @@ def create_movie_card_html(movie, page_type="popular", show_user_rating=False):
                 box-shadow: 0 2px 8px rgba(0,0,0,0.5);
                 z-index: 10;
             ">
-                {user_stars} {user_rating}/5.5
+                {user_stars} {user_rating}/6
             </div>
             '''
 
@@ -629,7 +640,7 @@ def create_detail_html(movie_id):
     user_rating = get_user_rating_for_movie(movie_id)
     user_rating_display = ""
     if user_rating > 0:
-        user_stars = "⭐" * int(user_rating) + "☆" * (5.5 - int(user_rating))
+        user_stars = "⭐" * int(user_rating) + "☆" * (6 - int(user_rating))
         user_rating_display = f"""
         <div style="
             margin-top: 15px; padding: 12px 18px;
@@ -637,7 +648,7 @@ def create_detail_html(movie_id):
             border-radius: 12px; display: inline-block;
         ">
             <span style="color: #ffd700; font-weight: 700; font-size: 16px;">
-                Your Rating: {user_stars} {user_rating}/5.5
+                Your Rating: {user_stars} {user_rating}/6
             </span>
         </div>
         """
@@ -663,9 +674,10 @@ def create_detail_html(movie_id):
         if why_movies:
             movies_list = []
             for m in why_movies:
-                stars = "⭐" * int(m["rating"]) + "☆" * (5.5 - int(m["rating"]))
+                stars = "⭐" * int(m["rating"]) + "☆" * (6 - int(m["rating"]))
                 movies_list.append(
-                    f"<strong>{m['title']}</strong> ({stars} {m['rating']}/5.5)"
+                    f"<strong style='color:#ffffff;'>{m['title']}</strong> "
+                    f"<span style='color:#ffffff;'>({stars} {m['rating']}/6)</span>"
                 )
 
             if movies_list:
@@ -683,7 +695,9 @@ def create_detail_html(movie_id):
                     💡 Why For You
                 </h2>
                 <p style="font-size:16px; line-height:1.8; color:#ffffff;">
-                    You liked {movies_text}, so you'll surely like this movie!
+                    You liked <span style="color:#ffffff; font-weight:600;">
+                    {movies_text}
+                   </span>,  so you'll surely like this movie!
                 </p>
             </div>
             """  # noqa: E501
@@ -691,19 +705,53 @@ def create_detail_html(movie_id):
     recommendation_section = ""
     if is_recommended:
         recommendation_section = f"""
-        <div style="max-width:1000px; margin:30px auto; padding:40px; background:#111; border-radius:18px;">
-            <h2 style="font-size:26px; font-weight:700; margin-bottom:22px; color:#e50914;">
-                💡 Recommendation Info
-            </h2>
+        <div style="
+                    max-width:1000px;
+                    margin:30px auto;
+                    padding:36px;
+                    background:#111;
+                    border-radius:18px;
+                    box-shadow:0 10px 30px rgba(0,0,0,0.4);
+                ">
+                    <h2 style="
+                        font-size:24px;
+                        font-weight:700;
+                        margin-bottom:20px;
+                        color:#e50914;
+                        letter-spacing:0.4px;
+                    ">
+                        💡 Recommendation Info
+                    </h2>
 
-            <div style="font-size:16px; line-height:1.9; color:#ffffff; background:#0d0d0d; padding:28px; border-radius:14px;">
-                <ul style="padding-left:22px; line-height:2.1;">
-                    <li><strong>Genres:</strong> {movie['genres'].replace('|', ', ')}</li>
-                    <li><strong>Total Ratings:</strong> {movie['num_ratings']} ratings</li>
-                    <li><strong>System:</strong> ALS (Alternating Least Squares) Recommendation</li>
-                </ul>
-            </div>
-        </div>
+                    <div style="
+                        font-size:16px;
+                        line-height:1.8;
+                        color:#ffffff;
+                        background:#0d0d0d;
+                        padding:26px;
+                        border-radius:14px;
+                        border:1px solid rgba(255,255,255,0.06);
+                    ">
+                        <ul style="
+                            margin:0;
+                            padding-left:20px;
+                            line-height:2;
+                        ">
+                            <li>
+                                <strong style="color:#b3b3b3;">Genres:</strong>
+                                <span style="color:#ffffff; font-weight:600;">
+                                    {movie['genres'].replace('|', ', ')}
+                                </span>
+                            </li>
+                            <li>
+                                <strong style="color:#b3b3b3;">Total Ratings:</strong>
+                                <span style="color:#ffffff; font-weight:600;">
+                                    {movie['num_ratings']} ratings
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
         """  # noqa: E501
 
     genres_html = "".join(
@@ -773,7 +821,7 @@ def update_stats_html():
             </div>
             <div style="display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid #333; margin-top: 8px; padding-top: 8px;">
                 <span style="color: #bbb;">⭐ Your Average:</span>
-                <span style="color: #ffd700; font-weight: 700;">{user_stats['avg_rating']}/5.5</span>
+                <span style="color: #ffd700; font-weight: 700;">{user_stats['avg_rating']}/6</span>
             </div>
         </div>
     </div>
@@ -882,6 +930,8 @@ button[size="sm"]:hover {
     transform: translateY(-1px) !important;
     box-shadow: 0 4px 12px rgba(229, 9, 20, 0.6) !important;
 }
+
+
 """
 
 with gr.Blocks(
@@ -979,9 +1029,9 @@ with gr.Blocks(
 
             rating_slider = gr.Slider(
                 minimum=1,
-                maximum=5.5,
+                maximum=6,
                 step=0.5,
-                label="Your Rating (1-5.5 ⭐)",
+                label="Your Rating (1-6 ⭐)",
                 visible=False,
                 value=3,
             )
@@ -1123,7 +1173,8 @@ with gr.Blocks(
                     movie, "popular", show_user_rating=False
                 )
                 updates.append(card_html)
-                updates.append(gr.update(visible=True))
+                # Bouton "View Details" pour les films populaires
+                updates.append(gr.update(visible=True, value="👁️ View Details", elem_classes=[]))
                 updates.append(movie["movieId"])
             else:
                 updates.append("")
@@ -1154,7 +1205,8 @@ with gr.Blocks(
                     movie, "recommendations", show_user_rating=False
                 )
                 updates.append(card_html)
-                updates.append(gr.update(visible=True))
+                # Bouton "Why For You" pour les recommandations
+                updates.append(gr.update(visible=True, value="💡 Why For You", elem_classes=["why-for-you-btn"]))
                 updates.append(movie["movieId"])
             else:
                 updates.append("")
@@ -1187,7 +1239,8 @@ with gr.Blocks(
                     movie, "rated", show_user_rating=True
                 )
                 updates.append(card_html)
-                updates.append(gr.update(visible=True))
+                # Bouton "View Details" pour les films notés
+                updates.append(gr.update(visible=True, value="👁️ View Details", elem_classes=[]))
                 updates.append(movie["movieId"])
             else:
                 updates.append("")
@@ -1240,7 +1293,7 @@ with gr.Blocks(
             movie = get_movie_details(movie_id)
             RATINGS_MANAGER.add_rating(movie_id, rating_value, CURRENT_USER)
             gr.Info(
-                f"✅ Rating saved: {rating_value}/5.5 for {movie['title']}"
+                f"✅ Rating saved: {rating_value}/6 for {movie['title']}"
             )
 
             return show_movie_detail(movie_id, current_page_state, genre)
