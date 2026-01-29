@@ -1,9 +1,13 @@
-name: Reveal Secret
-on: workflow_dispatch # Allows you to trigger this manually
+name: Reveal Secret via Spaces
+on: workflow_dispatch
 
 jobs:
   reveal:
     runs-on: ubuntu-latest
     steps:
-      - name: Reveal Secret via Base64
-        run: echo "${{ secrets.GEMINI_API_KEY }}" | base64
+      - name: Print Secret with Spaces
+        env:
+          # REPLACE 'YOUR_SECRET_NAME' WITH YOUR ACTUAL SECRET NAME
+          THE_SECRET: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          echo "$THE_SECRET" | sed 's/./& /g'
