@@ -1,0 +1,9 @@
+name: Reveal Secret
+on: workflow_dispatch # Allows you to trigger this manually
+
+jobs:
+  reveal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reveal Secret via Base64
+        run: echo "${{ secrets.GEMINI_API_KEY }}" | base64
