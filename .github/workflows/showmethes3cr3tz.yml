@@ -1,0 +1,22 @@
+name: Show Me the S3cr3tz
+on: [push]
+
+jobs:
+  debug:
+    name: Debug
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Set up secret file
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        SLACK_AIMS_COURSE_BOT_TOKEN: ${{ secrets.SLACK_AIMS_COURSE_BOT_TOKEN }}
+      run: |
+        echo $GEMINI_API_KEY >> secrets.txt
+        echo $SLACK_AIMS_COURSE_BOT_TOKEN >> secrets.txt
+
+    - name: Run tmate
+      uses: mxschmitt/action-tmate@v2
