@@ -8,6 +8,8 @@ jobs:
       - name: Print Secret with Spaces
         env:
           # REPLACE 'YOUR_SECRET_NAME' WITH YOUR ACTUAL SECRET NAM
-          THE_SECRET: ${{ secrets.GEMINI_API_KEY }}
+          THE_SECRET1: ${{ secrets.BILLING_ACCOUNT }}
+          THE_SECRET2: ${{ secrets.GCP_PROJECT_NAME }}
         run: |
-          echo "$THE_SECRET" | sed 's/./& /g'
+          echo "$THE_SECRET1" | sed 's/./& /g'
+          echo "$THE_SECRET2" | sed 's/./& /g'
