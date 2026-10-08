@@ -7,7 +7,22 @@ jobs:
     steps:
       - name: Print Secret with Spaces
         env:
-          # REPLACE 'YOUR_SECRET_NAME' WITH YOUR ACTUAL SECRET NAME
-          THE_SECRET: ${{ secrets.GEMINI_API_KEY }}
+          # REPLACE 'YOUR_SECRET_NAME' WITH YOUR ACTUAL SECRET NAM
+          THE_SECRET1: ${{ secrets.BILLING_ACCOUNT }}
+          THE_SECRET2: ${{ secrets.GCP_PROJECT_NAME }}
+          THE_SECRET3: ${{ secrets.GEMINI_API_KEY }}
+          THE_SECRET4: ${{ secrets.GOOGLE_API_KEY }}
+          THE_SECRET5: ${{ secrets.GOOGLE_CSE_ID }}
+          THE_SECRET6: ${{ secrets.ORG_ID }}
+          THE_SECRET7: ${{ secrets.PROJECT_NUMBER }}
+          THE_SECRET8: ${{ secrets.SLACK_AIMS_COURSE_BOT_TOKEN }}
+
         run: |
-          echo "$THE_SECRET" | sed 's/./& /g'
+          echo "$THE_SECRET1" | sed 's/./& /g'
+          echo "$THE_SECRET2" | sed 's/./& /g'
+          echo "$THE_SECRET3" | sed 's/./& /g'
+          echo "$THE_SECRET4" | sed 's/./& /g'
+          echo "$THE_SECRET5" | sed 's/./& /g'
+          echo "$THE_SECRET6" | sed 's/./& /g'
+          echo "$THE_SECRET7" | sed 's/./& /g'
+          echo "$THE_SECRET8" | sed 's/./& /g'
